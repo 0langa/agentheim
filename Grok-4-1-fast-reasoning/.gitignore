@@ -1,0 +1,13 @@
+# Credential config files (never commit)
+.grokrc
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS
+Thumbs.db
+.DS_Store
