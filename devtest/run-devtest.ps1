@@ -83,9 +83,40 @@ switch ($Mode) {
 
 Write-Host "Done: mode=$Mode"
 Write-Host ""
-Write-Host "Quick cleanup actions (optional):"
-Write-Host "1) Clear pytest temp artifacts (Windows):"
-Write-Host "   Remove-Item -LiteralPath `"$env:TEMP\\pytest-of-$env:USERNAME`" -Recurse -Force -ErrorAction SilentlyContinue"
-Write-Host "2) If cleanup denied, close tools locking temp files, then rerun command above."
-Write-Host "3) Re-run same suite:"
-Write-Host "   powershell -ExecutionPolicy Bypass -File .\\devtest\\run-devtest.ps1 -Mode $Mode"
+Write-Host "Optional post-run actions:"
+Write-Host "1) Clear pytest temp artifacts"
+Write-Host "2) Clear local pytest cache in Agent-Team"
+Write-Host "3) Re-run same suite"
+Write-Host ""
+Write-Host "Prompt format: [Y]es / [N]o / [A]ll"
+
+$runAll = $false
+
+function Ask-YNA {
+    param([string]$Question)
+    if ($runAll) { return "Y" }
+    $reply = Read-Host "$Question [Y/N/A]"
+    if (-not $reply) { return "N" }
+    $value = $reply.Trim().ToUpperInvariant()
+    if ($value -eq "A") {
+        $script:runAll = $true
+        return "Y"
+    }
+    if ($value -eq "Y" -or $value -eq "N") { return $value }
+    return "N"
+}
+
+if ((Ask-YNA "Run action 1 now?") -eq "Y") {
+    Remove-Item -LiteralPath "$env:TEMP\pytest-of-$env:USERNAME" -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "Action 1 done."
+}
+
+if ((Ask-YNA "Run action 2 now?") -eq "Y") {
+    Remove-Item -LiteralPath (Join-Path $ProjectRoot ".pytest_cache") -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "Action 2 done."
+}
+
+if ((Ask-YNA "Run action 3 now?") -eq "Y") {
+    Write-Host "Re-running mode=$Mode"
+    & powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "run-devtest.ps1") -Mode $Mode -K $K
+}
