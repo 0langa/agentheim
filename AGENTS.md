@@ -2,6 +2,12 @@ Repository agent rule:
 
 Before finishing any work, update files in `devtest/` so local test runner and command list reflect current repository test structure and recommended execution paths.
 
+Changelog rule:
+
+Before every commit, update `CHANGELOG.md`.
+Do not parse or rewrite full changelog.
+Append only: add a short technical AI-facing entry for your current changes, then stop.
+
 AI live connectivity test rule:
 
 Agents may run `devtest/ai_test.ps1` at most 2 times in a row for the same validation attempt.
