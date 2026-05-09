@@ -183,27 +183,44 @@ def _load_registry_config() -> TeamConfig:
 
     providers = {provider_id: _load_provider(provider_id) for provider_id in provider_ids}
 
-    model_defaults = {
-        "planner": ("planner", "default", "grok-4-20-reasoning", ["plan", "reasoning", "json"]),
-        "executor": ("executor", "default", "grok-4-1-fast-reasoning", ["code_edit", "json"]),
-        "verifier": ("verifier", "default", "grok-4-20-non-reasoning", ["verify", "json"]),
-    }
+    models_json = os.getenv("AI_TEAM_MODELS_JSON", "").strip()
     models: dict[str, ModelConfig] = {}
-    for model_id, (role_value, provider_default, name_default, capabilities_default) in model_defaults.items():
-        role = ModelRole(role_value)
-        provider = os.getenv(f"AI_TEAM_MODEL_{model_id.upper()}_PROVIDER", provider_default).strip() or provider_default
-        model_name = os.getenv(f"AI_TEAM_MODEL_{model_id.upper()}_NAME", name_default).strip() or name_default
-        cap_json = os.getenv(f"AI_TEAM_MODEL_{model_id.upper()}_CAPABILITIES_JSON", "")
-        capabilities = capabilities_default
-        if cap_json.strip():
+    if models_json:
+        try:
+            parsed = json.loads(models_json)
+        except json.JSONDecodeError as exc:
+            raise ConfigError("Invalid JSON in AI_TEAM_MODELS_JSON") from exc
+        if not isinstance(parsed, list):
+            raise ConfigError("AI_TEAM_MODELS_JSON must be a JSON array.")
+        for item in parsed:
+            if not isinstance(item, dict):
+                raise ConfigError("Each AI_TEAM_MODELS_JSON item must be an object.")
             try:
-                parsed = json.loads(cap_json)
-            except json.JSONDecodeError as exc:
-                raise ConfigError(f"Invalid JSON in AI_TEAM_MODEL_{model_id.upper()}_CAPABILITIES_JSON") from exc
-            if not isinstance(parsed, list) or not all(isinstance(item, str) and item.strip() for item in parsed):
-                raise ConfigError(f"AI_TEAM_MODEL_{model_id.upper()}_CAPABILITIES_JSON must be a JSON array of strings.")
-            capabilities = [item.strip() for item in parsed]
-        models[model_id] = ModelConfig(id=model_id, role=role, provider=provider, model_name=model_name, capabilities=capabilities)
+                model = ModelConfig.model_validate(item)
+            except Exception as exc:
+                raise ConfigError(f"Invalid model entry in AI_TEAM_MODELS_JSON: {item}") from exc
+            models[model.id] = model
+    else:
+        model_defaults = {
+            "planner": ("planner", "default", "replace-with-planner-model", ["plan", "reasoning", "json"]),
+            "executor": ("executor", "default", "replace-with-executor-model", ["code_edit", "json"]),
+            "verifier": ("verifier", "default", "replace-with-verifier-model", ["verify", "json"]),
+        }
+        for model_id, (role_value, provider_default, name_default, capabilities_default) in model_defaults.items():
+            role = ModelRole(role_value)
+            provider = os.getenv(f"AI_TEAM_MODEL_{model_id.upper()}_PROVIDER", provider_default).strip() or provider_default
+            model_name = os.getenv(f"AI_TEAM_MODEL_{model_id.upper()}_NAME", name_default).strip() or name_default
+            cap_json = os.getenv(f"AI_TEAM_MODEL_{model_id.upper()}_CAPABILITIES_JSON", "")
+            capabilities = capabilities_default
+            if cap_json.strip():
+                try:
+                    parsed = json.loads(cap_json)
+                except json.JSONDecodeError as exc:
+                    raise ConfigError(f"Invalid JSON in AI_TEAM_MODEL_{model_id.upper()}_CAPABILITIES_JSON") from exc
+                if not isinstance(parsed, list) or not all(isinstance(item, str) and item.strip() for item in parsed):
+                    raise ConfigError(f"AI_TEAM_MODEL_{model_id.upper()}_CAPABILITIES_JSON must be a JSON array of strings.")
+                capabilities = [item.strip() for item in parsed]
+            models[model_id] = ModelConfig(id=model_id, role=role, provider=provider, model_name=model_name, capabilities=capabilities)
 
     return TeamConfig(providers=providers, models=models)
 
@@ -211,14 +228,14 @@ def _load_registry_config() -> TeamConfig:
 def _load_legacy_grok_config() -> TeamConfig:
     # Deprecated compatibility path for older GROK_* env layouts.
     legacy_roles = {
-        "planner": ("GROK_ORCHESTRATOR", "AZURE_GROK", "GROK_REASONER", "grok-4-20-reasoning", ModelRole.PLANNER),
-        "executor": ("GROK_CODER", "GROK_CODER", "GROK_CODER", "grok-4-1-fast-reasoning", ModelRole.EXECUTOR),
-        "verifier": ("GROK_VERIFIER", "GROK_VERIFY", "GROK_VERIFY", "grok-4-20-non-reasoning", ModelRole.VERIFIER),
+        "planner": ("GROK_ORCHESTRATOR", "AZURE_GROK", "GROK_REASONER", "grok-4-20-reasoning", ModelRole.PLANNER, ["plan", "reasoning", "json"]),
+        "executor": ("GROK_CODER", "GROK_CODER", "GROK_CODER", "grok-4-1-fast-reasoning", ModelRole.EXECUTOR, ["code_edit", "json"]),
+        "verifier": ("GROK_VERIFIER", "GROK_VERIFY", "GROK_VERIFY", "grok-4-20-non-reasoning", ModelRole.VERIFIER, ["verify", "json"]),
     }
     providers: dict[str, ProviderConfig] = {}
     models: dict[str, ModelConfig] = {}
 
-    for model_id, (primary, alias_one, alias_two, default_model, role) in legacy_roles.items():
+    for model_id, (primary, alias_one, alias_two, default_model, role, default_capabilities) in legacy_roles.items():
         endpoint = (
             os.getenv(f"{primary}_ENDPOINT")
             or os.getenv(f"{alias_one}_ENDPOINT")
@@ -259,7 +276,7 @@ def _load_legacy_grok_config() -> TeamConfig:
             role=role,
             provider=provider_id,
             model_name=model_name,
-            capabilities=[],
+            capabilities=default_capabilities,
         )
     return TeamConfig(providers=providers, models=models)
 

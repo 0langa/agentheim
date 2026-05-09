@@ -42,7 +42,8 @@ class PatchApplier:
         self.scope_override = scope_override
 
     def validate_relative_path(self, relative_path: str) -> Path:
-        candidate = (self.repo_root / relative_path).resolve()
+        normalized_input = self._normalize_input_path(relative_path)
+        candidate = (self.repo_root / normalized_input).resolve()
         try:
             candidate.relative_to(self.repo_root)
         except ValueError as exc:
@@ -55,11 +56,11 @@ class PatchApplier:
     def apply_changes(self, file_changes: list[dict[str, Any]], allowed_files: list[str] | None = None) -> PatchApplyResult:
         errors: list[str] = []
         applied_changes: list[AppliedFileChange] = []
-        allowed_set = {self._normalize_relative(Path(item)) for item in (allowed_files or [])}
+        allowed_set = {self._normalize_relative(Path(self._normalize_input_path(item))) for item in (allowed_files or [])}
 
         for file_change in file_changes:
             relative_path = file_change["path"]
-            normalized = self._normalize_relative(Path(relative_path))
+            normalized = self._normalize_relative(Path(self._normalize_input_path(relative_path)))
             if allowed_set and normalized not in allowed_set:
                 errors.append(f"Change touches file outside work order scope: {normalized}")
                 continue
@@ -115,6 +116,10 @@ class PatchApplier:
     @staticmethod
     def _normalize_relative(path: Path) -> str:
         return path.as_posix()
+
+    @staticmethod
+    def _normalize_input_path(path: str) -> str:
+        return path.replace("\\", "/")
 
     @staticmethod
     def _build_diff(relative_path: str, before_text: str, after_text: str) -> str:

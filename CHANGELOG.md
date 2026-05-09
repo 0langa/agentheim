@@ -23,3 +23,10 @@
 - Added timeout/retry policy guidance in `AGENTS.md` for `devtest/ai_test.ps1`.
 - Renamed docs usage file to `Agent-Team/docs/CLI_RUNBOOK.md`.
 - Added centralized repo-level agent rules and evolving `devtest` governance.
+- Fixed cross-platform patch path normalization for Windows-style separators.
+- Fixed `ai_team/workflows/base.py` provider creation call to match registry interface.
+- Made `ModelRegistry` model mapping generic over configured model entries (not hardcoded IDs).
+- Added optional `AI_TEAM_MODELS_JSON` for explicit model registry definitions.
+- Added legacy compatibility capabilities so planner/executor/verifier resolution works.
+- Switched neutral default model placeholders and removed Grok-implied defaults from `.env.example`.
+- Added lazy provider class loading in registry to avoid eager provider imports.

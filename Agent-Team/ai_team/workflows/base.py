@@ -25,7 +25,7 @@ def build_agent(
     output_schema: type[SchemaT],
 ) -> BaseAgent[SchemaT]:
     model = registry.resolve_model(spec.role, spec.capability)
-    provider = registry.create_provider(model.provider_id, model.config)
+    provider = registry.create_provider(model.config)
     return BaseAgent(
         provider=provider,
         role_config=model.config,

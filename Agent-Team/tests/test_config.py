@@ -65,3 +65,18 @@ def test_config_dump_redaction(monkeypatch) -> None:
 
     assert dumped["providers"]["default"]["api_key"] != "super-secret-key"
     assert "***" in dumped["providers"]["default"]["api_key"]
+
+
+def test_legacy_grok_config_includes_default_capabilities(monkeypatch) -> None:
+    monkeypatch.delenv("AI_TEAM_PROVIDER_IDS", raising=False)
+    monkeypatch.setenv("GROK_ORCHESTRATOR_ENDPOINT", "https://legacy-o.example/v1")
+    monkeypatch.setenv("GROK_ORCHESTRATOR_KEY", "legacy-orch-key")
+    monkeypatch.setenv("GROK_CODER_ENDPOINT", "https://legacy-c.example/v1")
+    monkeypatch.setenv("GROK_CODER_KEY", "legacy-coder-key")
+    monkeypatch.setenv("GROK_VERIFIER_ENDPOINT", "https://legacy-v.example/v1")
+    monkeypatch.setenv("GROK_VERIFIER_KEY", "legacy-verifier-key")
+
+    config = load_team_config()
+    assert "plan" in config.models["planner"].capabilities
+    assert "code_edit" in config.models["executor"].capabilities
+    assert "verify" in config.models["verifier"].capabilities

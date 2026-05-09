@@ -1,4 +1,5 @@
 import pytest
+import json
 
 from ai_team.config import load_team_config
 from ai_team.core.model_registry import ModelRegistry
@@ -33,3 +34,22 @@ def test_registry_rejects_unknown_capability(monkeypatch) -> None:
 
     with pytest.raises(ValueError):
         registry.resolve_model("executor", "verify")
+
+
+def test_registry_uses_models_json_override(monkeypatch) -> None:
+    _seed_env(monkeypatch)
+    monkeypatch.setenv(
+        "AI_TEAM_MODELS_JSON",
+        json.dumps(
+            [
+                {"id": "planner-fast", "role": "planner", "provider": "default", "model_name": "p-fast", "capabilities": ["plan"]},
+                {"id": "executor-local", "role": "executor", "provider": "default", "model_name": "e-local", "capabilities": ["code_edit"]},
+                {"id": "verifier-cheap", "role": "verifier", "provider": "default", "model_name": "v-cheap", "capabilities": ["verify"]},
+            ]
+        ),
+    )
+    config = load_team_config()
+    registry = ModelRegistry.from_team_config(config)
+
+    resolved = registry.resolve_model("planner", "plan")
+    assert resolved.id == "planner-fast"
