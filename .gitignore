@@ -1,0 +1,55 @@
+# Credentials and local secrets
+.grokrc
+.env
+.env.*
+*.env
+!.env.example
+!*.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Agent runtime artifacts
+.ai-team/
+**/.ai-team/
+logs/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.py,cover
+.python-version
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+site/
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Notebooks and local tooling
+.ipynb_checkpoints/
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+Thumbs.db
+.DS_Store
