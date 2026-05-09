@@ -7,11 +7,15 @@ Local-first three-agent coding team runtime.
 - `Agent-Team/` is the primary system.
 - Runtime is local-first, policy-gated, and ledger-backed for inspectable/resumable runs.
 
-## Roles
+## Model configuration
 
-- orchestrator -> `grok-4-20-reasoning`
-- coder -> `grok-4-1-fast-reasoning`
-- verifier -> `grok-4-20-non-reasoning`
+- Runtime is provider-agnostic.
+- Providers are configured in a provider registry (`AI_TEAM_PROVIDER_*` env vars).
+- Workflow roles bind to logical models:
+- planner
+- executor
+- verifier
+- Grok is optional and works as one OpenAI-compatible provider configuration.
 
 ## Install
 
@@ -53,7 +57,7 @@ Blocked runs remain resumable from the ledger.
 
 ## Documentation
 
-- `docs/USAGE.md`
+- `docs/CLI_RUNBOOK.md`
 - `docs/ARCHITECTURE.md`
 - `docs/SAFETY.md`
 - `docs/TROUBLESHOOTING.md`

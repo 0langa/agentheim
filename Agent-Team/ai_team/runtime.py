@@ -4,11 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from ai_team.agents.base import load_prompt
-from ai_team.agents.coder import CoderAgent
-from ai_team.agents.orchestrator import OrchestratorAgent
-from ai_team.agents.verifier import VerifierAgent
-from ai_team.config import TeamConfig, load_team_config
+from ai_team.config import ModelRole, load_team_config
+from ai_team.core.model_registry import ModelRegistry
 from ai_team.errors import AIteamError, ExecutionError, PatchApplicationError, VerificationError
 from ai_team.integrations.github_cli import GitHubCliAdapter
 from ai_team.integrations.mcp_client import MCPClientAdapter
@@ -16,37 +13,18 @@ from ai_team.integrations.web_research import WebResearchAdapter
 from ai_team.ledger import RunLedger
 from ai_team.patching import PatchApplier
 from ai_team.policies import can_auto_run
-from ai_team.providers.aws_bedrock import AWSBedrockProvider
-from ai_team.providers.azure_foundry import AzureFoundryProvider
-from ai_team.providers.base import ModelProvider
-from ai_team.providers.oci_genai import OCIGenAIProvider
-from ai_team.providers.openai_v1 import OpenAIV1Provider
 from ai_team.repo.context_pack import build_context_pack
-from ai_team.repo.redaction import redact_text
 from ai_team.repo.scanner import RepoScanResult, inspect_repository
 from ai_team.reports.final_report import FinalReport, VerificationRecord
 from ai_team.reports.markdown import render_final_report_markdown
 from ai_team.schemas import AgentMessage, ImplementationPlan, PatchPlan, UserTask, VerificationReport, WorkOrder
 from ai_team.state_machine import RuntimeState, RuntimeStateMachine
 from ai_team.tools.registry import ToolRegistry
+from ai_team.workflows import coding as coding_workflow
 
 
 class PlanningError(AIteamError):
     """Raised when planning fails."""
-
-
-def _provider_for_config(config) -> ModelProvider:
-    mapping: dict[str, type[ModelProvider]] = {
-        "openai_v1": OpenAIV1Provider,
-        "azure_foundry": AzureFoundryProvider,
-        "oci_genai": OCIGenAIProvider,
-        "aws_bedrock": AWSBedrockProvider,
-    }
-    provider_cls = mapping.get(config.provider)
-    if provider_cls is None:
-        supported = ", ".join(sorted(mapping))
-        raise PlanningError(f"Unsupported provider '{config.provider}'. Supported providers: {supported}")
-    return provider_cls(config)
 
 
 def build_plan_prompt(user_task: UserTask, scan: RepoScanResult, context_pack: str) -> str:
@@ -107,33 +85,13 @@ def build_plan_prompt(user_task: UserTask, scan: RepoScanResult, context_pack: s
     )
 
 
-def create_orchestrator_agent(team_config: TeamConfig) -> OrchestratorAgent:
-    config = team_config.orchestrator
-    provider = _provider_for_config(config)
-    prompt_path = Path(__file__).parent / "prompts" / "orchestrator" / "system.md"
-    return OrchestratorAgent(provider=provider, role_config=config, system_prompt=load_prompt(prompt_path), output_schema=ImplementationPlan)
-
-
-def create_coder_agent(team_config: TeamConfig) -> CoderAgent:
-    config = team_config.coder
-    provider = _provider_for_config(config)
-    prompt_path = Path(__file__).parent / "prompts" / "coder" / "system.md"
-    return CoderAgent(provider=provider, role_config=config, system_prompt=load_prompt(prompt_path), output_schema=PatchPlan)
-
-
-def create_verifier_agent(team_config: TeamConfig) -> VerifierAgent:
-    config = team_config.verifier
-    provider = _provider_for_config(config)
-    prompt_path = Path(__file__).parent / "prompts" / "verifier" / "system.md"
-    return VerifierAgent(provider=provider, role_config=config, system_prompt=load_prompt(prompt_path), output_schema=VerificationReport)
-
-
 def plan_task(task_text: str, repo_path: str | Path, write_ledger: bool = False) -> tuple[RepoScanResult, str, ImplementationPlan, Path | None]:
     user_task = UserTask(request=task_text)
     scan = inspect_repository(repo_path)
     context_pack = build_context_pack(scan)
     team_config = load_team_config()
-    orchestrator = create_orchestrator_agent(team_config)
+    registry = ModelRegistry.from_team_config(team_config)
+    orchestrator = coding_workflow.create_orchestrator_agent(registry)
     prompt = build_plan_prompt(user_task, scan, context_pack)
     result = orchestrator.run_structured(prompt, max_output_tokens=2500)
 
@@ -146,7 +104,8 @@ def plan_task(task_text: str, repo_path: str | Path, write_ledger: bool = False)
         ledger.append_jsonl("tool_calls.jsonl", {"tool": "inspect_repository", "repo_name": scan.repo_name})
         ledger.append_jsonl("tool_calls.jsonl", {"tool": "orchestrator.run_structured", "role": "orchestrator"})
         ledger.append_jsonl("state_transitions.jsonl", {"state": "planning_started", "task": task_text})
-        ledger.write_json("model_messages.json", {"messages": [AgentMessage(role=team_config.orchestrator.role, content=prompt).model_dump()]})
+        planner_config = team_config.by_role()[ModelRole.PLANNER]
+        ledger.write_json("model_messages.json", {"messages": [AgentMessage(role=planner_config.role, content=prompt).model_dump()]})
         ledger.write_text("raw_model_output.txt", result.raw_output)
         if result.parsed_output is not None:
             ledger.write_json("plan.json", result.parsed_output)
@@ -312,10 +271,11 @@ def run_task(
         state_machine.transition(RuntimeState.BUILD_CONTEXT_PACK)
         context_pack = build_context_pack(scan)
         ledger.write_text("context_pack.md", context_pack)
+        registry = ModelRegistry.from_team_config(team_config)
 
         state_machine.transition(RuntimeState.PLAN)
-        orchestrator = create_orchestrator_agent(team_config)
-        verifier = create_verifier_agent(team_config)
+        orchestrator = coding_workflow.create_orchestrator_agent(registry)
+        verifier = coding_workflow.create_verifier_agent(registry)
         prompt = build_plan_prompt(UserTask(request=task_text), scan, context_pack)
         planning_result = orchestrator.run_structured(prompt, max_output_tokens=2500)
         ledger.write_text("raw_model_output.txt", planning_result.raw_output)
@@ -324,7 +284,7 @@ def run_task(
         plan = ImplementationPlan.model_validate(planning_result.parsed_output)
         ledger.write_json("plan.json", plan.model_dump())
 
-        coder = create_coder_agent(team_config)
+        coder = coding_workflow.create_coder_agent(registry)
         patch_attempt_index = 0
         total_changes: list[str] = []
         verification_records: list[VerificationRecord] = []

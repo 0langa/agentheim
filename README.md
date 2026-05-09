@@ -1,4 +1,4 @@
-# Coding AI Scripts
+# local-agent-orchestra
 
 Primary project is [`Agent-Team/`](./Agent-Team): local-first orchestrator/coder/verifier runtime for bounded, auditable coding runs.
 

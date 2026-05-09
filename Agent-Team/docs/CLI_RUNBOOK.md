@@ -12,6 +12,8 @@ pip install -e .
 python -m ai_team ping-models
 ```
 
+`ping-models` reads provider/model registry config and tests planner/executor/verifier bindings.
+
 ## Inspect and plan
 
 ```powershell

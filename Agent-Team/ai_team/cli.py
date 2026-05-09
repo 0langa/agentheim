@@ -7,14 +7,11 @@ from rich.console import Console
 from rich.table import Table
 import typer
 
-from ai_team.config import AgentModelConfig, ModelRole, load_team_config
+from ai_team.config import load_team_config
+from ai_team.core.model_registry import ModelRegistry
 from ai_team.errors import AIteamError, ConfigError, ProviderError
 from ai_team.ledger import RunLedger
-from ai_team.providers.azure_foundry import AzureFoundryProvider
-from ai_team.providers.base import ModelRequest, ModelProvider
-from ai_team.providers.openai_v1 import OpenAIV1Provider
-from ai_team.providers.aws_bedrock import AWSBedrockProvider
-from ai_team.providers.oci_genai import OCIGenAIProvider
+from ai_team.providers.base import ModelRequest
 from ai_team.repo.context_pack import build_context_pack
 from ai_team.repo.scanner import inspect_repository
 from ai_team.resume import list_runs, load_final_report, load_run
@@ -22,20 +19,6 @@ from ai_team.runtime import plan_task, run_task
 
 app = typer.Typer(help="Local-first three-agent runtime.")
 console = Console()
-
-
-def _provider_for_config(config: AgentModelConfig) -> ModelProvider:
-    mapping: dict[str, type[ModelProvider]] = {
-        "openai_v1": OpenAIV1Provider,
-        "azure_foundry": AzureFoundryProvider,
-        "oci_genai": OCIGenAIProvider,
-        "aws_bedrock": AWSBedrockProvider,
-    }
-    provider_cls = mapping.get(config.provider)
-    if provider_cls is None:
-        supported = ", ".join(sorted(mapping))
-        raise ProviderError(f"Unsupported provider '{config.provider}' for role '{config.role.value}'. Supported providers: {supported}")
-    return provider_cls(config)
 
 
 @app.command("config-dump")
@@ -49,6 +32,7 @@ def config_dump(redacted: bool = typer.Option(True, "--redacted/--raw", help="Re
 def ping_models() -> None:
     """Ping configured models with tiny deterministic request."""
     config = load_team_config()
+    registry = ModelRegistry.from_team_config(config)
     table = Table(title="Model Ping Results")
     table.add_column("role")
     table.add_column("provider")
@@ -57,7 +41,10 @@ def ping_models() -> None:
     table.add_column("status")
 
     for role, model_config in config.by_role().items():
-        provider = _provider_for_config(model_config)
+        try:
+            provider = registry.create_provider(model_config)
+        except ValueError as exc:
+            raise ProviderError(str(exc)) from exc
         request = ModelRequest(
             role=role,
             system_prompt="Reply with exactly: pong",

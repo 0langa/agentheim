@@ -11,7 +11,12 @@ from ai_team.providers.base import ModelProvider, ModelRequest, ModelResponse
 class OpenAIV1Provider(ModelProvider):
     def __init__(self, config):
         super().__init__(config)
-        self._client = OpenAI(api_key=config.api_key, base_url=config.endpoint)
+        self._client = OpenAI(
+            api_key=config.api_key,
+            base_url=config.endpoint,
+            timeout=float(config.timeout_seconds),
+            default_headers=config.headers or None,
+        )
 
     def invoke(self, request: ModelRequest) -> ModelResponse:
         messages: list[dict[str, str]] = []

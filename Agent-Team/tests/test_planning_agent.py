@@ -59,7 +59,14 @@ class FakeProvider(ModelProvider):
 
 
 def _config() -> AgentModelConfig:
-    return AgentModelConfig(role=ModelRole.ORCHESTRATOR, provider="azure_foundry", endpoint="https://example", api_key="secret", model="grok")
+    return AgentModelConfig(
+        role=ModelRole.PLANNER,
+        provider="default",
+        provider_type="openai_compatible",
+        endpoint="https://example",
+        api_key="secret",
+        model="grok",
+    )
 
 
 def test_base_agent_repairs_invalid_json_once() -> None:

@@ -1,5 +1,8 @@
 # Architecture
 
+- Core runtime resolves model providers through `ModelRegistry` (provider-agnostic).
+- Workflow behavior lives in workflow packs under `ai_team/workflows/`.
+- Built-in `coding` workflow pack includes:
 - `Orchestrator` plans bounded work orders.
 - `Coder` edits only files allowed by a work order.
 - `Verifier` evaluates diffs, command output, and acceptance criteria.
