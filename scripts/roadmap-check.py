@@ -207,7 +207,7 @@ class ArchitectureChecker:
             return
 
         for py_file in self.core_dir.rglob('*.py'):
-            content = py_file.read_text()
+            content = py_file.read_text(encoding='utf-8')
             for pattern in PROVIDER_PATTERNS:
                 matches = re.finditer(pattern, content, re.IGNORECASE)
                 for match in matches:
@@ -233,7 +233,7 @@ class ArchitectureChecker:
             return
 
         for py_file in self.core_dir.rglob('*.py'):
-            content = py_file.read_text()
+            content = py_file.read_text(encoding='utf-8')
             for pattern in WORKFLOW_PATTERNS:
                 matches = re.finditer(pattern, content, re.IGNORECASE)
                 for match in matches:
@@ -259,7 +259,7 @@ class ArchitectureChecker:
 
         for py_file in self.core_dir.rglob('*.py'):
             try:
-                tree = ast.parse(py_file.read_text())
+                tree = ast.parse(py_file.read_text(encoding='utf-8'))
             except SyntaxError:
                 continue
 
@@ -292,11 +292,17 @@ class ArchitectureChecker:
             file_path = str(py_file)
             rel_path = str(py_file.relative_to(self.root))
 
+            # Skip third-party dependencies and cache directories
+            if '/.venv/' in file_path.replace('\\', '/') or '\\.venv\\' in file_path:
+                continue
+            if '__pycache__' in file_path or 'node_modules' in file_path:
+                continue
+
             # Skip exempt paths (shell tool, git tool, self, legacy locations)
             if self._is_subprocess_exempt(file_path) or self._is_subprocess_exempt(rel_path):
                 continue
 
-            content = py_file.read_text()
+            content = py_file.read_text(encoding='utf-8')
             direct_patterns = [
                 r'subprocess\.(run|call|Popen)',
                 r'os\.system\(',
@@ -367,7 +373,13 @@ class ArchitectureChecker:
     def check_event_immutability(self):
         """Check that ledger events are not modified after creation."""
         for py_file in self.root.rglob('*.py'):
-            content = py_file.read_text()
+            file_path = str(py_file)
+            # Skip third-party dependencies and cache directories
+            if '/.venv/' in file_path.replace('\\', '/') or '\\.venv\\' in file_path:
+                continue
+            if '__pycache__' in file_path or 'node_modules' in file_path:
+                continue
+            content = py_file.read_text(encoding='utf-8')
             # Look for patterns that suggest event modification
             mutation_patterns = [
                 r'ledger\[.*\]\s*=',
@@ -429,8 +441,8 @@ class ViolationReporter:
             if level not in by_level:
                 continue
 
-            emoji = {"constitutional": "🔴", "architecture": "🟠",
-                     "boundary": "🟡", "style": "🔵"}[level.value]
+            emoji = {"constitutional": "[L4]", "architecture": "[L3]",
+                     "boundary": "[L2]", "style": "[L1]"}[level.value]
             lines.append(f"\n{emoji} {level.name} ({level.value.upper()}) — {len(by_level[level])} violation(s)")
             lines.append("-" * 50)
 

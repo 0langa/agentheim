@@ -2,6 +2,16 @@
 
 ## 2026-05-10
 
+### Roadmap Rewrite — Honest Audit + Phase 7 Definition
+- **Full codebase audit** against roadmap docs 00-18 completed by 5 parallel agents.
+- **Verdict:** Phases 0-6 are feature-complete (418 tests pass) but large foundational subsystems are missing or incomplete.
+- **Rewrote `docs/roadmap/06_PHASED_DEVELOPMENT_PLAN.md`** with honest "As-Built" notes for every phase, cataloguing what exists vs. what was planned.
+- **Defined Phase 7: Production Hardening** — 6 exit gates covering ledger hash chain, replay/resume, missing core runtime files, public API facade, provider lazy loading, and approval workflow.
+- **Defined Phase 8: Future Expansion** — IDE extensions, CI/CD integration, AICtx, formal verification.
+- **Rewrote `docs/roadmap/19_FUTURE_RESERVED_ARCHITECTURE.md`** — removed all Phase 6 completed items, moved missing foundational pieces to Phase 7, kept only truly future integrations.
+
+## 2026-05-10
+
 ### Approach B Completion — Async Tool Protocol & WebSocket Streaming
 - **Async tool protocol**: Added `AsyncToolProtocol` and `AsyncBaseTool` to `core/tool_protocol.py`. `ToolRegistry` now supports mixed sync/async tool registration with `get_async()` helper.
 - **Async browser tool**: Added `AsyncBrowserTool` in `tools/browser/__init__.py` using `playwright.async_api` for transient mode and `asyncio.to_thread()` for session mode.

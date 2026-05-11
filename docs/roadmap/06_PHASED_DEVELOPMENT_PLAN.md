@@ -1,484 +1,385 @@
 # 06 — PHASED DEVELOPMENT PLAN
 ## Strict Phase Gates, Dependency Ordering, Implementation Prerequisites
 
-**Status:** DERIVED FROM 00_PROJECT_DOCTRINE
-**Enforcement:** No agent may implement systems from a phase not yet unlocked.
-**Violation Classification:** ARCHITECTURAL BREACH (Level 3)
+**Status:** DERIVED FROM 00_PROJECT_DOCTRINE  
+**Enforcement:** No agent may implement systems from a phase not yet unlocked.  
+**Violation Classification:** ARCHITECTURAL BREACH (Level 3)  
+**Last Updated:** 2026-05-10 — Post-Phase 6 audit rewrite
 
 ---
 
 ## 1. Phase Overview
 
-The project proceeds through six strictly ordered phases. Each phase unlocks specific subsystems for implementation. Agents may NOT implement subsystems from future phases.
+The project proceeds through eight strictly ordered phases. Phases 0-6 are **functionally complete** (features exist and pass tests). Phase 7 addresses **production-hardening gaps** discovered during the Phase 6 audit. Phase 8 tracks **future expansion** beyond the current roadmap.
 
 ```
-PHASE 0: FOUNDATION (Cleanup & Invariants)
+PHASE 0: FOUNDATION (Cleanup & Invariants) ✅
     |
     v
-PHASE 1: CORE RUNTIME (Generic Engine)
+PHASE 1: CORE RUNTIME (Generic Engine) ✅ (with gaps)
     |
     v
-PHASE 2: FIRST WORKFLOW PACK (Coding Workflow)
+PHASE 2: FIRST WORKFLOW PACK (Coding Workflow) ✅
     |
     v
-PHASE 3: TOOL & SAFETY SYSTEM (Mediated Tools + Policy)
+PHASE 3: TOOL & SAFETY SYSTEM (Mediated Tools + Policy) ✅ (with gaps)
     |
     v
-PHASE 4: PRESET SYSTEM & CLI (User Surface)
+PHASE 4: PRESET SYSTEM & CLI (User Surface) ✅
     |
     v
-PHASE 5: EXPANSION (Additional Workflows, Providers, Memory)
+PHASE 5: EXPANSION (Additional Workflows, Providers, Memory) ✅
     |
     v
-PHASE 6: ADVANCED SYSTEMS (MCP, UI, Distributed) — RESERVED
+PHASE 6: ADVANCED SYSTEMS (MCP, UI, Distributed) ✅
+    |
+    v
+PHASE 7: PRODUCTION HARDENING (Audit gaps, foundational debt)
+    |
+    v
+PHASE 8: FUTURE EXPANSION (IDE, CI/CD, Formal Verification)
 ```
+
+**Legend:**  
+- `✅` = Phase complete (features built, tests pass)  
+- `✅ (with gaps)` = Phase complete in terms of shipped features, but foundational subsystems specified in the roadmap are missing or incomplete  
+- `🔒` = Locked until previous phase gates pass
 
 ---
 
-## 2. Phase 0: FOUNDATION
+## 2. Honest Audit Summary
 
-### 2.1 Objective
-Clean the existing codebase, enforce architectural invariants, and establish the core directory structure. Nothing new is built in this phase. Existing code is refactored to conform.
+A full codebase audit against roadmap docs 00-18 was conducted on 2026-05-10. Key findings:
 
-### 2.2 Entry Criteria
-- Repository exists with basic multi-agent code
-- Provider-specific code exists in core
-- Coding-specific logic exists in core
-- Basic orchestrator/coder/verifier flow works (but not as a workflow pack)
+### What IS Done (418 tests passing)
+- Core runtime is genuinely generic (no hardcoded providers/workflows/tools in `core/`)
+- 7 workflow packs with end-to-end execution tests
+- Tool protocol + policy engine + registry + risk levels
+- Preset system (7 presets) + CLI + guided TUI
+- Memory system (JSONL, SQLite, vector backends, 103 tests)
+- MCP integration with persistent connection pool
+- Browser tool with session reuse + async variant
+- API server (execution, SSE/WebSocket streaming, metrics, OpenAPI)
+- Web UI + Desktop UI scaffold
+- Distributed workers (HTTP transport) + federation
+- Vision models (OpenAI GPT-4o, Claude 3)
+- Self-improving hooks + monitoring (Prometheus)
+- Secret redaction, path confinement, command classification
 
-### 2.3 Deliverables
+### What Is MISSING (foundational gaps)
+- **Ledger integrity:** No SHA-256 hash chain, no `ledger.hash`, no replay, no resume
+- **Event sourcing:** No `core/events.py`; events are ad-hoc dicts, not structured schema
+- **Approval workflow:** MEDIUM/HIGH tools auto-allowed in non-interactive mode; no 6-field disclosure prompt
+- **Core runtime files:** `workflow_runner.py`, `error_classification.py`, `retry_engine.py`, `step_budget.py`, `artifact_store.py`, `context_packer.py`, `agent_protocol.py`, `events.py` — all missing
+- **Public API:** No `core/public_api.py`; interfaces import directly from internals
+- **Provider lazy loading:** `providers/__init__.py` eagerly imports all concrete providers
+- **Parallel execution:** Flags exist but no engine; `Workflow.run()` is purely sequential
+- **Privacy enforcer:** No `PrivacyMode` enum or `PrivacyEnforcer` class
+- **Model registry:** No cascading router, fallback chains, or auto-failover
 
-| Deliverable | Owner | Acceptance Criteria |
-|-------------|-------|-------------------|
-| Directory structure matches 02_CORE_ARCHITECTURE_PRINCIPLES | Architecture Lead | `tree` output matches canonical structure |
-| `core/` contains only generic code | Runtime Team | No provider/workflow/tool specifics in `core/` |
-| `providers/` contains all provider adapters | Provider Team | All existing providers moved to `providers/<name>/` |
-| `workflows/coding/` exists as first workflow pack | Workflow Team | Coding flow is a workflow pack, not core logic |
-| `tools/` has base protocol and registry | Tool Team | Tool protocol defined, existing tools migrated |
-| Import rules enforced | Architecture Lead | Import linting passes for all modules |
-| CI pipeline enforces architecture | Platform Team | CI fails on architectural boundary violations |
-
-### 2.4 Implementation Order
-
-```
-1. Fix workflows/base.py create_provider API mismatch
-2. Fix cross-platform patch path normalization (Windows backslash)
-3. Make ModelRegistry loop over configured models generically
-4. Remove legacy Grok path or map to proper capabilities
-5. Remove Grok defaults/docs/examples
-6. Add lazy provider imports
-7. Establish canonical directory structure
-8. Migrate existing providers to providers/
-9. Extract coding flow to workflows/coding/
-10. Define core/ generic interfaces
-11. Implement import linting
-12. Set up CI architecture enforcement
-```
-
-### 2.5 Explicitly NOT in Phase 0
-- New providers
-- New workflow packs
-- New tools
-- MCP integration
-- Memory system
-- Preset system
-- TUI/GUI
-- Vector DB
-- Deep memory
-- Plugin marketplace
-- Distributed workers
-
-### 2.6 Exit Gate
-**GATE 0.1:** All provider-specific logic removed from `core/`
-**GATE 0.2:** All workflow-specific logic removed from `core/`
-**GATE 0.3:** Directory structure matches canonical specification
-**GATE 0.4:** CI enforces architectural boundaries
-**GATE 0.5:** Import linting passes on all modules
-**GATE 0.6:** ModelRegistry is fully generic
+These gaps are catalogued in detail in the per-phase "As-Built" sections below and will be addressed in **Phase 7**.
 
 ---
 
-## 3. Phase 1: CORE RUNTIME
+## 3. Phase 0: FOUNDATION ✅
 
 ### 3.1 Objective
-Build the generic execution engine that powers all workflow packs. The core runtime is the foundation upon which everything else is built.
+Clean the existing codebase, enforce architectural invariants, and establish the core directory structure.
 
-### 3.2 Entry Criteria
-- Phase 0 exit gates ALL passed
-- Clean directory structure
-- No provider/workflow/tool specifics in `core/`
+### 3.2 As-Built
+| Deliverable | Status | Notes |
+|-------------|--------|-------|
+| Directory structure matches canonical spec | ✅ | `core/`, `providers/`, `tools/`, `workflows/`, `memory/`, `interfaces/`, `presets/`, `config/`, `tests/`, `docs/`, `scripts/` all exist |
+| `core/` contains only generic code | ✅ | Grep audit confirms no concrete provider/workflow/tool imports in `core/` |
+| `providers/` contains all provider adapters | ✅ | 4 provider adapters exist |
+| `workflows/coding/` exists as first workflow pack | ✅ | Coding workflow extracted from core |
+| `tools/` has base protocol and registry | ✅ | `ToolProtocol`, `BaseTool`, `ToolRegistry` in `core/tool_protocol.py` |
+| Import rules enforced | ⚠️ | Custom script (`scripts/roadmap-check.py`) provides some coverage, but crashes on Windows encoding errors; no dedicated import linter |
+| CI pipeline enforces architecture | ⚠️ | CI runs architecture check but does not enforce import boundaries strictly |
 
-### 3.3 Unlocked Subsystems
-- `core/workflow_runner.py` — Generic DAG execution
-- `core/agent_protocol.py` — Agent message schemas
-- `core/model_registry.py` — Capability-based model resolution
-- `core/provider_registry.py` — Lazy-loaded provider registry
-- `core/tool_protocol.py` — Mediated tool invocation
-- `core/policy_engine.py` — Policy enforcement
-- `core/run_ledger.py` — Event-sourced ledger
-- `core/artifact_store.py` — Artifact management
-- `core/capability_registry.py` — Capability discovery
-- `core/context_packer.py` — Context compilation
-- `core/config_loader.py` — Configuration management
-- `core/error_classification.py` — Failure taxonomy
-- `core/retry_engine.py` — Bounded retry logic
-- `core/step_budget.py` — Budget enforcement
-- `core/phase_machine.py` — Runtime state machine
-- `core/events.py` — Event type definitions
-
-### 3.4 Deliverables
-
-| Deliverable | Owner | Prerequisites | Exit Criteria |
-|-------------|-------|--------------|---------------|
-| Workflow runner with DAG execution | Runtime Team | Phase 0 | DAG execution with retries and resumption |
-| Agent protocol with message schemas | Runtime Team | Phase 0 | Structured messages, role resolution |
-| Model registry with capability resolution | Provider Team | Phase 0 | Role→model resolution via capability matching |
-| Provider registry with lazy loading | Provider Team | Phase 0 | Providers loaded only when configured |
-| Tool protocol with mediated invocation | Tool Team | Phase 0 | All tool calls go through protocol |
-| Policy engine with decision types | Security Team | Phase 0 | allow/deny/ask/boundary/budget decisions |
-| Run ledger with append-only events | Runtime Team | Phase 0 | Event log, replay capability, tamper evidence |
-| Artifact store with structured output | Runtime Team | Phase 0 | Per-run artifact directory with schema |
-| Capability registry | Platform Team | Phase 0 | Registration and discovery of all extensions |
-| Context packer | Runtime Team | Phase 0 | Repository snapshot preparation |
-| Config loader with validation | Platform Team | Phase 0 | YAML config loading with schema validation |
-| Error classification | Runtime Team | Phase 0 | Failure taxonomy with retry strategies |
-| Retry engine | Runtime Team | Phase 0 | Bounded retry with backoff |
-| Step budget enforcement | Runtime Team | Phase 0 | Budget checking before every agent/tool call |
-| Phase machine | Runtime Team | Phase 0 | All 14 phases with deterministic transitions |
-| Event system | Runtime Team | Phase 0 | All event types with validation |
-
-### 3.5 Implementation Order
-
-```
-1. Event system (events.py, schemas)
-2. Phase machine (phase_machine.py)
-3. Config loader (config_loader.py)
-4. Error classification (error_classification.py)
-5. Retry engine (retry_engine.py)
-6. Step budget (step_budget.py)
-7. Agent protocol (agent_protocol.py)
-8. Tool protocol (tool_protocol.py)
-9. Policy engine (policy_engine.py)
-10. Provider registry (provider_registry.py)
-11. Model registry (model_registry.py)
-12. Capability registry (capability_registry.py)
-13. Run ledger (run_ledger.py)
-14. Artifact store (artifact_store.py)
-15. Context packer (context_packer.py)
-16. Workflow runner (workflow_runner.py)
-```
-
-### 3.6 Explicitly NOT in Phase 1
-- Any workflow pack implementation
-- Any concrete tool implementation (beyond protocol)
-- Any concrete provider implementation (beyond base)
-- Any memory system
-- CLI interface
-- Preset system
-- MCP integration
-- TUI/GUI
-
-### 3.7 Exit Gate
-**GATE 1.1:** All core subsystems have unit tests with >80% coverage
-**GATE 1.2:** Integration tests pass for all core subsystem interactions
-**GATE 1.3:** Phase machine executes full lifecycle without errors
-**GATE 1.4:** Ledger replay produces identical state
-**GATE 1.5:** Policy engine correctly evaluates all decision types
-**GATE 1.6:** Provider registry lazy-loads without eager imports
-**GATE 1.7:** Model registry resolves capabilities correctly
-**GATE 1.8:** Budget enforcement halts runs cleanly on exhaustion
+### 3.3 Exit Gate
+**GATE 0.1:** ✅ All provider-specific logic removed from `core/`  
+**GATE 0.2:** ✅ All workflow-specific logic removed from `core/`  
+**GATE 0.3:** ✅ Directory structure matches canonical specification  
+**GATE 0.4:** ⚠️ CI enforces architectural boundaries (partial — script is brittle)  
+**GATE 0.5:** ⚠️ Import linting passes on all modules (partial — no dedicated linter)  
+**GATE 0.6:** ✅ ModelRegistry is fully generic
 
 ---
 
-## 4. Phase 2: FIRST WORKFLOW PACK
+## 4. Phase 1: CORE RUNTIME ✅ (with gaps)
 
 ### 4.1 Objective
-Implement the coding workflow as the first workflow pack. Validate that the core runtime is genuinely generic by building a complete workflow on top of it.
+Build the generic execution engine that powers all workflow packs.
 
-### 4.2 Entry Criteria
-- ALL Phase 1 exit gates passed
-- Core runtime is complete and tested
-- Workflow base class is defined
+### 4.2 As-Built
+| Deliverable | Status | Notes |
+|-------------|--------|-------|
+| Workflow runner with DAG execution | ⚠️ | `workflows/base.py` has `Workflow.run()` but it is a **sequential for-loop** with no retries, no resumption, no parallel execution. No `core/workflow_runner.py` exists. |
+| Agent protocol with message schemas | ⚠️ | `AgentMessage` exists in `core/schemas.py`. `AgentRequest`, `AgentResponse`, `AgentContext` are **missing**. No `core/agent_protocol.py`. |
+| Model registry with capability resolution | ⚠️ | `core/model_registry.py` filters by capability but has no cascading router, fallback chains, or auto-failover. |
+| Provider registry with lazy loading | ❌ | No `core/provider_registry.py`. `providers/__init__.py` eagerly imports all concrete providers at startup. |
+| Tool protocol with mediated invocation | ✅ | `core/tool_protocol.py` — `ToolProtocol`, `BaseTool`, `ToolRegistry`, `ToolContext`, `ToolResult` all implemented |
+| Policy engine with decision types | ✅ | `core/policy_engine.py` — `allow`/`deny`/`ask`/`boundary`/`budget` decisions implemented |
+| Run ledger with append-only events | ⚠️ | `core/ledger.py` writes JSONL files but has **no hash chain, no index, no checkpoints, no replay**. Events are ad-hoc dicts, not structured schema. |
+| Artifact store with structured output | ❌ | No `core/artifact_store.py`. `RunLedger` writes files directly without schema management. |
+| Capability registry | ✅ | `core/capability_registry.py` — registration and discovery of workflows, presets, providers |
+| Context packer | ❌ | No `core/context_packer.py`. `core/repo/context_pack.py` exists but does not produce `context_bundle.md` + `context_manifest.json`. |
+| Config loader with validation | ✅ | `config/config.py` — YAML/JSON config loading with validation |
+| Error classification | ❌ | No `core/error_classification.py`. `core/errors.py` only defines exception classes. No TRANSIENT/RECOVERABLE/VERIFICATION/CONFIGURATION/PERMISSION/FATAL taxonomy. |
+| Retry engine | ❌ | No `core/retry_engine.py`. No bounded retry or backoff anywhere. |
+| Step budget enforcement | ⚠️ | `StepBudget` model exists on `Step` but is **not enforced** during workflow execution. `ToolBudget` is checked by `PolicyEngine` but no unified step-budget enforcement. |
+| Phase machine | ⚠️ | `core/state_machine.py` implements all 14 phases correctly, but file is named `state_machine.py` instead of `phase_machine.py`. No resume logic wired to `RESUME_AVAILABLE`. |
+| Event system | ❌ | No `core/events.py`. No structured event types. Events are informal dicts. |
 
-### 4.3 Unlocked Subsystems
-- `workflows/coding/` — Coding workflow pack
-- `workflows/base.py` — Base workflow class (refined)
-- Concrete integration between core and workflow pack
-
-### 4.4 Deliverables
-
-| Deliverable | Owner | Prerequisites | Exit Criteria |
-|-------------|-------|--------------|---------------|
-| Coding workflow definition | Workflow Team | Phase 1 | Full workflow with agents, steps, policies |
-| Orchestrator agent | Workflow Team | Phase 1 | Planning agent with structured output |
-| Executor agent | Workflow Team | Phase 1 | Code generation agent |
-| Verifier agent | Workflow Team | Phase 1 | Verification agent with test execution |
-| Patching logic | Workflow Team | Phase 1 | File modification with diff generation |
-| Test execution | Workflow Team | Phase 1 | Run tests, capture results |
-| Report generation | Workflow Team | Phase 1 | Final report artifact |
-| Workflow-level policies | Workflow Team | Phase 1 | Coding-specific policy rules |
-| Verification logic | Workflow Team | Phase 1 | Pass/fail criteria for code changes |
-
-### 4.5 Implementation Order
-
-```
-1. Refine workflows/base.py with real integration points
-2. Define coding workflow DAG
-3. Implement orchestrator agent
-4. Implement executor agent
-5. Implement verifier agent
-6. Implement patching logic
-7. Integrate test execution
-8. Implement report generation
-9. Define workflow-specific policies
-10. End-to-end coding workflow test
-```
-
-### 4.6 Explicitly NOT in Phase 2
-- Other workflow packs (documents, research, etc.)
-- Preset system
-- CLI (basic test harness only)
-- New providers
-- New tools (beyond what coding needs)
-- Memory system
-- MCP
-
-### 4.7 Exit Gate
-**GATE 2.1:** Coding workflow executes end-to-end without core modifications
-**GATE 2.2:** Workflow uses only public core APIs
-**GATE 2.3:** All workflow artifacts generated correctly
-**GATE 2.4:** Policy engine enforces workflow-specific policies
-**GATE 2.5:** Verifier correctly evaluates code changes
-**GATE 2.6:** Run is fully replayable from ledger
-**GATE 2.7:** Core has zero code changes due to workflow integration
+### 4.3 Exit Gate
+**GATE 1.1:** ⚠️ Core unit tests exist but coverage is ~76% (not >80%)  
+**GATE 1.2:** ⚠️ Integration tests pass for core interactions that exist; missing subsystems untested  
+**GATE 1.3:** ✅ Phase machine executes full lifecycle without errors  
+**GATE 1.4:** ❌ Ledger replay produces identical state — **no replay function exists**  
+**GATE 1.5:** ✅ Policy engine correctly evaluates all decision types  
+**GATE 1.6:** ❌ Provider registry lazy-loads — **eager imports in `providers/__init__.py`**  
+**GATE 1.7:** ⚠️ Model registry resolves capabilities correctly (basic filtering only)  
+**GATE 1.8:** ❌ Budget enforcement halts runs cleanly — **budgets declared but not enforced during execution**
 
 ---
 
-## 5. Phase 3: TOOL & SAFETY SYSTEM
+## 5. Phase 2: FIRST WORKFLOW PACK ✅
 
 ### 5.1 Objective
+Implement the coding workflow as the first workflow pack. Validate that the core runtime is genuinely generic.
+
+### 5.2 As-Built
+| Deliverable | Status | Notes |
+|-------------|--------|-------|
+| Coding workflow definition | ✅ | `workflows/coding/` — full workflow with agents, steps, policies |
+| Orchestrator agent | ✅ | Planning agent with structured output |
+| Executor agent | ✅ | Code generation agent |
+| Verifier agent | ✅ | Verification agent with test execution |
+| Patching logic | ✅ | File modification with diff generation |
+| Test execution | ✅ | Run tests, capture results |
+| Report generation | ✅ | Final report artifact (`final_report.md` + `final_report.json`) |
+| Workflow-level policies | ✅ | Coding-specific policy rules |
+| Verification logic | ✅ | Pass/fail criteria for code changes |
+
+### 5.3 Exit Gate
+**GATE 2.1:** ✅ Coding workflow executes end-to-end  
+**GATE 2.2:** ❌ Workflow uses only public core APIs — **workflows import `core.model_registry`, `core.ledger`, `core.policy_engine` directly**  
+**GATE 2.3:** ✅ All workflow artifacts generated correctly  
+**GATE 2.4:** ✅ Policy engine enforces workflow-specific policies  
+**GATE 2.5:** ✅ Verifier correctly evaluates code changes  
+**GATE 2.6:** ❌ Run is fully replayable from ledger — **no replay function**  
+**GATE 2.7:** ❌ Core has zero code changes due to workflow integration — **workflows mutate `core.capability_registry` on import**
+
+---
+
+## 6. Phase 3: TOOL & SAFETY SYSTEM ✅ (with gaps)
+
+### 6.1 Objective
 Implement the complete tool system with mediated invocation, safety policies, and approval workflows.
 
-### 5.2 Entry Criteria
-- ALL Phase 2 exit gates passed
-- Coding workflow works end-to-end
-- Tool protocol is defined (from Phase 1)
+### 6.2 As-Built
+| Deliverable | Status | Notes |
+|-------------|--------|-------|
+| Filesystem tool | ✅ | Read, write, list, stat with path boundaries |
+| Shell tool | ✅ | Execute with allowlist/denylist + command classification (SAFE/INSTALL/DESTRUCTIVE/DEPLOY) |
+| Git tool | ✅ | Clone, diff, commit, status |
+| HTTP tool | ✅ | Request with network policy enforcement |
+| Memory tool | ✅ | Read/write structured memory |
+| Tool registry | ✅ | Registration and discovery |
+| Approval workflow | ❌ | **No actual approval UI flow.** MEDIUM risk auto-allowed in non-interactive mode. No 6-field disclosure prompt. |
+| Risk classification | ✅ | None/Low/Medium/High/Critical levels |
+| Path confinement | ✅ | Filesystem scoped to declared boundaries; path traversal blocked |
+| Network confinement | ✅ | No network by default, policy-gated |
+| Secret redaction | ✅ | Secrets removed from all logs/artifacts BEFORE model context packing |
 
-### 5.3 Unlocked Subsystems
-- `tools/filesystem/` — File operations with path bounding
-- `tools/shell/` — Command execution with allowlist/denylist
-- `tools/git/` — Git operations
-- `tools/http/` — Outbound HTTP with network policy
-- `tools/memory/` — Structured memory read/write
-- Safety policies for all tools
-- Approval workflow implementation
-
-### 5.4 Deliverables
-
-| Deliverable | Owner | Prerequisites | Exit Criteria |
-|-------------|-------|--------------|---------------|
-| Filesystem tool | Tool Team | Phase 2 | Read, write, list, stat with path boundaries |
-| Shell tool | Tool Team | Phase 2 | Execute with allowlist/denylist |
-| Git tool | Tool Team | Phase 2 | Clone, diff, commit, status |
-| HTTP tool | Tool Team | Phase 2 | Request with network policy enforcement |
-| Memory tool | Tool Team | Phase 2 | Read/write structured memory |
-| Tool registry | Tool Team | Phase 2 | Registration and discovery |
-| Approval workflow | Security Team | Phase 2 | Ask/approve/deny UI flow |
-| Risk classification | Security Team | Phase 2 | None/Low/Medium/High/Critical levels |
-| Path confinement | Security Team | Phase 2 | Filesystem scoped to declared boundaries |
-| Network confinement | Security Team | Phase 2 | No network by default, policy-gated |
-| Secret redaction | Security Team | Phase 2 | Secrets removed from all logs/artifacts |
-
-### 5.5 Implementation Order
-
-```
-1. Tool registry implementation
-2. Filesystem tool with path bounding
-3. Shell tool with command classification
-4. Git tool integration
-5. HTTP tool with network policy
-6. Memory tool (basic, no vector)
-7. Risk classification system
-8. Approval workflow (CLI-based)
-9. Secret redaction in context packer
-10. Integration tests for all tools
-```
-
-### 5.6 Explicitly NOT in Phase 3
-- MCP integration
-- Browser tool
-- Local DB tool
-- Vector-based memory
-- Advanced monitoring (eBPF/ETW)
-
-### 5.7 Exit Gate
-**GATE 3.1:** All tools pass through policy engine
-**GATE 3.2:** Path confinement prevents directory escape
-**GATE 3.3:** Shell command classification works correctly
-**GATE 3.4:** Approval workflow functions for all risk levels
-**GATE 3.5:** Secret redaction removes sensitive data from artifacts
-**GATE 3.6:** Network policy blocks unauthorized outbound requests
-**GATE 3.7:** Tool registry discovers and registers all tools
+### 6.3 Exit Gate
+**GATE 3.1:** ✅ All tools pass through policy engine  
+**GATE 3.2:** ✅ Path confinement prevents directory escape  
+**GATE 3.3:** ✅ Shell command classification works correctly  
+**GATE 3.4:** ❌ Approval workflow functions for all risk levels — **MEDIUM auto-allowed, no human-in-the-loop**  
+**GATE 3.5:** ✅ Secret redaction removes sensitive data from artifacts  
+**GATE 3.6:** ✅ Network policy blocks unauthorized outbound requests  
+**GATE 3.7:** ✅ Tool registry discovers and registers all tools
 
 ---
 
-## 6. Phase 4: PRESET SYSTEM & CLI
-
-### 4.1 Objective
-Build the user-facing surface: presets that hide complexity and a CLI that serves all three user layers.
-
-### 4.2 Entry Criteria
-- ALL Phase 3 exit gates passed
-- Tool system complete
-- Safety system functional
-
-### 4.3 Unlocked Subsystems
-- `presets/` — All preset definitions
-- `interfaces/cli/` — Full CLI implementation
-- `config/` — Default configurations
-- `scripts/doctor.py` — Diagnostics
-
-### 4.4 Deliverables
-
-| Deliverable | Owner | Prerequisites | Exit Criteria |
-|-------------|-------|--------------|---------------|
-| Preset base class | Product Team | Phase 3 | Schema, validation, defaults |
-| Codebase Assistant preset | Product Team | Phase 3 | Inspect → plan → patch → test → report |
-| Local Document Chat preset | Product Team | Phase 3 | Index → answer → cite |
-| Research Report preset | Product Team | Phase 3 | Gather → summarize → compare → report |
-| File Organizer preset | Product Team | Phase 3 | Analyze → propose → preview → apply |
-| CLI with preset picker | Interface Team | Phase 3 | Guided preset selection |
-| CLI with power-user flags | Interface Team | Phase 3 | Model, privacy, approval overrides |
-| Doctor command | Platform Team | Phase 3 | System diagnostics and verification |
-| Default configuration | Platform Team | Phase 3 | Sensible defaults for all settings |
-| Beginner-friendly output | Interface Team | Phase 3 | Plain language, progress indicators |
-
-### 4.5 Implementation Order
-
-```
-1. Preset base class and schema
-2. Default configuration files
-3. CLI main entry point
-4. Preset picker (guided selection)
-5. Power-user settings interface
-6. Codebase Assistant preset
-7. Local Document Chat preset
-8. Research Report preset
-9. File Organizer preset
-10. Doctor script
-11. Integration tests for presets
-12. User documentation for presets
-```
-
-### 4.6 Explicitly NOT in Phase 4
-- TUI interface (terminal UI)
-- Web UI
-- Desktop UI
-- API server
-- Additional workflow packs beyond coding
-
-### 4.7 Exit Gate
-**GATE 4.1:** Beginner can launch a preset with 3 inputs or fewer
-**GATE 4.2:** Power-user can override all relevant settings via CLI
-**GATE 4.3:** Doctor script diagnoses common issues
-**GATE 4.4:** All presets produce complete artifact sets
-**GATE 4.5:** Preset selection requires no technical knowledge
-**GATE 4.6:** Configuration is portable (export/import)
-
----
-
-## 7. Phase 5: EXPANSION
+## 7. Phase 4: PRESET SYSTEM & CLI ✅
 
 ### 7.1 Objective
-Expand the platform with additional workflow packs, providers, memory backends, and the guided TUI.
+Build the user-facing surface: presets that hide complexity and a CLI that serves all three user layers.
 
-### 7.2 Entry Criteria
-- ALL Phase 4 exit gates passed
-- Preset system functional
-- CLI complete
+### 7.2 As-Built
+| Deliverable | Status | Notes |
+|-------------|--------|-------|
+| Preset base class | ✅ | Schema, validation, defaults |
+| Codebase Assistant preset | ✅ | Inspect → plan → patch → test → report |
+| Local Document Chat preset | ✅ | Index → answer → cite |
+| Research Report preset | ✅ | Gather → summarize → compare → report |
+| File Organizer preset | ✅ | Analyze → propose → preview → apply |
+| CLI with preset picker | ✅ | Guided preset selection via `agentheim` CLI |
+| CLI with power-user flags | ✅ | Model, privacy, approval overrides |
+| Doctor command | ✅ | System diagnostics and verification |
+| Default configuration | ✅ | Sensible defaults for all settings |
+| Beginner-friendly output | ✅ | Plain language, progress indicators |
 
-### 7.3 Unlocked Subsystems
-- `workflows/documents/` — Document workflow pack
-- `workflows/research/` — Research workflow pack
-- `workflows/file_organization/` — File organization workflow pack
-- `workflows/docs_maintenance/` — Docs maintenance workflow pack
-- `workflows/github_maintenance/` — GitHub maintenance workflow pack
-- `workflows/command_assistant/` — Command assistant workflow pack
-- `interfaces/guided_tui/` — Terminal UI
-- Additional providers (as needed)
-- Additional memory backends (jsonl, sqlite)
-- Vector retrieval (Chroma/Qdrant)
-
-### 7.4 Deliverables
-
-| Deliverable | Owner | Prerequisites | Exit Criteria |
-|-------------|-------|--------------|---------------|
-| Documents workflow | Workflow Team | Phase 4 | Index, retrieve, answer, cite |
-| Research workflow | Workflow Team | Phase 4 | Gather, summarize, compare, report |
-| File organization workflow | Workflow Team | Phase 4 | Analyze, propose, preview, apply |
-| Docs maintenance workflow | Workflow Team | Phase 4 | Detect stale, update, align |
-| GitHub maintenance workflow | Workflow Team | Phase 4 | Summarize issues, draft PRs |
-| Command assistant workflow | Workflow Team | Phase 4 | Parse intent, generate safe commands |
-| Guided TUI | Interface Team | Phase 4 | Terminal-native preset picker |
-| Additional memory backends | Memory Team | Phase 4 | jsonl, sqlite backends |
-| Vector retrieval (optional) | Memory Team | Phase 4 | Chroma or Qdrant integration |
-
-### 7.5 Explicitly NOT in Phase 5
-- MCP integration
-- Browser tool
-- Local DB tool
-- Web UI
-- Desktop UI
-- API server
-- Distributed workers
-
-### 7.6 Exit Gate
-**GATE 5.1:** ✅ At least 3 workflow packs functional beyond coding — 6 workflow packs implemented and tested
-**GATE 5.2:** ✅ Guided TUI provides beginner-friendly experience — rich picker/questionnaire/render components wired
-**GATE 5.3:** ✅ Memory system functional with at least 2 backends — JSONL, SQLite, Vector backends; 103 memory tests
-**GATE 5.4:** ✅ All workflow packs produce complete artifacts — all 7 workflows write final_report.json + final_report.md; end-to-end execution tests pass
-**GATE 5.5:** ✅ Platform is usable by non-technical users — doctor command, guided TUI, presets, CLI memory commands
-
-### Phase 5 Completion Note
-Phase 5 completed. Test count: 196 passing. Architecture check: PASSED.
+### 7.3 Exit Gate
+**GATE 4.1:** ✅ Beginner can launch a preset with 3 inputs or fewer  
+**GATE 4.2:** ✅ Power-user can override all relevant settings via CLI  
+**GATE 4.3:** ✅ Doctor script diagnoses common issues  
+**GATE 4.4:** ✅ All presets produce complete artifact sets  
+**GATE 4.5:** ✅ Preset selection requires no technical knowledge  
+**GATE 4.6:** ⚠️ Configuration is portable (export/import) — partial, no formal export/import CLI command
 
 ---
 
-## 8. Phase 6: ADVANCED SYSTEMS (UNLOCKED)
+## 8. Phase 5: EXPANSION ✅
 
-### 8.1 Status
-Phase 6 is **UNLOCKED FOR IMPLEMENTATION**. Architecture Lead has approved commencement. Roadmap updated.
+### 8.1 Objective
+Expand the platform with additional workflow packs, providers, memory backends, and the guided TUI.
 
-### 8.2 Unlocked Subsystems
-| Priority | Subsystem | Path |
-|----------|-----------|------|
-| P1 | MCP integration | `tools/mcp/` |
-| P1 | Browser tool | `tools/browser/` |
-| P2 | Local DB tool | `tools/local_db/` |
-| P2 | Web UI | `interfaces/web_ui/` |
-| P3 | Desktop UI | `interfaces/desktop_ui/` |
-| P3 | API server | `interfaces/api_server/` |
-| P4 | Distributed workers | `workflows/distributed/` |
-| P4 | Plugin marketplace | `marketplace/` |
-| P5 | eBPF/ETW monitoring | `monitoring/` |
-| P5 | Self-improving agents | `agents/self_improving/` |
-| P5 | Cross-modal capabilities | `multimodal/` |
-| P5 | Federated agent networks | `federation/` |
+### 8.2 As-Built
+| Deliverable | Status | Notes |
+|-------------|--------|-------|
+| Documents workflow | ✅ | Index, retrieve, answer, cite |
+| Research workflow | ✅ | Gather, summarize, compare, report |
+| File organization workflow | ✅ | Analyze, propose, preview, apply |
+| Docs maintenance workflow | ✅ | Detect stale, update, align |
+| GitHub maintenance workflow | ✅ | Summarize issues, draft PRs |
+| Command assistant workflow | ✅ | Parse intent, generate safe commands |
+| Guided TUI | ✅ | Terminal-native preset picker with rich components |
+| Additional memory backends | ✅ | JSONL, SQLite, Vector backends; 103 memory tests |
+| Vector retrieval | ✅ | Chroma integration |
 
-### 8.3 Unlock Criteria (ALL MET)
-- ✅ ALL Phase 5 exit gates passed
-- ✅ Core runtime stable for 3 months — Architecture Lead waiver granted
-- ✅ At least 5 workflow packs are production-quality — 7 workflows with execution tests
-- ✅ Architecture Lead approves Phase 6 commencement
-- ✅ Explicit roadmap update published — this document
+### 8.3 Exit Gate
+**GATE 5.1:** ✅ 6 workflow packs implemented and tested beyond coding  
+**GATE 5.2:** ✅ Guided TUI provides beginner-friendly experience  
+**GATE 5.3:** ✅ Memory system functional with 3 backends (JSONL, SQLite, Vector)  
+**GATE 5.4:** ✅ All workflow packs produce complete artifacts  
+**GATE 5.5:** ✅ Platform is usable by non-technical users
 
-### 8.4 Phase 6 Exit Gates
-**GATE 6.1:** MCP integration functional
-**GATE 6.2:** Browser tool operational
-**GATE 6.3:** Web UI prototype
-**GATE 6.4:** API server with OpenAPI spec
-**GATE 6.5:** Desktop UI scaffold
-**GATE 6.6:** Distributed worker protocol defined
+---
+
+## 9. Phase 6: ADVANCED SYSTEMS ✅
+
+### 9.1 Objective
+Implement advanced subsystems: MCP, browser, UIs, distributed workers, multimodal, self-improving, federation.
+
+### 9.2 As-Built
+| Priority | Subsystem | Path | Status | Notes |
+|----------|-----------|------|--------|-------|
+| P1 | MCP integration | `tools/mcp/` | ✅ | Persistent connection pool, tool discovery, stdio JSON-RPC transport |
+| P1 | Browser tool | `tools/browser/` | ✅ | Session reuse, multi-step workflows, async variant |
+| P2 | Local DB tool | `tools/local_db/` | ✅ | SQLite operations |
+| P2 | Web UI | `interfaces/web_ui/` | ✅ | Execution, SSE/WebSocket streaming, dashboard |
+| P3 | Desktop UI | `interfaces/desktop_ui/` | ✅ | Minimal scaffold around Web UI |
+| P3 | API server | `interfaces/api_server/` | ✅ | Execution, streaming, metrics, real health checks, OpenAPI spec |
+| P4 | Distributed workers | `workflows/distributed/` | ✅ | HTTP transport (coordinator + client), task scheduler |
+| P4 | Plugin marketplace | `marketplace/` | ✅ | Sandbox wired, signature verification |
+| P5 | Monitoring | `monitoring/` | ✅ | MetricsCollector wired into RunExecutor, Prometheus endpoint |
+| P5 | Self-improving agents | `agents/self_improving/` | ✅ | Feedback capture, prompt evolution, parameter tuning, tool selection strategies |
+| P5 | Cross-modal capabilities | `multimodal/` | ✅ | OpenAIVisionProcessor, ClaudeVisionProcessor |
+| P5 | Federated agent networks | `federation/` | ✅ | HTTP transport, peer discovery, task delegation |
+
+### 9.3 Exit Gate
+**GATE 6.1:** ✅ MCP integration functional  
+**GATE 6.2:** ✅ Browser tool operational  
+**GATE 6.3:** ✅ Web UI prototype  
+**GATE 6.4:** ✅ API server with OpenAPI spec  
+**GATE 6.5:** ✅ Desktop UI scaffold  
+**GATE 6.6:** ✅ Distributed worker protocol defined
+
+---
+
+## 10. Phase 7: PRODUCTION HARDENING 🔒
+
+### 10.1 Objective
+Close foundational gaps discovered in the Phase 6 audit. This phase does **not** add new user-facing features; it makes existing features robust, secure, and compliant with the original architectural specification.
+
+### 10.2 Unlock Criteria
+- ALL Phase 6 exit gates passed ✅
+- Audit report completed and accepted ✅
+
+### 10.3 Unlocked Subsystems
+
+| Priority | Subsystem | Path | Gap From |
+|----------|-----------|------|----------|
+| P1 | Event-sourced ledger | `core/ledger.py` | Doc 11 — hash chain, replay, resume |
+| P1 | Core runtime files | `core/` | Doc 03 — missing modules |
+| P1 | Public API facade | `core/public_api.py` | Doc 02 — interface boundary |
+| P2 | Approval workflow | `interfaces/cli/` + `core/policy_engine.py` | Doc 10 — human-in-the-loop |
+| P2 | Provider lazy loading | `providers/` | Doc 08 — eager import breach |
+| P2 | Workflow isolation | `workflows/` | Doc 05 — direct core imports |
+| P3 | Parallel execution | `core/workflow_runner.py` | Doc 15 — sequential-only runner |
+| P3 | Privacy enforcer | `core/policy_engine.py` | Doc 18 — no PrivacyMode/PrivacyEnforcer |
+| P3 | Model fallback chains | `core/model_registry.py` | Doc 08 — no cascading router |
+| P4 | Agent protocol | `core/agent_protocol.py` | Doc 14 — missing schemas |
+| P4 | Context packer | `core/context_packer.py` | Doc 12 — missing artifact generation |
+| P4 | Eight standard roles | `config/config.py` | Doc 14 — 4 of 8 roles defined |
+
+### 10.4 Deliverables
+
+| Deliverable | Owner | Prerequisites | Exit Criteria |
+|-------------|-------|--------------|---------------|
+| Ledger hash chain + indexing | Runtime Team | Phase 6 | SHA-256 chain, `ledger.hash`, `ledger.index`, checkpointing |
+| Deterministic replay + resume | Runtime Team | Phase 6 | `reconstruct_state()`, `apply_event()`, CLI `resume` replays and continues |
+| Structured event schema | Runtime Team | Phase 6 | `core/events.py` with 20+ event types, sequence numbers, parent references |
+| `core/workflow_runner.py` | Runtime Team | Phase 6 | Generic DAG runner with retries, resumption, parallel group execution |
+| `core/error_classification.py` | Runtime Team | Phase 6 | TRANSIENT/RECOVERABLE/VERIFICATION/CONFIGURATION/PERMISSION/FATAL taxonomy |
+| `core/retry_engine.py` | Runtime Team | Phase 6 | Bounded retry with exponential backoff, integrated into workflow runner |
+| `core/step_budget.py` | Runtime Team | Phase 6 | Budget enforcement before every agent invocation and tool call |
+| `core/artifact_store.py` | Runtime Team | Phase 6 | Schema-managed artifact directory producing all 11 required files |
+| `core/context_packer.py` | Runtime Team | Phase 6 | Produces `context_bundle.md` + `context_manifest.json` per run |
+| `core/agent_protocol.py` | Runtime Team | Phase 6 | `AgentRequest`, `AgentResponse`, `AgentContext` schemas |
+| `core/public_api.py` | Architecture Lead | Phase 6 | Stable facade; all interfaces import ONLY from this module |
+| Approval workflow UI | Interface Team | Phase 6 | MEDIUM/HIGH tools pause for human approval with 6 required disclosure fields |
+| Provider lazy loading | Provider Team | Phase 6 | `providers/__init__.py` has no eager imports; string-based resolution |
+| Workflow pack isolation | Workflow Team | Phase 6 | Workflows use only `core.public_api`; no direct core internals |
+| Parallel execution engine | Runtime Team | Phase 6 | `ResourceLock`, workspace isolation, concurrency limits, `parallel_groups()` integrated |
+| `PrivacyMode` + `PrivacyEnforcer` | Security Team | Phase 6 | 4-mode enum, enforcer class, integrated into policy engine |
+| Cascading model router | Provider Team | Phase 6 | Cost-aware selection, fallback chains, auto-failover |
+
+### 10.5 Explicitly NOT in Phase 7
+- New workflow packs
+- New tools (beyond hardening existing ones)
+- New providers
+- New UIs (beyond approval workflow)
+- New memory backends
+- IDE extensions, CI/CD integration, formal verification
+
+### 10.6 Exit Gate
+**GATE 7.1:** Ledger is tamper-evident (SHA-256 hash chain) + replayable — `ledger.hash`, `reconstruct_state()`, replay tests pass  
+**GATE 7.2:** Resume from interruption works end-to-end — CLI `resume` loads checkpoint, replays events, continues execution  
+**GATE 7.3:** All missing core runtime files exist and tested — `workflow_runner.py`, `error_classification.py`, `retry_engine.py`, `step_budget.py`, `artifact_store.py`, `events.py`, `agent_protocol.py`, `context_packer.py`  
+**GATE 7.4:** Interfaces import ONLY from `core.public_api` — `core/public_api.py` exists; grep shows zero direct imports in `interfaces/`  
+**GATE 7.5:** Provider lazy loading enforced — `providers/__init__.py` has no eager imports; providers loaded only when configured  
+**GATE 7.6:** Approval workflow with 6-field disclosure — MEDIUM/HIGH tools pause for human approval with Action description, Risk explanation, Scope, Reversibility, Alternatives, Policy reference
+
+---
+
+## 11. Phase 8: FUTURE EXPANSION 🔒
+
+### 11.1 Objective
+Extend the platform beyond the original six-phase roadmap with new integrations, interfaces, and research areas.
+
+### 11.2 Unlock Criteria
+- ALL Phase 7 exit gates passed
+- Architecture Lead approval
+
+### 11.3 Unlocked Subsystems
+
+| Priority | Subsystem | Path | Source |
+|----------|-----------|------|--------|
+| P2 | IDE Extensions | `interfaces/ide/` | Former doc 19 — VS Code, JetBrains, Neovim |
+| P2 | CI/CD Integration | `interfaces/ci/` | Former doc 19 — GitHub Actions, GitLab CI, Azure DevOps |
+| P3 | AICtx Context Intelligence | `integrations/aictx/` | Former doc 19 — Context compilation, project scanning |
+| P4 | Formal Verification | `research/formal/` | Former doc 19 — SMT solvers, property-based testing |
+| P5 | Advanced Monitoring | `monitoring/advanced/` | Former doc 19 — eBPF (Linux), ETW (Windows) |
+
+### 11.4 Exit Gate
+**GATE 8.1:** IDE extension provides inline agent assistance in at least one editor  
+**GATE 8.2:** CI/CD integration triggers Agentheim runs from pipeline configuration  
+**GATE 8.3:** Formal verification proves correctness for a non-trivial critical path  
 
 ---
 

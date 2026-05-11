@@ -1,222 +1,94 @@
 # 19 — FUTURE RESERVED ARCHITECTURE
-## Deferred Systems, Future Integrations, and Reserved Design
+## Post-Roadmap Integrations, Research, and Deferred Systems
 
-**Status:** RESERVED ARCHITECTURE ONLY — NOT FOR IMPLEMENTATION
-**WARNING:** This document defines future architecture. Implementing these systems before their phase is unlocked is an ARCHITECTURAL BREACH.
-**Violation Classification:** ARCHITECTURAL BREACH (Level 3)
-
----
-
-## 1. Reserved Systems Overview
-
-The following systems are defined for architectural alignment but are NOT unlocked for implementation. They are reserved for future phases.
-
-```
-PHASE 6 RESERVED SYSTEMS:
-    ├── MCP Integration
-    ├── Browser Tool
-    ├── Local DB Tool
-    ├── Web UI
-    ├── Desktop UI
-    ├── API Server
-    ├── Distributed Workers
-    ├── Plugin Marketplace
-    └── Advanced Monitoring (eBPF/ETW)
-
-FUTURE INTEGRATIONS:
-    ├── AICtx Context Intelligence Layer
-    ├── IDE Extensions (VS Code, JetBrains, Neovim)
-    └── CI/CD Integration
-
-RESEARCH AREAS:
-    ├── Self-Improving Agents
-    ├── Cross-Modal Capabilities
-    ├── Federated Agent Networks
-    └── Formal Verification
-```
+**Status:** POST-PHASE-6 — Items here are NOT unlocked for implementation until Phase 7 (Production Hardening) is complete.
+**Enforcement:** Implementing these before Phase 7 completion is an ARCHITECTURAL BREACH (Level 3).
+**Last Updated:** 2026-05-10
 
 ---
 
-## 2. MCP Integration (Reserved)
+## 1. What Moved to Phase 6 or Phase 7
 
-### 2.1 Purpose
-Integration with the Model Context Protocol for standardized tool discovery and invocation.
+The following items were formerly in this document as "reserved" but have since been implemented:
 
-### 2.2 Architecture
-- MCP client adapter in `tools/mcp/`
-- Discovers MCP servers from local configuration
-- Presents MCP tools as native capabilities
-- Handles JSON-RPC 2.0 transport transparently
-- Falls back gracefully when MCP servers unavailable
+| Formerly Reserved | Now In | Status |
+|-------------------|--------|--------|
+| MCP Integration | Phase 6 ✅ | `tools/mcp/` — persistent pool, stdio transport |
+| Browser Tool | Phase 6 ✅ | `tools/browser/` — session reuse, async variant |
+| Local DB Tool | Phase 6 ✅ | `tools/local_db/` — SQLite operations |
+| Web UI | Phase 6 ✅ | `interfaces/web_ui/` — execution, streaming, dashboard |
+| Desktop UI | Phase 6 ✅ | `interfaces/desktop_ui/` — scaffold |
+| API Server | Phase 6 ✅ | `interfaces/api_server/` — OpenAPI, metrics, auth |
+| Distributed Workers | Phase 6 ✅ | `workflows/distributed/` — HTTP transport |
+| Plugin Marketplace | Phase 6 ✅ | `marketplace/` — sandbox, signatures |
+| Monitoring | Phase 6 ✅ | `monitoring/` — MetricsCollector, Prometheus |
+| Self-Improving Agents | Phase 6 ✅ | `agents/self_improving/` — feedback loop, strategies |
+| Cross-Modal Capabilities | Phase 6 ✅ | `multimodal/` — GPT-4o, Claude vision |
+| Federated Agent Networks | Phase 6 ✅ | `federation/` — HTTP transport, peer discovery |
+| Guided TUI | Phase 5 ✅ | `interfaces/guided_tui/` — rich preset picker |
 
-### 2.3 MCP Server Categories
+The following items were formerly "reserved" but are now recognized as **missing foundational subsystems** and have been moved to **Phase 7 (Production Hardening)**:
 
-| Category | Examples | Use Case |
-|----------|----------|----------|
-| Filesystem | mcp-server-filesystem | Safe file access |
-| GitHub | official GitHub MCP | PR creation, issue reading |
-| Web | browser automation MCP | Research, documentation |
-| Database | SQLite, PostgreSQL MCP | Data-driven applications |
-| Vector DB | Chroma, Qdrant MCP | Semantic search |
-| Communication | Slack, Discord MCP | Team notifications |
-| System | shell, process MCP | Local command execution |
-
-### 2.4 Design Decisions (Frozen)
-- MCP integration is optional and disabled by default
-- Core system functions without MCP
-- When enabled, it expands capability without compromising local-first
-- MCP tools go through the same policy engine as native tools
-
-### 2.5 Unlock Criteria
-- Phase 5 complete
-- Core runtime stable for 3 months
-- At least 5 workflow packs production-quality
-- Architecture Lead approval
+| Formerly Reserved / Missing | Now In | Gap |
+|-----------------------------|--------|-----|
+| Event-sourced ledger (hash chain, replay) | Phase 7 🔒 | No SHA-256, no replay, no resume |
+| Core runtime files | Phase 7 🔒 | `workflow_runner.py`, `retry_engine.py`, etc. missing |
+| Public API facade | Phase 7 🔒 | No `core/public_api.py` |
+| Approval workflow | Phase 7 🔒 | No human-in-the-loop for MEDIUM/HIGH |
+| Provider lazy loading | Phase 7 🔒 | Eager imports in `providers/__init__.py` |
+| Parallel execution | Phase 7 🔒 | `Workflow.run()` is sequential |
+| Privacy enforcer | Phase 7 🔒 | No `PrivacyMode` enum |
 
 ---
 
-## 3. Additional Interfaces (Reserved)
+## 2. Remaining Future Integrations (Phase 8+)
 
-### 3.1 Guided TUI
-- Terminal-native preset picker and approval flow
-- Built with rich/textual
-- Provides beginner-friendly experience
-- Unlocked in Phase 5
+These are genuinely new capabilities beyond the original roadmap scope.
 
-### 3.2 Web UI
-- Browser-based interface
-- Built with modern web framework
-- Full preset management
-- Real-time run monitoring
-- Unlocked in Phase 6
+### 2.1 IDE Extensions
+- VS Code extension for inline agent assistance
+- JetBrains plugin for context-aware suggestions
+- Neovim Lua plugin for terminal-centric workflows
+- **Unlock:** Phase 7 complete
 
-### 3.3 Desktop UI
-- Native desktop application
-- System tray integration
-- File watcher for automatic suggestions
-- Unlocked in Phase 6
+### 2.2 CI/CD Integration
+- GitHub Actions marketplace action
+- GitLab CI template
+- Azure DevOps pipeline task
+- Trigger Agentheim runs from PR events, issue labels, or scheduled jobs
+- **Unlock:** Phase 7 complete
 
-### 3.4 API Server
-- REST API for external integrations
-- Webhook support for CI/CD
-- Authentication and rate limiting
-- Unlocked in Phase 6
+### 2.3 AICtx Context Intelligence Layer
+- Project scanning and context compilation outsourced to AICtx
+- Integration contract: LLM-readable output + machine-readable JSON manifests
+- **Unlock:** Both projects stable + integration contract reviewed
 
 ---
 
-## 4. Advanced Systems (Reserved)
+## 3. Research Frontiers (No Phase Assigned)
 
-### 4.1 Distributed Workers
-- Multiple machines coordinating on shared projects
-- Event-sourced state synchronization
-- Work distribution across worker nodes
-- Fault tolerance and failover
-- Unlocked: Post-Phase 6, requires architecture RFC
+These are exploratory areas without committed implementation timelines.
 
-### 4.2 Plugin Marketplace
-- Community-contributed workflow packs
-- Curated provider adapters
-- Tool pack sharing
-- Version management and updates
-- Unlocked: Post-Phase 6
-
-### 4.3 Advanced Monitoring
-- eBPF-based monitoring (Linux)
-- ETW-based monitoring (Windows)
-- Kernel-level system call interception
-- Real-time policy violation detection
-- Unlocked: Post-Phase 6, requires security review
-
----
-
-## 5. AICtx Relationship (Reserved)
-
-### 5.1 Future Integration
-Local Agent Orchestration consumes AICtx as its context intelligence layer.
-
-### 5.2 Separation of Concerns
-
-| Concern | Owner |
-|---------|-------|
-| Project scanning | AICtx |
-| Context compilation | AICtx |
-| Docs compaction | AICtx |
-| Changed-scope detection | AICtx |
-| Relevant file selection | AICtx |
-| Project facts | AICtx |
-| Risk notes | AICtx |
-| Stale-doc detection | AICtx |
-| Context bundles | AICtx |
-| Agent execution | Local Agent Orchestration |
-| Workflow runtime | Local Agent Orchestration |
-| Tool mediation | Local Agent Orchestration |
-| Policy enforcement | Local Agent Orchestration |
-| Provider registry | Local Agent Orchestration |
-| Run artifacts | Local Agent Orchestration |
-
-### 5.3 Integration Contract (Future)
-AICtx must provide:
-- **LLM-readable output:** compact task briefs, docs packs, summaries
-- **Machine-readable output:** JSON manifests, relevance scores, project facts, command registry, risk classifications, stale-doc markers
-
-### 5.4 Current Stance
-- Keep both projects separate
-- Align architecture
-- Avoid duplicating scanner/context code
-- Define integration contract before integration begins
-
-### 5.5 Unlock Criteria
-- Both projects stable
-- Integration contract defined and reviewed
-- Architecture Lead approval
-
----
-
-## 6. Research Frontiers (Reserved)
-
-### 6.1 Self-Improving Agents
-- Agents that learn from run histories
-- Automatic prompt optimization
-- Model selection improvement
-- Research dependency: Agent performance analysis
-
-### 6.2 Cross-Modal Capabilities
-- Image understanding for UI implementation
-- Diagram generation from code
-- Multi-modal context processing
-- Research dependency: Vision model capabilities
-
-### 6.3 Federated Agent Networks
-- Multiple machines coordinating
-- Shared project state
-- Privacy-preserving collaboration
-- Research dependency: Distributed systems architecture
-
-### 6.4 Formal Verification
+### 3.1 Formal Verification
 - Mathematical proof of correctness for critical outputs
-- Security-critical code verification
-- Property-based testing integration
-- Research dependency: Formal methods
+- SMT solver integration for constraint checking
+- Property-based testing for agent behavior
+- **Status:** Research only. No committed phase.
+
+### 3.2 Advanced Kernel Monitoring
+- eBPF-based syscall interception (Linux)
+- ETW-based event tracing (Windows)
+- Real-time policy violation detection at kernel level
+- **Status:** Deferred indefinitely. Requires security review and platform-specific expertise.
 
 ---
 
-## 7. Reserved Architecture Modification Process
+## 4. Modification Rules
 
-### 7.1 Modification Rules
-- Reserved architecture may be refined for clarity
-- Reserved architecture may not be implemented
-- Reserved architecture serves as alignment target
+- Future architecture may be refined for clarity
+- Future architecture may not be implemented before Phase 7 unlock
 - Modifications require Architecture Lead approval
-
-### 7.2 Unlock Process
-1. Phase 5 complete + stable period
-2. Architecture RFC published
-3. Community review period (2 weeks)
-4. Architecture Lead approval
-5. Phase 6 roadmap published
-6. Implementation begins
 
 ---
 
 *End of 19_FUTURE_RESERVED_ARCHITECTURE.md*
-*THIS DOCUMENT IS NOT A LICENSE TO IMPLEMENT. IT IS ARCHITECTURAL ALIGNMENT ONLY.*
