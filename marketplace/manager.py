@@ -36,7 +36,7 @@ class PluginManager:
         return found
 
     def load(self, plugin_dir: Path) -> tuple[bool, str]:
-        """Load a plugin from its directory."""
+        """Load a plugin from its directory with sandboxing and signature verification."""
         manifest_path = plugin_dir / "manifest.json"
         if not manifest_path.exists():
             return False, "manifest.json not found"
@@ -49,6 +49,12 @@ class PluginManager:
         valid, err = manifest.validate()
         if not valid:
             return False, err
+
+        # Signature verification
+        if manifest.signature:
+            computed = manifest.compute_signature(plugin_dir)
+            if computed != manifest.signature:
+                return False, "Signature verification failed"
 
         entry_file = plugin_dir / manifest.entry_point
         if not entry_file.exists():
@@ -63,6 +69,18 @@ class PluginManager:
             module = importlib.util.module_from_spec(spec)
             sys.modules[module.__name__] = module
             spec.loader.exec_module(module)
+
+            # Sandbox activation: if the module exposes an activate() or register()
+            # function, invoke it through the sandbox with restricted context.
+            for hook_name in ("activate", "register"):
+                hook = getattr(module, hook_name, None)
+                if callable(hook):
+                    try:
+                        self._sandbox.call(hook)
+                    except Exception as exc:
+                        return False, f"Plugin {hook_name}() failed sandbox execution: {exc}"
+                    break
+
             self._loaded[manifest.name] = module
             return True, ""
         except Exception as exc:

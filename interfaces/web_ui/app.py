@@ -6,10 +6,11 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
+from core.capability_registry import list_workflows as cap_list_workflows
+from core.run_executor import RunExecutor, RunStatus
 from core.tool_protocol import ToolContext, ToolResult
 from memory.bus import MemoryBus
 from tools.registry import ToolRegistry
@@ -54,6 +55,15 @@ class PresetListItem(BaseModel):
     description: str
 
 
+class ExecuteRequest(BaseModel):
+    inputs: dict[str, Any] = Field(default_factory=dict)
+
+
+class ExecuteResponse(BaseModel):
+    run_id: str
+    status: str
+
+
 class MemoryReadResponse(BaseModel):
     scope: str
     key: str
@@ -71,6 +81,13 @@ class MemoryWriteResponse(BaseModel):
     status: str = "written"
 
 
+class RunStatusResponse(BaseModel):
+    run_id: str
+    status: str
+    artifacts: list[str] = Field(default_factory=list)
+    error: str | None = None
+
+
 # ------------------------------------------------------------------
 # App factory
 # ------------------------------------------------------------------
@@ -86,10 +103,12 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
 
     tool_registry = ToolRegistry(repo_root)
     memory_bus = MemoryBus(repo_root)
+    run_executor = RunExecutor()
 
     # Serve static files if the directory exists
     static_dir = Path(__file__).parent / "static"
     if static_dir.is_dir():
+        from fastapi.staticfiles import StaticFiles
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
     # ------------------------------------------------------------------
@@ -170,6 +189,31 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
             for w in cap_list()
         ]
 
+    @app.post("/api/workflows/{workflow_id}/execute", response_model=ExecuteResponse)
+    def execute_workflow(workflow_id: str, body: ExecuteRequest) -> ExecuteResponse:
+        """Execute a workflow asynchronously."""
+        _import_workflows()
+        workflow_cls = None
+        for w in cap_list_workflows():
+            if w.id == workflow_id:
+                workflow_cls = w
+                break
+        if workflow_cls is None:
+            raise HTTPException(status_code=404, detail=f"Workflow '{workflow_id}' not found")
+
+        def _run():
+            from core.ledger import RunLedger
+            from core.model_registry import ModelRegistry
+            from core.policy_engine import PolicyEngine
+            ledger = RunLedger.create(repo_root, f"webui-{workflow_id}")
+            registry = ModelRegistry.from_team_config()
+            policy = PolicyEngine()
+            wf = workflow_cls(registry, tool_registry, policy, ledger)
+            return wf.run(repo_root, metadata=body.inputs)
+
+        run_id = run_executor.submit(_run)
+        return ExecuteResponse(run_id=run_id, status="pending")
+
     @app.get("/api/presets", response_model=list[PresetListItem])
     def list_presets() -> list[PresetListItem]:
         """List available presets."""
@@ -183,6 +227,69 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
             )
             for p in PRESET_REGISTRY.list()
         ]
+
+    @app.post("/api/presets/{preset_id}/run", response_model=ExecuteResponse)
+    def run_preset(preset_id: str, body: ExecuteRequest) -> ExecuteResponse:
+        """Run a preset asynchronously."""
+        from presets import PRESET_REGISTRY
+
+        try:
+            preset = PRESET_REGISTRY.get(preset_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail=f"Preset '{preset_id}' not found")
+
+        run_id = run_executor.submit(preset.run, body.inputs)
+        return ExecuteResponse(run_id=run_id, status="pending")
+
+    @app.get("/api/runs/{run_id}", response_model=RunStatusResponse)
+    def get_run_status(run_id: str) -> RunStatusResponse:
+        """Get the status of a run."""
+        record = run_executor.get(run_id)
+        if record is not None:
+            return RunStatusResponse(
+                run_id=run_id,
+                status=record.status.value,
+                artifacts=record.artifacts,
+                error=record.error,
+            )
+
+        run_dir = repo_root / ".ai-team" / "runs" / run_id
+        if not run_dir.exists():
+            raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found")
+
+        artifacts = sorted(f.name for f in run_dir.iterdir() if f.is_file())
+        status_str = "completed" if (run_dir / "final_report.md").exists() else "in_progress"
+        return RunStatusResponse(run_id=run_id, status=status_str, artifacts=artifacts)
+
+    @app.get("/api/runs/{run_id}/stream")
+    def stream_run_status(run_id: str):
+        """Stream run status updates via Server-Sent Events."""
+        import asyncio
+        import json
+
+        record = run_executor.get(run_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found")
+
+        async def _event_generator():
+            last_status = None
+            yield f"data: {json.dumps({'run_id': run_id, 'status': record.status.value})}\n\n"
+            for _ in range(3600):
+                await asyncio.sleep(1)
+                current = run_executor.get(run_id)
+                if current is None:
+                    break
+                if current.status.value != last_status:
+                    last_status = current.status.value
+                    payload = {"run_id": run_id, "status": current.status.value, "artifacts": current.artifacts}
+                    if current.error:
+                        payload["error"] = current.error
+                    yield f"data: {json.dumps(payload)}\n\n"
+                if current.status in (RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.CANCELLED):
+                    break
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(_event_generator(), media_type="text/event-stream")
 
     @app.get("/api/memory/{scope}/{key}", response_model=MemoryReadResponse)
     def read_memory(scope: str, key: str) -> MemoryReadResponse:
@@ -265,9 +372,9 @@ def _dashboard_html() -> str:
   </div>
 </div>
 <script>
-async function fetchJSON(url) {
+async function fetchJSON(url, options) {
   try {
-    const r = await fetch(url);
+    const r = await fetch(url, options);
     if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
     return await r.json();
   } catch (e) {

@@ -1,4 +1,4 @@
-"""Distributed worker protocol and in-process worker pool."""
+"""Distributed worker protocol, HTTP transport, and coordinator."""
 
 from __future__ import annotations
 
@@ -11,8 +11,12 @@ from workflows.distributed.protocol import (
     WorkerStatus,
 )
 from workflows.distributed.scheduler import TaskScheduler
+from workflows.distributed.server import create_coordinator_app
+from workflows.distributed.transport import CoordinatorClient, RemoteWorker
 
 __all__ = [
+    "CoordinatorClient",
+    "RemoteWorker",
     "WorkerPool",
     "TaskScheduler",
     "WorkerRegistration",
@@ -20,4 +24,5 @@ __all__ = [
     "TaskResult",
     "Heartbeat",
     "WorkerStatus",
+    "create_coordinator_app",
 ]

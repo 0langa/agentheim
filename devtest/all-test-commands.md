@@ -93,16 +93,20 @@ pytest tests/core -v
 pytest tests/memory -v
 pytest tests/smoke -v
 pytest tests/test_mcp.py -v
+pytest tests/test_mcp_pool.py -v
 pytest tests/test_browser_tool.py -v
 pytest tests/test_local_db_tool.py -v
 pytest tests/test_web_ui.py -v
 pytest tests/test_api_server.py -v
 pytest tests/test_distributed.py -v
+pytest tests/test_distributed_transport.py -v
 pytest tests/test_marketplace.py -v
 pytest tests/test_monitoring.py -v
 pytest tests/test_self_improving.py -v
 pytest tests/test_multimodal.py -v
 pytest tests/test_federation.py -v
+pytest tests/test_federation_transport.py -v
+pytest tests/test_run_executor.py -v
 pytest tests/test_desktop_ui.py -v
 ```
 

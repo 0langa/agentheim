@@ -64,11 +64,15 @@ switch ($Mode) {
             "tests/smoke/test_workflows.py",
             "tests/smoke/test_workflow_execution.py",
             "tests/test_mcp.py",
+            "tests/test_mcp_pool.py",
             "tests/test_local_db_tool.py",
             "tests/test_browser_tool.py",
             "tests/test_distributed.py",
+            "tests/test_distributed_transport.py",
             "tests/test_web_ui.py",
-            "tests/test_api_server.py"
+            "tests/test_api_server.py",
+            "tests/test_run_executor.py",
+            "tests/test_federation_transport.py"
         ))
         Invoke-TestSet -Label "broad (memory suite)" -PytestArgs ($baseArgs + @("tests/memory/"))
     }

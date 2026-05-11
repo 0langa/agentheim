@@ -2,6 +2,21 @@
 
 ## 2026-05-10
 
+### Phase 6 Full Implementation (Approach B)
+- **MCP integration**: Added `MCPConnectionPool` for persistent connections. Fixed client lifecycle bug where `register_mcp_tools()` disconnected clients after registration, leaving tools with stale references.
+- **Browser tool**: Added `BrowserSessionManager` for persistent browser contexts. New operations `create_session` and `close_session` enable multi-step workflows (navigate → click → fill) without launching a new browser per operation.
+- **API server**: Added `POST /api/workflows/{id}/execute`, `POST /api/presets/{id}/run`, `GET /api/runs/{id}/stream` (SSE), and `GET /api/metrics` (Prometheus). Added request logging middleware. Replaced fake provider health with dynamic `_check_provider_health()`.
+- **Web UI**: Added execution endpoints for workflows and presets, run status polling, and SSE streaming.
+- **Plugin marketplace**: Wired sandbox into `PluginManager.load()` — calls `activate()`/`register()` through `Sandbox.call()`. Added signature verification on load.
+- **Distributed workers**: Added HTTP transport (`CoordinatorClient`, `RemoteWorker`) and FastAPI coordinator server (`create_coordinator_app`) with endpoints for registration, heartbeat, task polling, submission, and completion.
+- **Multimodal**: Added `OpenAIVisionProcessor` and `ClaudeVisionProcessor` with auto-detection via `AGENTHEIM_VISION_PROVIDER` env var. Replaced 100% stub with real vision model integration.
+- **Self-improving agents**: Added `SelfImprovingHook` that captures run feedback in `RunExecutor` and applies `PromptEvolutionStrategy`, `ParameterTuningStrategy`, and `ToolSelectionStrategy` automatically.
+- **Monitoring**: Wired `MetricsCollector` into `RunExecutor` so all background runs record start/end/error metrics. Prometheus endpoint serves live metrics.
+- **Federation**: Added HTTP transport (`FederationClient`) and FastAPI server (`create_federation_app`) for peer discovery, task delegation, and result relay.
+- **Tests**: Added 21 new tests across `test_mcp_pool.py`, `test_run_executor.py`, `test_distributed_transport.py`, `test_federation_transport.py`. Total suite: **403 passed, 2 skipped**.
+
+## 2026-05-10
+
 ### Validation & Production Hardening
 - Fixed missing `os` import in `interfaces/cli/cli.py` causing `doctor` command to crash with `NameError`.
 - Added root `pyproject.toml` making project installable via `pip install -e .` with `agentheim` console script entry point.

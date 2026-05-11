@@ -1,15 +1,19 @@
-"""FastAPI API server with OpenAPI spec, auth, and rate limiting."""
+"""FastAPI API server with OpenAPI spec, auth, rate limiting, and execution."""
 
 from __future__ import annotations
 
+import logging
+import time
 from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from core.capability_registry import list_workflows as cap_list_workflows
+from core.run_executor import RunExecutor, RunStatus
 from core.tool_protocol import ToolContext, ToolResult
 from memory.bus import MemoryBus
 from tools.registry import ToolRegistry
@@ -17,6 +21,7 @@ from tools.registry import ToolRegistry
 from interfaces.api_server.auth import verify_api_key
 from interfaces.api_server.rate_limit import RateLimiter
 
+logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------
 # Pydantic models (module-level for FastAPI compatibility)
@@ -60,10 +65,23 @@ class WorkflowDetail(BaseModel):
     required_tools: list[str] = Field(default_factory=list)
 
 
+class WorkflowExecuteRequest(BaseModel):
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
 class PresetListItem(BaseModel):
     preset_id: str
     name: str
     description: str
+
+
+class PresetRunRequest(BaseModel):
+    inputs: dict[str, Any] = Field(default_factory=dict)
+
+
+class ExecuteResponse(BaseModel):
+    run_id: str
+    status: str
 
 
 class MemoryReadResponse(BaseModel):
@@ -92,12 +110,14 @@ class ModelListItem(BaseModel):
 class ProviderListItem(BaseModel):
     provider_id: str
     healthy: bool
+    error: str | None = None
 
 
 class RunStatusResponse(BaseModel):
     run_id: str
     status: str
     artifacts: list[str] = Field(default_factory=list)
+    error: str | None = None
 
 
 # ------------------------------------------------------------------
@@ -127,6 +147,25 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
     tool_registry = ToolRegistry(repo_root)
     memory_bus = MemoryBus(repo_root)
     rate_limiter = RateLimiter(max_requests=60, window_seconds=60.0)
+    run_executor = RunExecutor()
+
+    # ------------------------------------------------------------------
+    # Request logging middleware
+    # ------------------------------------------------------------------
+
+    @app.middleware("http")
+    async def log_requests(request: Request, call_next):
+        start = time.time()
+        response = await call_next(request)
+        duration = time.time() - start
+        logger.info(
+            "%s %s %d %.3fs",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration,
+        )
+        return response
 
     # ------------------------------------------------------------------
     # Helpers
@@ -165,6 +204,28 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
             if ps.enum:
                 params[name]["enum"] = ps.enum
         return params
+
+    def _check_provider_health(provider_id: str) -> tuple[bool, str | None]:
+        """Check if a provider is healthy by attempting a lightweight operation."""
+        provider_map = {
+            "openai_v1": ("providers.openai_v1", "OpenAIProvider"),
+            "aws_bedrock": ("providers.aws_bedrock", "AWSBedrockProvider"),
+            "azure_foundry": ("providers.azure_foundry", "AzureFoundryProvider"),
+            "oci_genai": ("providers.oci_genai", "OCIGenAIProvider"),
+        }
+        if provider_id not in provider_map:
+            return False, "Unknown provider"
+        module_path, class_name = provider_map[provider_id]
+        try:
+            import importlib
+            module = importlib.import_module(module_path)
+            cls = getattr(module, class_name)
+            instance = cls()
+            if hasattr(instance, "health_check"):
+                instance.health_check()
+            return True, None
+        except Exception as exc:
+            return False, str(exc)
 
     # ------------------------------------------------------------------
     # Routes
@@ -259,6 +320,40 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
                 )
         raise HTTPException(status_code=404, detail=f"Workflow '{workflow_id}' not found")
 
+    @app.post(
+        "/api/workflows/{workflow_id}/execute",
+        response_model=ExecuteResponse,
+        tags=["workflows"],
+        dependencies=[Depends(rate_limiter.check)],
+    )
+    def execute_workflow(
+        workflow_id: str,
+        request: WorkflowExecuteRequest,
+        api_key: str = Depends(verify_api_key),
+    ) -> ExecuteResponse:
+        """Execute a workflow asynchronously. Returns a run ID for polling."""
+        _import_workflows()
+        workflow_cls = None
+        for w in cap_list_workflows():
+            if w.id == workflow_id:
+                workflow_cls = w
+                break
+        if workflow_cls is None:
+            raise HTTPException(status_code=404, detail=f"Workflow '{workflow_id}' not found")
+
+        def _run():
+            from core.ledger import RunLedger
+            from core.model_registry import ModelRegistry
+            from core.policy_engine import PolicyEngine
+            ledger = RunLedger.create(repo_root, f"api-{workflow_id}")
+            registry = ModelRegistry.from_team_config()
+            policy = PolicyEngine()
+            wf = workflow_cls(registry, tool_registry, policy, ledger)
+            return wf.run(repo_root, metadata=request.params)
+
+        run_id = run_executor.submit(_run)
+        return ExecuteResponse(run_id=run_id, status="pending")
+
     @app.get("/api/presets", response_model=list[PresetListItem], tags=["presets"])
     def list_presets() -> list[PresetListItem]:
         """List available presets."""
@@ -272,6 +367,28 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
             )
             for p in PRESET_REGISTRY.list()
         ]
+
+    @app.post(
+        "/api/presets/{preset_id}/run",
+        response_model=ExecuteResponse,
+        tags=["presets"],
+        dependencies=[Depends(rate_limiter.check)],
+    )
+    def run_preset(
+        preset_id: str,
+        request: PresetRunRequest,
+        api_key: str = Depends(verify_api_key),
+    ) -> ExecuteResponse:
+        """Run a preset asynchronously. Returns a run ID for polling."""
+        from presets import PRESET_REGISTRY
+
+        try:
+            preset = PRESET_REGISTRY.get(preset_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail=f"Preset '{preset_id}' not found")
+
+        run_id = run_executor.submit(preset.run, request.inputs)
+        return ExecuteResponse(run_id=run_id, status="pending")
 
     @app.get("/api/memory/{scope}/{key}", response_model=MemoryReadResponse, tags=["memory"])
     def read_memory(scope: str, key: str) -> MemoryReadResponse:
@@ -318,21 +435,32 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
     @app.get("/api/providers", response_model=list[ProviderListItem], tags=["providers"])
     def list_providers() -> list[ProviderListItem]:
         """List providers and their health status."""
-        from providers import base as provider_base
-
-        # Basic provider listing; health checks would require credentials
         providers = [
             ProviderListItem(provider_id="openai_v1", healthy=True),
             ProviderListItem(provider_id="aws_bedrock", healthy=True),
             ProviderListItem(provider_id="azure_foundry", healthy=True),
             ProviderListItem(provider_id="oci_genai", healthy=True),
         ]
+        for p in providers:
+            healthy, error = _check_provider_health(p.provider_id)
+            p.healthy = healthy
+            p.error = error
         return providers
 
     @app.get("/api/runs/{run_id}", response_model=RunStatusResponse, tags=["runs"])
     def get_run_status(run_id: str) -> RunStatusResponse:
         """Get the status of a run."""
-        # Runs are stored in .ai-team/runs/{run_id}/
+        # First check in-memory executor
+        record = run_executor.get(run_id)
+        if record is not None:
+            return RunStatusResponse(
+                run_id=run_id,
+                status=record.status.value,
+                artifacts=record.artifacts,
+                error=record.error,
+            )
+
+        # Fallback to disk
         run_dir = repo_root / ".ai-team" / "runs" / run_id
         if not run_dir.exists():
             raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found")
@@ -349,5 +477,50 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
             status=status_str,
             artifacts=artifacts,
         )
+
+    @app.get("/api/runs/{run_id}/stream", tags=["runs"])
+    def stream_run_status(run_id: str):
+        """Stream run status updates via Server-Sent Events."""
+        import asyncio
+
+        record = run_executor.get(run_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found")
+
+        async def _event_generator():
+            import json
+            last_status = None
+            # Yield initial status immediately
+            yield f"data: {json.dumps({'run_id': run_id, 'status': record.status.value})}\n\n"
+            for _ in range(3600):  # Max ~1 hour of streaming
+                await asyncio.sleep(1)
+                current = run_executor.get(run_id)
+                if current is None:
+                    break
+                if current.status.value != last_status:
+                    last_status = current.status.value
+                    payload = {
+                        "run_id": run_id,
+                        "status": current.status.value,
+                        "artifacts": current.artifacts,
+                    }
+                    if current.error:
+                        payload["error"] = current.error
+                    yield f"data: {json.dumps(payload)}\n\n"
+                if current.status in (RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.CANCELLED):
+                    break
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(
+            _event_generator(),
+            media_type="text/event-stream",
+        )
+
+    @app.get("/api/metrics", response_class=PlainTextResponse, tags=["system"])
+    def metrics() -> str:
+        """Prometheus-compatible metrics endpoint."""
+        from monitoring.metrics import MetricsCollector
+        collector = MetricsCollector()
+        return collector.get_prometheus_metrics()
 
     return app

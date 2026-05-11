@@ -199,6 +199,73 @@ class TestRuns:
         assert "final_report.md" in data["artifacts"]
 
 
+class TestWorkflowExecution:
+    def test_execute_workflow_not_found(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/workflows/nonexistent/execute",
+            json={"params": {}},
+            headers={"X-API-Key": "test-key"},
+        )
+        assert response.status_code == 404
+
+    def test_execute_workflow_returns_run_id(self, client: TestClient) -> None:
+        from unittest.mock import patch
+        from core.run_executor import RunExecutor
+        RunExecutor.reset_instance()
+        with patch("core.run_executor.RunExecutor.submit", return_value="test-run-123"):
+            response = client.post(
+                "/api/workflows/research/execute",
+                json={"params": {"task": "test"}},
+                headers={"X-API-Key": "test-key"},
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert "run_id" in data
+        assert data["status"] == "pending"
+        RunExecutor.reset_instance()
+
+
+class TestPresetExecution:
+    def test_run_preset_not_found(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/presets/nonexistent/run",
+            json={"inputs": {}},
+            headers={"X-API-Key": "test-key"},
+        )
+        assert response.status_code == 404
+
+    def test_run_preset_returns_run_id(self, client: TestClient) -> None:
+        from unittest.mock import patch
+        from core.run_executor import RunExecutor
+        RunExecutor.reset_instance()
+        with patch("core.run_executor.RunExecutor.submit", return_value="test-run-456"):
+            response = client.post(
+                "/api/presets/research-report/run",
+                json={"inputs": {"topic": "AI"}},
+                headers={"X-API-Key": "test-key"},
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert "run_id" in data
+        assert data["status"] == "pending"
+        RunExecutor.reset_instance()
+
+
+class TestRunStreaming:
+    def test_stream_run_not_found(self, client: TestClient) -> None:
+        response = client.get("/api/runs/nonexistent_run_12345/stream")
+        assert response.status_code == 404
+
+
+class TestMetrics:
+    def test_metrics_endpoint(self, client: TestClient) -> None:
+        response = client.get("/api/metrics")
+        assert response.status_code == 200
+        assert "text/plain" in response.headers["content-type"]
+        body = response.text
+        assert "agentheim" in body.lower() or "#" in body
+
+
 class TestOpenAPI:
     def test_openapi_schema(self, client: TestClient) -> None:
         response = client.get("/openapi.json")
@@ -210,6 +277,10 @@ class TestOpenAPI:
         assert "/api/tools" in paths
         assert "/api/workflows" in paths
         assert "/api/presets" in paths
+        assert "/api/workflows/{workflow_id}/execute" in paths
+        assert "/api/presets/{preset_id}/run" in paths
+        assert "/api/runs/{run_id}/stream" in paths
+        assert "/api/metrics" in paths
 
     def test_docs_endpoint(self, client: TestClient) -> None:
         response = client.get("/docs")

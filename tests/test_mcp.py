@@ -9,6 +9,8 @@ import pytest
 from core.tool_protocol import RiskLevel, ToolContext
 from tools.mcp.client import MCPClient, MCPError
 from tools.mcp.config import MCPServerConfig, load_mcp_config
+from tools.mcp.config import MCPServerConfig
+from tools.mcp.pool import MCPConnectionPool
 from tools.mcp.tool_adapter import MCPTool, _convert_schema, _mcp_type_to_param_type
 
 
@@ -59,14 +61,18 @@ class TestSchemaConversion:
 
 
 class TestMCPTool:
+    def _make_tool(self, info: dict, mock_client: MagicMock | None = None):
+        pool = MagicMock(spec=MCPConnectionPool)
+        client = mock_client or MagicMock()
+        pool.get_client.return_value = client
+        server = MCPServerConfig(name="test", command=["echo"])
+        return MCPTool(pool, server, info), pool, client
+
     def test_tool_id_prefixed(self) -> None:
-        client = MagicMock()
-        info = {"name": "read_file", "description": "Read a file"}
-        tool = MCPTool(client, info)
+        tool, _pool, _client = self._make_tool({"name": "read_file", "description": "Read a file"})
         assert tool.tool_id == "mcp.read_file"
 
     def test_schema_description(self) -> None:
-        client = MagicMock()
         info = {
             "name": "read_file",
             "description": "Read a file",
@@ -76,34 +82,32 @@ class TestMCPTool:
                 "required": ["path"],
             },
         }
-        tool = MCPTool(client, info)
+        tool, _pool, _client = self._make_tool(info)
         assert tool.schema.description == "Read a file"
         assert "path" in tool.schema.parameters
 
     def test_risk_level(self) -> None:
-        client = MagicMock()
-        info = {"name": "x", "description": "x"}
-        tool = MCPTool(client, info)
+        tool, _pool, _client = self._make_tool({"name": "x", "description": "x"})
         assert tool.risk_level == RiskLevel.MEDIUM
 
     def test_invoke_success(self) -> None:
         client = MagicMock()
         client.call_tool.return_value = {"content": [{"type": "text", "text": "hello"}]}
-        info = {"name": "echo", "description": "Echo"}
-        tool = MCPTool(client, info)
+        tool, pool, client = self._make_tool({"name": "echo", "description": "Echo"}, client)
         result = tool.invoke({"msg": "hi"}, ToolContext())
         assert result.success is True
         assert result.metadata.get("source") == "mcp"
         client.call_tool.assert_called_once_with("echo", {"msg": "hi"})
+        pool.release_client.assert_called_once_with("test")
 
     def test_invoke_failure(self) -> None:
         client = MagicMock()
         client.call_tool.side_effect = RuntimeError("boom")
-        info = {"name": "fail", "description": "Fail"}
-        tool = MCPTool(client, info)
+        tool, pool, client = self._make_tool({"name": "fail", "description": "Fail"}, client)
         result = tool.invoke({}, ToolContext())
         assert result.success is False
         assert "boom" in result.error
+        pool.release_client.assert_called_once_with("test")
 
 
 class TestMCPClient:

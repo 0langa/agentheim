@@ -14,6 +14,8 @@ from core.tool_protocol import (
     ToolSchema,
 )
 from tools.mcp.client import MCPClient
+from tools.mcp.config import MCPServerConfig
+from tools.mcp.pool import MCPConnectionPool
 
 logger = logging.getLogger(__name__)
 
@@ -50,10 +52,21 @@ def _convert_schema(mcp_input_schema: dict[str, Any]) -> dict[str, ParamSchema]:
 
 
 class MCPTool(BaseTool):
-    """Wraps an MCP server tool as a BaseTool."""
+    """Wraps an MCP server tool as a BaseTool.
 
-    def __init__(self, client: MCPClient, tool_info: dict[str, Any]) -> None:
-        self._client = client
+    Holds a reference to an :class:`MCPConnectionPool` rather than a raw
+    :class:`MCPClient` so that the underlying stdio transport stays alive
+    across multiple invocations.
+    """
+
+    def __init__(
+        self,
+        pool: MCPConnectionPool,
+        server: "MCPServerConfig",
+        tool_info: dict[str, Any],
+    ) -> None:
+        self._pool = pool
+        self._server = server
         self._tool_info = tool_info
         name = tool_info.get("name", "unknown")
         description = tool_info.get("description", "MCP tool")
@@ -68,8 +81,9 @@ class MCPTool(BaseTool):
 
     def invoke(self, params: dict[str, Any], context: ToolContext) -> ToolResult:
         name = self._tool_info.get("name", "")
+        client = self._pool.get_client(self._server)
         try:
-            result = self._client.call_tool(name, params)
+            result = client.call_tool(name, params)
             content = result.get("content", [])
             # MCP content is a list of {type, text} objects
             texts = [item.get("text", "") for item in content if isinstance(item, dict)]
@@ -82,3 +96,5 @@ class MCPTool(BaseTool):
                 error=str(exc),
                 metadata={"source": "mcp", "tool": name},
             )
+        finally:
+            self._pool.release_client(self._server.name)

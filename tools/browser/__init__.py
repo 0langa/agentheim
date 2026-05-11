@@ -1,6 +1,7 @@
 """Browser automation tool implementing ToolProtocol.
 
 Web page interaction with Playwright primary backend and HTTP fallback chain.
+Supports persistent sessions for multi-step workflows.
 """
 
 from __future__ import annotations
@@ -14,22 +15,30 @@ from typing import Any
 
 from core.errors import ToolSafetyError
 from core.tool_protocol import BaseTool, ParamSchema, ReturnSchema, RiskLevel, ToolContext, ToolResult, ToolSchema
+from tools.browser.session import BrowserSessionManager
 
 
 class BrowserTool(BaseTool):
-    """Browser automation with Playwright primary and HTTP fallback."""
+    """Browser automation with Playwright primary and HTTP fallback.
 
-    PLAYWRIGHT_OPS = {"screenshot", "click", "fill", "evaluate"}
+    Supports two modes:
+    1. **Session mode**: Create a session with ``operation=create_session``,
+       then reuse it across ``navigate``, ``click``, ``fill``, etc.
+    2. **Transient mode**: Each operation launches its own browser
+       (backward-compatible, but slower).
+    """
+
+    PLAYWRIGHT_OPS = {"screenshot", "click", "fill", "evaluate", "create_session", "close_session"}
 
     def __init__(self, repo_root: str | Path = ".") -> None:
         self.repo_root = Path(repo_root).resolve()
         schema = ToolSchema(
-            description="Browser automation for web page interaction.",
+            description="Browser automation for web page interaction. Supports persistent sessions for multi-step workflows.",
             parameters={
                 "operation": ParamSchema(
                     type="string",
                     description="Operation to perform",
-                    enum=["navigate", "get_text", "get_links", "screenshot", "click", "fill", "evaluate"],
+                    enum=["navigate", "get_text", "get_links", "screenshot", "click", "fill", "evaluate", "create_session", "close_session"],
                     required=True,
                 ),
                 "url": ParamSchema(type="string", description="URL to navigate to", required=False),
@@ -38,6 +47,7 @@ class BrowserTool(BaseTool):
                 "script": ParamSchema(type="string", description="JavaScript to evaluate", required=False),
                 "save_path": ParamSchema(type="string", description="Relative path to save screenshot (omit for base64)", required=False),
                 "timeout": ParamSchema(type="integer", description="Timeout in seconds", default=30, required=False),
+                "session_id": ParamSchema(type="string", description="Session ID for persistent browser context", required=False),
             },
             returns=ReturnSchema(type="object", description="Operation result"),
         )
@@ -50,34 +60,83 @@ class BrowserTool(BaseTool):
 
         operation = params.get("operation")
         url = params.get("url", "")
+        session_id = params.get("session_id")
 
         # Network policy check
         if not context.network_allowed:
             return ToolResult(success=False, error="Network access is not allowed by policy.")
 
-        # URL required for all ops except evaluate (which may run on current page context)
-        if operation != "evaluate" and not url:
-            return ToolResult(success=False, error="Parameter 'url' is required for this operation.")
-
         try:
+            if operation == "create_session":
+                return self._create_session()
+            if operation == "close_session":
+                return self._close_session(session_id)
+
+            # URL required for all ops except evaluate (which may run on current page context)
+            if operation != "evaluate" and not url and not session_id:
+                return ToolResult(success=False, error="Parameter 'url' is required for this operation.")
+
             if operation == "navigate":
-                return self._navigate(url, params.get("timeout", 30))
+                return self._navigate(url, params.get("timeout", 30), session_id)
             if operation == "get_text":
-                return self._get_text(url, params.get("selector"), params.get("timeout", 30))
+                return self._get_text(url, params.get("selector"), params.get("timeout", 30), session_id)
             if operation == "get_links":
-                return self._get_links(url, params.get("timeout", 30))
+                return self._get_links(url, params.get("timeout", 30), session_id)
             if operation == "screenshot":
-                return self._screenshot(url, params.get("save_path"), params.get("timeout", 30))
+                return self._screenshot(url, params.get("save_path"), params.get("timeout", 30), session_id)
             if operation == "click":
-                return self._click(url, params.get("selector", ""), params.get("timeout", 30))
+                return self._click(url, params.get("selector", ""), params.get("timeout", 30), session_id)
             if operation == "fill":
-                return self._fill(url, params.get("selector", ""), params.get("value", ""), params.get("timeout", 30))
+                return self._fill(url, params.get("selector", ""), params.get("value", ""), params.get("timeout", 30), session_id)
             if operation == "evaluate":
-                return self._evaluate(url, params.get("script", ""), params.get("timeout", 30))
+                return self._evaluate(url, params.get("script", ""), params.get("timeout", 30), session_id)
         except ToolSafetyError as exc:
             return ToolResult(success=False, error=str(exc))
 
         return ToolResult(success=False, error=f"Unknown operation: {operation}")
+
+    # ------------------------------------------------------------------
+    # Session helpers
+    # ------------------------------------------------------------------
+
+    def _create_session(self) -> ToolResult:
+        manager = BrowserSessionManager()
+        sid = manager.create_session()
+        return ToolResult(
+            success=True,
+            data={"session_id": sid},
+            metadata={"backend": "playwright", "action": "session_created"},
+        )
+
+    def _close_session(self, session_id: str | None) -> ToolResult:
+        if not session_id:
+            return ToolResult(success=False, error="Parameter 'session_id' is required for close_session.")
+        manager = BrowserSessionManager()
+        manager.close_session(session_id)
+        return ToolResult(
+            success=True,
+            data={"session_id": session_id},
+            metadata={"backend": "playwright", "action": "session_closed"},
+        )
+
+    def _get_page(self, url: str, timeout: int, session_id: str | None):
+        """Return a page object, creating a transient session if needed."""
+        manager = BrowserSessionManager()
+        if session_id:
+            page = manager.get_page(session_id)
+            if page is None:
+                raise ToolSafetyError(f"Session '{session_id}' not found. Create it first with operation=create_session.")
+            if url:
+                page.goto(url, timeout=timeout * 1000, wait_until="domcontentloaded")
+            return page
+        # Transient: launch new browser
+        from playwright.sync_api import sync_playwright
+        p = sync_playwright().start()
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        if url:
+            page.goto(url, timeout=timeout * 1000, wait_until="domcontentloaded")
+        return page
 
     # ------------------------------------------------------------------
     # Backend helpers
@@ -107,96 +166,46 @@ class BrowserTool(BaseTool):
     # Operations
     # ------------------------------------------------------------------
 
-    def _navigate(self, url: str, timeout: int) -> ToolResult:
+    def _navigate(self, url: str, timeout: int, session_id: str | None) -> ToolResult:
         """Navigate to URL and return page metadata."""
+        if session_id:
+            manager = BrowserSessionManager()
+            if not url:
+                page = manager.get_page(session_id)
+                if page is None:
+                    return ToolResult(success=False, error=f"Session '{session_id}' not found.")
+                return ToolResult(
+                    success=True,
+                    data={"title": page.title(), "status": None, "url": page.url},
+                    metadata={"backend": "playwright", "session_id": session_id},
+                )
+            meta = manager.navigate(session_id, url, timeout)
+            return ToolResult(
+                success=True,
+                data=meta,
+                metadata={"backend": "playwright", "session_id": session_id},
+            )
         if self._playwright_available():
             return self._navigate_playwright(url, timeout)
         return self._navigate_http_fallback(url, timeout)
 
-    def _get_text(self, url: str, selector: str | None, timeout: int) -> ToolResult:
-        if self._playwright_available():
-            return self._get_text_playwright(url, selector, timeout)
-        return self._get_text_http_fallback(url, selector, timeout)
-
-    def _get_links(self, url: str, timeout: int) -> ToolResult:
-        if self._playwright_available():
-            return self._get_links_playwright(url, timeout)
-        return self._get_links_http_fallback(url, timeout)
-
-    def _screenshot(self, url: str, save_path: str | None, timeout: int) -> ToolResult:
-        if not self._playwright_available():
-            return ToolResult(success=False, error="Screenshot requires Playwright which is not available.")
-        target = self._resolve_save_path(save_path)
-        return self._screenshot_playwright(url, target, timeout)
-
-    def _click(self, url: str, selector: str, timeout: int) -> ToolResult:
-        if not selector:
-            return ToolResult(success=False, error="Parameter 'selector' is required for click.")
-        if not self._playwright_available():
-            return ToolResult(success=False, error="Click requires Playwright which is not available.")
-        return self._click_playwright(url, selector, timeout)
-
-    def _fill(self, url: str, selector: str, value: str, timeout: int) -> ToolResult:
-        if not selector:
-            return ToolResult(success=False, error="Parameter 'selector' is required for fill.")
-        if not self._playwright_available():
-            return ToolResult(success=False, error="Fill requires Playwright which is not available.")
-        return self._fill_playwright(url, selector, value, timeout)
-
-    def _evaluate(self, url: str, script: str, timeout: int) -> ToolResult:
-        if not script:
-            return ToolResult(success=False, error="Parameter 'script' is required for evaluate.")
-        if not self._playwright_available():
-            return ToolResult(success=False, error="Evaluate requires Playwright which is not available.")
-        return self._evaluate_playwright(url, script, timeout)
-
-    # ------------------------------------------------------------------
-    # Playwright backends
-    # ------------------------------------------------------------------
-
-    def _navigate_playwright(self, url: str, timeout: int) -> ToolResult:
-        from playwright.sync_api import sync_playwright
-
-        with sync_playwright() as p:
-            browser = p.chromium.launch()
+    def _get_text(self, url: str, selector: str | None, timeout: int, session_id: str | None) -> ToolResult:
+        if session_id or self._playwright_available():
             try:
-                page = browser.new_page()
-                response = page.goto(url, timeout=timeout * 1000, wait_until="domcontentloaded")
-                status = response.status if response else None
-                title = page.title()
-                return ToolResult(
-                    success=True,
-                    data={"title": title, "status": status, "url": page.url},
-                    metadata={"backend": "playwright"},
-                )
-            finally:
-                browser.close()
-
-    def _get_text_playwright(self, url: str, selector: str | None, timeout: int) -> ToolResult:
-        from playwright.sync_api import sync_playwright
-
-        with sync_playwright() as p:
-            browser = p.chromium.launch()
-            try:
-                page = browser.new_page()
-                page.goto(url, timeout=timeout * 1000, wait_until="domcontentloaded")
+                page = self._get_page(url, timeout, session_id)
                 if selector:
-                    element = page.locator(selector).first
-                    text = element.inner_text(timeout=timeout * 1000)
+                    text = page.locator(selector).first.inner_text(timeout=timeout * 1000)
                 else:
                     text = page.locator("body").inner_text(timeout=timeout * 1000)
-                return ToolResult(success=True, data=text, metadata={"backend": "playwright"})
-            finally:
-                browser.close()
+                return ToolResult(success=True, data=text, metadata={"backend": "playwright", "session_id": session_id})
+            except Exception as exc:
+                return ToolResult(success=False, error=str(exc))
+        return self._get_text_http_fallback(url, selector, timeout)
 
-    def _get_links_playwright(self, url: str, timeout: int) -> ToolResult:
-        from playwright.sync_api import sync_playwright
-
-        with sync_playwright() as p:
-            browser = p.chromium.launch()
+    def _get_links(self, url: str, timeout: int, session_id: str | None) -> ToolResult:
+        if session_id or self._playwright_available():
             try:
-                page = browser.new_page()
-                page.goto(url, timeout=timeout * 1000, wait_until="domcontentloaded")
+                page = self._get_page(url, timeout, session_id)
                 links = page.locator("a").all()
                 results = []
                 for link in links:
@@ -204,74 +213,93 @@ class BrowserTool(BaseTool):
                     text = link.inner_text().strip()
                     if href:
                         results.append({"text": text, "href": href})
-                return ToolResult(success=True, data=results, metadata={"backend": "playwright", "count": len(results)})
-            finally:
-                browser.close()
+                return ToolResult(success=True, data=results, metadata={"backend": "playwright", "count": len(results), "session_id": session_id})
+            except Exception as exc:
+                return ToolResult(success=False, error=str(exc))
+        return self._get_links_http_fallback(url, timeout)
 
-    def _screenshot_playwright(self, url: str, save_path: Path | None, timeout: int) -> ToolResult:
+    def _screenshot(self, url: str, save_path: str | None, timeout: int, session_id: str | None) -> ToolResult:
+        if not self._playwright_available():
+            return ToolResult(success=False, error="Screenshot requires Playwright which is not available.")
+        target = self._resolve_save_path(save_path)
+        try:
+            page = self._get_page(url, timeout, session_id)
+            if target:
+                page.screenshot(path=str(target), full_page=True)
+                return ToolResult(
+                    success=True,
+                    data=str(target.relative_to(self.repo_root)),
+                    metadata={"backend": "playwright", "format": "png", "saved": True, "session_id": session_id},
+                )
+            else:
+                png_bytes = page.screenshot(full_page=True)
+                b64 = base64.b64encode(png_bytes).decode("ascii")
+                return ToolResult(
+                    success=True,
+                    data=b64,
+                    metadata={"backend": "playwright", "format": "png", "saved": False, "encoding": "base64", "session_id": session_id},
+                )
+        except Exception as exc:
+            return ToolResult(success=False, error=str(exc))
+
+    def _click(self, url: str, selector: str, timeout: int, session_id: str | None) -> ToolResult:
+        if not selector:
+            return ToolResult(success=False, error="Parameter 'selector' is required for click.")
+        if not self._playwright_available():
+            return ToolResult(success=False, error="Click requires Playwright which is not available.")
+        try:
+            page = self._get_page(url, timeout, session_id)
+            page.locator(selector).first.click(timeout=timeout * 1000)
+            return ToolResult(success=True, data={"clicked": selector}, metadata={"backend": "playwright", "session_id": session_id})
+        except Exception as exc:
+            return ToolResult(success=False, error=str(exc))
+
+    def _fill(self, url: str, selector: str, value: str, timeout: int, session_id: str | None) -> ToolResult:
+        if not selector:
+            return ToolResult(success=False, error="Parameter 'selector' is required for fill.")
+        if not self._playwright_available():
+            return ToolResult(success=False, error="Fill requires Playwright which is not available.")
+        try:
+            page = self._get_page(url, timeout, session_id)
+            page.locator(selector).first.fill(value, timeout=timeout * 1000)
+            return ToolResult(success=True, data={"filled": selector}, metadata={"backend": "playwright", "session_id": session_id})
+        except Exception as exc:
+            return ToolResult(success=False, error=str(exc))
+
+    def _evaluate(self, url: str, script: str, timeout: int, session_id: str | None) -> ToolResult:
+        if not script:
+            return ToolResult(success=False, error="Parameter 'script' is required for evaluate.")
+        if not self._playwright_available():
+            return ToolResult(success=False, error="Evaluate requires Playwright which is not available.")
+        try:
+            page = self._get_page(url, timeout, session_id)
+            result = page.evaluate(script)
+            return ToolResult(success=True, data=result, metadata={"backend": "playwright", "session_id": session_id})
+        except Exception as exc:
+            return ToolResult(success=False, error=str(exc))
+
+    # ------------------------------------------------------------------
+    # Playwright backends (transient mode)
+    # ------------------------------------------------------------------
+
+    def _navigate_playwright(self, url: str, timeout: int) -> ToolResult:
         from playwright.sync_api import sync_playwright
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch()
-            try:
-                page = browser.new_page()
-                page.goto(url, timeout=timeout * 1000, wait_until="domcontentloaded")
-                if save_path:
-                    page.screenshot(path=str(save_path), full_page=True)
-                    return ToolResult(
-                        success=True,
-                        data=str(save_path.relative_to(self.repo_root)),
-                        metadata={"backend": "playwright", "format": "png", "saved": True},
-                    )
-                else:
-                    png_bytes = page.screenshot(full_page=True)
-                    b64 = base64.b64encode(png_bytes).decode("ascii")
-                    return ToolResult(
-                        success=True,
-                        data=b64,
-                        metadata={"backend": "playwright", "format": "png", "saved": False, "encoding": "base64"},
-                    )
-            finally:
-                browser.close()
-
-    def _click_playwright(self, url: str, selector: str, timeout: int) -> ToolResult:
-        from playwright.sync_api import sync_playwright
-
-        with sync_playwright() as p:
-            browser = p.chromium.launch()
-            try:
-                page = browser.new_page()
-                page.goto(url, timeout=timeout * 1000, wait_until="domcontentloaded")
-                page.locator(selector).first.click(timeout=timeout * 1000)
-                return ToolResult(success=True, data={"clicked": selector}, metadata={"backend": "playwright"})
-            finally:
-                browser.close()
-
-    def _fill_playwright(self, url: str, selector: str, value: str, timeout: int) -> ToolResult:
-        from playwright.sync_api import sync_playwright
-
-        with sync_playwright() as p:
-            browser = p.chromium.launch()
-            try:
-                page = browser.new_page()
-                page.goto(url, timeout=timeout * 1000, wait_until="domcontentloaded")
-                page.locator(selector).first.fill(value, timeout=timeout * 1000)
-                return ToolResult(success=True, data={"filled": selector}, metadata={"backend": "playwright"})
-            finally:
-                browser.close()
-
-    def _evaluate_playwright(self, url: str, script: str, timeout: int) -> ToolResult:
-        from playwright.sync_api import sync_playwright
-
-        with sync_playwright() as p:
-            browser = p.chromium.launch()
-            try:
-                page = browser.new_page()
-                page.goto(url, timeout=timeout * 1000, wait_until="domcontentloaded")
-                result = page.evaluate(script)
-                return ToolResult(success=True, data=result, metadata={"backend": "playwright"})
-            finally:
-                browser.close()
+        p = sync_playwright().start()
+        browser = p.chromium.launch()
+        try:
+            page = browser.new_page()
+            response = page.goto(url, timeout=timeout * 1000, wait_until="domcontentloaded")
+            status = response.status if response else None
+            title = page.title()
+            return ToolResult(
+                success=True,
+                data={"title": title, "status": status, "url": page.url},
+                metadata={"backend": "playwright"},
+            )
+        finally:
+            browser.close()
+            p.stop()
 
     # ------------------------------------------------------------------
     # HTTP fallback backends (requests → urllib)
