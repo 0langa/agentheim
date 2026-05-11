@@ -148,6 +148,31 @@ PHASE_LOCK = {
         ],
         'locked': ['interfaces/web_ui/', 'interfaces/desktop_ui/', 'interfaces/api_server/'],
     },
+    6: {
+        'unlocked': [
+            'interfaces/web_ui/',
+            'interfaces/desktop_ui/',
+            'interfaces/api_server/',
+            'tools/mcp/',
+            'tools/browser/',
+        ],
+        'locked': [],
+    },
+    7: {
+        'unlocked': [
+            'core/',
+            'providers/',
+            'tools/',
+            'workflows/',
+            'memory/',
+            'interfaces/',
+            'presets/',
+            'config/',
+            'tests/',
+            'scripts/',
+        ],
+        'locked': [],
+    },
 }
 
 RESERVED_SUBSYSTEMS = [
@@ -165,6 +190,7 @@ SUBPROCESS_EXEMPTIONS = [
     'tests/memory/test_stress.py',           # Cross-process stress tests spawn subprocesses
     'interfaces/cli/cli.py',                 # Doctor command checks git availability via subprocess
     'tools/mcp/client.py',                   # MCP client spawns MCP server subprocesses
+    'tests/test_import_linting.py',          # Tests the checker itself; needs subprocess
 ]
 
 
@@ -190,6 +216,7 @@ class ArchitectureChecker:
             self.check_reserved_not_implemented,
             self.check_event_immutability,
             self.check_directory_structure,
+            self.check_import_boundaries,
         ]
 
         for check in checks:
@@ -419,6 +446,37 @@ class ArchitectureChecker:
                     fix=f"Create directory: mkdir -p {dir_path}",
                 ))
 
+    def check_import_boundaries(self):
+        """Phase 7: Interfaces MUST import only from core.public_api."""
+        interfaces_dir = self.root / 'interfaces'
+        if not interfaces_dir.exists():
+            return
+
+        for py_file in interfaces_dir.rglob('*.py'):
+            try:
+                content = py_file.read_text(encoding='utf-8')
+                tree = ast.parse(content)
+            except (SyntaxError, UnicodeDecodeError):
+                continue
+
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom) and node.module:
+                    # Only check imports from core.*
+                    if not node.module.startswith('core.'):
+                        continue
+                    # Allow core.public_api
+                    if node.module == 'core.public_api' or node.module.startswith('core.public_api.'):
+                        continue
+                    rel_path = py_file.relative_to(self.root)
+                    self.violations.append(Violation(
+                        level=ViolationLevel.LEVEL_3,
+                        rule="Phase 7: Public API Boundary",
+                        file=str(rel_path),
+                        line=node.lineno,
+                        message=f"Interface imports from '{node.module}'; must use 'core.public_api'",
+                        fix="Replace with 'from core.public_api import ...'",
+                    ))
+
 
 # ─── Reporter ────────────────────────────────────────────────────────────────
 
@@ -500,7 +558,7 @@ def main():
         description="Enforce agentheim architecture rules"
     )
     parser.add_argument('--phase', type=int, default=0,
-                        help='Current development phase (0-5)')
+                        help='Current development phase (0-7)')
     parser.add_argument('--pr', action='store_true',
                         help='Check PR diff only')
     parser.add_argument('--ci', action='store_true',

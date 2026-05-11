@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("narrow", "targeted", "broad", "full")]
+    [ValidateSet("narrow", "targeted", "broad", "full", "phase7")]
     [string]$Mode = "targeted",
     [string]$K = ""
 )
@@ -73,12 +73,53 @@ switch ($Mode) {
             "tests/test_api_server.py",
             "tests/test_run_executor.py",
             "tests/test_tool_protocol.py",
-            "tests/test_federation_transport.py"
+            "tests/test_federation_transport.py",
+            "tests/test_events.py",
+            "tests/test_ledger_hash.py",
+            "tests/test_ledger_index.py",
+            "tests/test_ledger_checkpoints.py",
+            "tests/test_error_classification.py",
+            "tests/test_retry_engine.py",
+            "tests/test_step_budget.py",
+            "tests/test_workflow_runner.py",
+            "tests/test_workflow_runner_parallel.py",
+            "tests/test_artifact_store.py",
+            "tests/test_context_packer.py",
+            "tests/test_agent_protocol.py",
+            "tests/test_public_api.py",
+            "tests/test_policy_engine.py",
+            "tests/test_privacy_enforcer.py",
+            "tests/test_approval_workflow.py",
+            "tests/test_policy_audit.py"
         ))
         Invoke-TestSet -Label "broad (memory suite)" -PytestArgs ($baseArgs + @("tests/memory/"))
     }
     "full" {
         Invoke-TestSet -Label "full (entire project test suite)" -PytestArgs $baseArgs
+    }
+    "phase7" {
+        Invoke-TestSet -Label "phase7 (production hardening - all new tests)" -PytestArgs ($baseArgs + @(
+            "tests/test_events.py",
+            "tests/test_ledger_hash.py",
+            "tests/test_ledger_index.py",
+            "tests/test_ledger_checkpoints.py",
+            "tests/test_error_classification.py",
+            "tests/test_retry_engine.py",
+            "tests/test_step_budget.py",
+            "tests/test_workflow_runner.py",
+            "tests/test_workflow_runner_parallel.py",
+            "tests/test_artifact_store.py",
+            "tests/test_context_packer.py",
+            "tests/test_agent_protocol.py",
+            "tests/test_public_api.py",
+            "tests/test_provider_lazy_loading.py",
+            "tests/test_interface_isolation.py",
+            "tests/test_import_linting.py",
+            "tests/test_approval_workflow.py",
+            "tests/test_policy_audit.py",
+            "tests/test_privacy_enforcer.py",
+            "tests/test_policy_engine.py"
+        ))
     }
 }
 

@@ -2,6 +2,27 @@
 
 ## 2026-05-10
 
+### Phase 7 Slice 5 — Safety & Privacy
+- Added `core/privacy_enforcer.py` with `PrivacyMode` enum (STANDARD, LOCAL_ONLY, STRICT_PRIVATE, ENCRYPTED) and `PrivacyEnforcer` class for structured privacy evaluation, param redaction, and sensitive-path detection.
+- Added `core/approval_workflow.py` with `ApprovalRequest` frozen dataclass (6-field disclosure: tool_id, action, target, risk_level, justification, params_redacted) and `ApprovalWorkflow` class for managing pending approvals and emitting `APPROVAL_REQUESTED` / `APPROVAL_GRANTED` / `APPROVAL_DENIED` ledger events.
+- Enhanced `core/policy_engine.py` — `evaluate()` now accepts optional `ledger`, `step_id`, `agent_id` keyword arguments and emits `POLICY_EVALUATED` events for every evaluation (allow/deny/ask). Fully backward-compatible.
+- Exported new symbols in `core/public_api.py`: `PrivacyMode`, `PrivacyEnforcer`, `ApprovalRequest`, `ApprovalWorkflow`.
+- Added `tests/test_privacy_enforcer.py` (17 tests), `tests/test_approval_workflow.py` (13 tests), `tests/test_policy_audit.py` (6 tests), `tests/test_policy_engine.py` (24 tests) — 64 new tests total.
+- Full suite: **667 passed, 2 skipped**.
+- Architecture check: **0 violations**.
+
+## 2026-05-10
+
+### Phase 7 Slice 4 — Boundaries & Loading Tests
+- Added `tests/test_provider_lazy_loading.py` (6 tests) verifying `providers/__init__.py` lazy-loading: listing metadata does not import heavy modules, creating a provider loads only the requested module.
+- Added `tests/test_interface_isolation.py` (7 tests) enforcing that all `interfaces/*` files import exclusively from `core.public_api`, with AST-based verification of no direct `core.*` imports.
+- Added `tests/test_import_linting.py` (2 tests) invoking `scripts/roadmap-check.py` as a subprocess to confirm the architecture checker itself reports zero Phase-7 violations.
+- Added `tests/test_boundaries.py` to `SUBPROCESS_EXEMPTIONS` in `scripts/roadmap-check.py` so the test's legitimate `subprocess.run` calls do not trigger false Law-7 violations.
+- Updated `devtest/run-devtest.ps1` and `devtest/all-test-commands.md` to include the new Slice 4 test modules.
+- Full suite: **607 passed, 2 skipped**.
+
+## 2026-05-10
+
 ### Roadmap Rewrite — Honest Audit + Phase 7 Definition
 - **Full codebase audit** against roadmap docs 00-18 completed by 5 parallel agents.
 - **Verdict:** Phases 0-6 are feature-complete (418 tests pass) but large foundational subsystems are missing or incomplete.
@@ -217,3 +238,120 @@
 - Updated `scripts/roadmap-check.py`: removed all Phase 6 subsystems from RESERVED_SUBSYSTEMS (empty list).
 - Updated `devtest/all-test-commands.md`: added API server, distributed, marketplace, monitoring, self-improving, multimodal, federation, desktop UI test commands.
 - Total test count: 380+ passing.
+
+## [unreleased] Phase 7: Production Hardening — Plan & Preparation
+
+- Created `PHASE7_PLAN.md` at repo root with 6 logical implementation slices (Event Foundation, Runtime Engine, Artifacts & Protocols, Boundaries & Loading, Safety & Privacy, Advanced Routing & Resume).
+- Defined 17 deliverables, 6 exit gates, 12 new source files, 16 modified files, ~34 new tests.
+- Updated `scripts/roadmap-check.py`:
+  - Added Phase 7 phase lock configuration (all subsystems unlocked for hardening).
+  - Added `check_import_boundaries()`: AST-based enforcement that `interfaces/` MUST import only from `core.public_api`.
+  - Script now detects 20 architectural boundary violations across `interfaces/api_server/`, `interfaces/cli/`, `interfaces/web_ui/`.
+- Updated `devtest/all-test-commands.md`:
+  - Architecture check command now uses `--phase 7`.
+  - Added Phase 7 test command reference with all 24 new test modules.
+- Updated `devtest/run-devtest.ps1`:
+  - Added `phase7` mode to `[ValidateSet]`.
+  - Added `phase7` switch case running all Phase 7 test modules.
+
+
+## [unreleased] Phase 7 — Slice 1: Event Foundation
+
+- Created `core/events.py`:
+  - `EventType` enum with 24 canonical event types covering run lifecycle, phase/workflow, agent/model, tool/safety, budget/resource, retry/error, artifact/context, state/memory.
+  - `Event` dataclass (frozen, slots) with `event_id` (UUID4), `sequence` (monotonic int), `timestamp` (UTC), `event_type`, `run_id`, `step_id`, `agent_id`, `tool_id`, `phase`, `payload`, `metadata`, `parent_event_id`, `previous_hash`.
+  - Deterministic `to_json()` (sorted keys, compact separators) for hash stability.
+  - `compute_hash()` returns SHA-256 of canonical JSON **excluding** `previous_hash` to avoid circular dependency.
+  - `from_dict()`, `from_json()`, `create()` factory for deserialization and construction.
+- Rewrote `core/ledger.py` — `RunLedger` upgraded from thin file-writing helper to production-grade event-sourced ledger:
+  - **Unified ledger**: `emit_event()` appends structured `Event` records to `ledger.jsonl` with automatic sequence numbering and thread safety (`threading.Lock`).
+  - **Hash chain**: Each event stores `previous_hash` linking to the prior event. `verify_chain()` validates both event-to-event linkage AND hash file consistency. Tampering with either `ledger.jsonl` or `ledger.hash` is detected.
+  - **Indexing**: In-memory index by `event_type`, `phase`, `agent_id`, `tool_id`, `step_id`. `query_index()` supports single-dimension and combined (intersection) queries. Index persists to `ledger.index` on checkpoint and reloads on resume.
+  - **Checkpoints**: `save_checkpoint(state, sequence_num)` writes to `checkpoints/NNNNNNNN.json`. `load_last_checkpoint()` returns most recent state. `list_checkpoints()` returns sorted list.
+  - **Resume support**: `create()` detects existing `ledger.jsonl` and restores `_sequence` via `_restore_sequence_from_ledger()` so resumed runs continue correct numbering.
+  - **Backward compatibility**: All pre-Phase 7 methods (`write_json`, `write_text`, `append_jsonl`) unchanged. Legacy `tool_calls.jsonl` and `state_transitions.jsonl` still created on run init.
+- Added 57 tests:
+  - `tests/test_events.py` (11 tests): event type uniqueness, count, serialization round-trip, hash determinism, hash excludes previous_hash, factory behavior.
+  - `tests/test_ledger_hash.py` (10 tests): empty/single/chain verification, tampered event detection, tampered hash file detection, first event previous_hash, linkage, hash file matching.
+  - `tests/test_ledger_index.py` (12 tests): query by all 5 dimensions, combined filters, no-match, empty ledger, string event_type, index persistence/load, incremental updates.
+  - `tests/test_ledger_checkpoints.py` (9 tests): save/load/list, timestamp inclusion, checkpoint dir creation, sequence restore, multiple run isolation.
+  - `tests/core/test_ledger.py` (15 tests, 6 legacy + 5 new): backward compat for all legacy methods + unified ledger integration (emit creates files, increments sequence, legacy+unified coexist).
+- Updated `devtest/` files:
+  - `all-test-commands.md`: Added "Slice 1: Event Foundation" section.
+  - `run-devtest.ps1`: Added Slice 1 test paths to `broad` mode.
+- Full test suite: **468 passed, 2 skipped** (+50 from Slice 1).
+
+
+## [unreleased] Phase 7 — Slice 2: Runtime Engine
+
+- Created `core/error_classification.py`:
+  - `ErrorCategory` enum with 6 canonical categories: TRANSIENT, RECOVERABLE, VERIFICATION, CONFIGURATION, PERMISSION, FATAL.
+  - `classify_error()` walks the exception MRO to assign the most specific category.
+  - Strategy helpers: `should_retry()`, `should_halt()`, `max_retries_for()`, `backoff_for()`, `error_summary()`.
+- Created `core/retry_engine.py`:
+  - `RetryEngine` class executes callables with bounded retry and exponential backoff.
+  - Integrates with error classification: TRANSIENT/RECOVERABLE/VERIFICATION → retry; CONFIGURATION/PERMISSION/FATAL → immediate halt.
+  - Emits `RETRY_ATTEMPTED` and `RETRY_EXHAUSTED` events to ledger.
+  - `execute_with_budget()` variant checks a budget predicate before every attempt.
+- Created `core/step_budget.py`:
+  - `BudgetSnapshot` and `BudgetLimits` dataclasses for tracking consumption and defining ceilings.
+  - `StepBudgetEnforcer` tracks cumulative tokens, time, tool_calls, agent_invocations per run.
+  - `check_budget()` validates all limits before every operation; raises `BudgetExceededError` with structured info.
+  - `record_tokens()`, `record_tool_call()`, `record_agent_invocation()` increment counters and enforce `>=` semantics.
+  - Emits `BUDGET_CHECKED` on every check and `BUDGET_EXCEEDED` when any limit hit.
+- Created `core/workflow_runner.py`:
+  - `WorkflowRunner` — production DAG execution engine replacing the sequential `for` loop in `workflows/base.py`.
+  - Executes `ExecutionDAG.parallel_groups()` in topological order.
+  - **Parallel execution**: groups where all steps have `parallel_safe=True` run concurrently via `ThreadPoolExecutor` (configurable `max_workers`).
+  - **Workspace isolation**: per-step workspace dirs created under `run_dir/workspaces/{step_id}/` when `workspace_isolation=True`.
+  - **Retry integration**: `step.max_iterations` drives retry count; errors are classified and retried by `RetryEngine`.
+  - **Budget enforcement**: `StepBudgetEnforcer` checks budget before each step; `BudgetExceededError` returns failed `StepResult` instead of crashing the run.
+  - **Event emission**: emits `RUN_INITIATED`, `PHASE_TRANSITION`, `AGENT_INVOKED`, `STATE_TRANSITION`, `RUN_COMPLETED`, `RUN_FAILED`.
+  - **WorkingMemory**: creates and flushes ephemeral working memory at run boundaries.
+  - **Graceful error handling**: catches exceptions in `execute_step`, classifies them, and either retries, returns a failed result, or halts the run.
+- Refactored `workflows/base.py`:
+  - `Workflow.run()` now delegates to `WorkflowRunner.run()` via lazy import (avoids circular dependency).
+  - All legacy behavior preserved: `WorkingMemory` creation, `StepContext` construction, condition evaluation, lifecycle hooks.
+- Added 84 tests:
+  - `tests/test_error_classification.py` (22 tests): classify all exception types, retry/halt strategies, config defaults, summary structure.
+  - `tests/test_retry_engine.py` (10 tests): success, retry-then-success, exhausted, no-retry for fatal/config, explicit category override, ledger events, budget checker.
+  - `tests/test_step_budget.py` (12 tests): snapshot/limits, within/over budget for all dimensions, events emitted, snapshot method.
+  - `tests/test_workflow_runner.py` (17 tests): sequential execution, events, conditions, halt on failure, retry success/exhausted, workspace isolation, working memory flush, budget enforcement, DAG missing.
+  - `tests/test_workflow_runner_parallel.py` (9 tests): concurrent execution, mixed groups, dependency ordering, single step, sequential fallback, parallel failure handling, event attribution.
+- Updated `devtest/` files:
+  - `all-test-commands.md`: Added Slice 2 section.
+  - `run-devtest.ps1`: Added Slice 2 test paths to `broad` mode.
+- Full test suite: **552 passed, 2 skipped** (+84 from Slice 2).
+
+
+## [unreleased] Phase 7 — Slice 3: Artifacts & Protocols
+
+- Created `core/agent_protocol.py`:
+  - `AgentMessage` (frozen dataclass): `role`, `content`, `metadata` — aligns with standard LLM APIs.
+  - `AgentRequest`: `agent_id`, `messages`, `tools`, `context`.
+  - `AgentResponse`: `content`, `tool_calls`, `usage`, `finish_reason`.
+  - `AgentContext`: `run_id`, `step_id`, `repo_root`, `tools`, `policy`, `ledger`, `working_memory`, `prior_results`. Includes `to_dict()` for serialization and `from_step_context()` factory to build from `StepContext`.
+- Created `core/artifact_store.py`:
+  - `ArtifactSpec` dataclass defining each artifact's name, required status, and validator.
+  - Canonical `RUN_ARTIFACTS` list of 15 artifacts: run.json, config.redacted.json, plan.md, context_bundle.md, context_manifest.json, ledger.jsonl, ledger.index, ledger.hash, timeline.jsonl, tool_calls.jsonl, policy_decisions.jsonl, patch.diff, verification.json, final_report.md, checkpoints/.
+  - `ArtifactStore` class: `create_run()` initializes directory with generic artifacts (`run.json`, `config.redacted.json`). `validate_completeness()` checks all required artifacts exist and pass schema validation (JSON/JSONL). `is_complete()` / `list_artifacts()` for status queries. Producer methods for workflow artifacts: `produce_context_artifacts()`, `produce_plan()`, `produce_final_report()`, `produce_verification()`, `produce_patch()`.
+- Created `core/context_packer.py`:
+  - `ContextPacker` class: `pack(repo_root, run_config, tool_registry) → (bundle_md, manifest)`.
+  - Scans repository via `inspect_repository()`, sorts files by relevance (docs/config first, then code), excludes binaries and build artifacts.
+  - Respects configurable token budget using `chars_per_token` heuristic (default 4 chars/token, 128k tokens).
+  - Redacts secrets via `redact_text()` before inclusion.
+  - Produces `ContextManifest` with per-file metadata: path, size, language, summary, included/excluded status.
+- Created `core/public_api.py`:
+  - Stable facade: the ONLY module interfaces may import from `core/`.
+  - Exports 40+ symbols across events, ledger, error/retry, budget, tools, models, policy, capabilities, workflow runtime, agent protocol, artifacts, context, redaction, schemas.
+  - `__all__` explicitly lists every export; no module objects leaked.
+- Added 41 tests:
+  - `tests/test_artifact_store.py` (13 tests): create run, run.json, config redaction, completeness validation, invalid JSON/JSONL detection, missing checkpoints, all producer methods, artifact count.
+  - `tests/test_context_packer.py` (12 tests): bundle generation, secret redaction, budget respect, file prioritization, manifest serialization, tools section, config section, binary/venv exclusion, language detection.
+  - `tests/test_agent_protocol.py` (9 tests): message/request/response/context defaults, frozen messages, to_dict serialization, from_step_context factory.
+  - `tests/test_public_api.py` (7 tests): all expected symbols exist, no internal modules exposed, __all__ coverage, import safety (no provider loading), AST verification of re-exports.
+- Updated `devtest/` files:
+  - `all-test-commands.md`: Added Slice 3 section.
+  - `run-devtest.ps1`: Added Slice 3 test paths to `broad` mode.
+- Full test suite: **593 passed, 2 skipped** (+41 from Slice 3).
+

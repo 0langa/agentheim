@@ -12,9 +12,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from core.capability_registry import list_workflows as cap_list_workflows
-from core.run_executor import RunExecutor, RunStatus
-from core.tool_protocol import ToolContext, ToolResult
+from core.public_api import (
+    RunExecutor,
+    RunRecord,
+    RunStatus,
+    ToolContext,
+    ToolResult,
+    list_workflows as cap_list_workflows,
+)
 from memory.bus import MemoryBus
 from tools.registry import ToolRegistry
 
@@ -342,9 +347,7 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
             raise HTTPException(status_code=404, detail=f"Workflow '{workflow_id}' not found")
 
         def _run():
-            from core.ledger import RunLedger
-            from core.model_registry import ModelRegistry
-            from core.policy_engine import PolicyEngine
+            from core.public_api import RunLedger, ModelRegistry, PolicyEngine
             ledger = RunLedger.create(repo_root, f"api-{workflow_id}")
             registry = ModelRegistry.from_team_config()
             policy = PolicyEngine()
@@ -415,7 +418,7 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
     @app.get("/api/models", response_model=list[ModelListItem], tags=["models"])
     def list_models() -> list[ModelListItem]:
         """List configured models and their capabilities."""
-        from core.model_registry import ModelRegistry
+        from core.public_api import ModelRegistry
 
         try:
             registry = ModelRegistry.from_team_config()

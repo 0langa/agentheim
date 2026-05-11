@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agentheim Roadmap Guard"
+  short_description: "Enforce roadmap phase constraints and checks."
+  default_prompt: "Use $agentheim-roadmap-guard to verify this change still aligns with roadmap gates."

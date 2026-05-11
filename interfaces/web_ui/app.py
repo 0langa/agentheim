@@ -9,9 +9,14 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from core.capability_registry import list_workflows as cap_list_workflows
-from core.run_executor import RunExecutor, RunStatus
-from core.tool_protocol import ToolContext, ToolResult
+from core.public_api import (
+    RunExecutor,
+    RunRecord,
+    RunStatus,
+    ToolContext,
+    ToolResult,
+    list_workflows as cap_list_workflows,
+)
 from memory.bus import MemoryBus
 from tools.registry import ToolRegistry
 
@@ -178,7 +183,7 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
         """List registered workflows."""
         # Import workflows to ensure registration
         _import_workflows()
-        from core.capability_registry import list_workflows as cap_list
+        from core.public_api import list_workflows as cap_list
 
         return [
             WorkflowListItem(
@@ -202,9 +207,7 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
             raise HTTPException(status_code=404, detail=f"Workflow '{workflow_id}' not found")
 
         def _run():
-            from core.ledger import RunLedger
-            from core.model_registry import ModelRegistry
-            from core.policy_engine import PolicyEngine
+            from core.public_api import RunLedger, ModelRegistry, PolicyEngine
             ledger = RunLedger.create(repo_root, f"webui-{workflow_id}")
             registry = ModelRegistry.from_team_config()
             policy = PolicyEngine()

@@ -182,40 +182,11 @@ class Workflow(ABC):
         if self.dag is None:
             raise RuntimeError("Workflow DAG not defined")
 
-        working_mem = WorkingMemory(ledger=self._ledger)
-        context = StepContext(
-            run_id=self.ledger.run_dir.name if self.ledger else "unknown",
-            step_id="init",
-            repo_root=repo_root,
-            tools=self._tool_registry,
-            policy=self._policy_engine,
-            ledger=self._ledger,
-            working_memory=working_mem,
-            metadata=metadata or {},
-        )
+        # Phase 7: delegate to the production WorkflowRunner
+        from core.workflow_runner import WorkflowRunner
 
-        results: list[StepResult] = []
-        prior: dict[str, StepResult] = {}
-
-        for step in self.dag.topological_order():
-            context.step_id = step.id
-            context.prior_results = prior
-
-            if step.condition and not self._eval_condition(step.condition, prior):
-                results.append(StepResult(step_id=step.id, success=True, output="Skipped by condition"))
-                continue
-
-            result = self.execute_step(step, context)
-            results.append(result)
-            prior[step.id] = result
-            self.on_step_complete(step, result)
-
-            if not result.success and step.max_iterations <= 1:
-                break
-
-        working_mem.flush()
-        self.on_run_complete(results)
-        return results
+        runner = WorkflowRunner()
+        return runner.run(self, repo_root, metadata)
 
     def _eval_condition(self, condition: str, prior: dict[str, StepResult]) -> bool:
         if condition.startswith("not "):
@@ -237,3 +208,7 @@ class Workflow(ABC):
     @property
     def ledger(self) -> RunLedger | None:
         return self._ledger
+
+    @ledger.setter
+    def ledger(self, value: RunLedger | None) -> None:
+        self._ledger = value

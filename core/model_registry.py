@@ -39,6 +39,10 @@ class ModelRegistry:
             )
         return cls(providers=providers, models=models)
 
+    def list_models(self) -> list[ModelDescriptor]:
+        """Return all registered models."""
+        return list(self._models.values())
+
     def resolve_model(self, role: str, required_capability: str) -> ModelDescriptor:
         candidates = [model for model in self._models.values() if model.role == role and required_capability in model.capabilities]
         if not candidates:

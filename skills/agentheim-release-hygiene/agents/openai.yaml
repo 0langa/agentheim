@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agentheim Release Hygiene"
+  short_description: "Apply changelog, docs, and validation release checks."
+  default_prompt: "Use $agentheim-release-hygiene to finish this patch with release-safe docs and validation updates."

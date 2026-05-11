@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from core.events import EventType
 from core.ledger import RunLedger
 
 
@@ -53,3 +54,47 @@ class TestRunLedger:
         path = ledger.write_json("plain.json", {"name": "hello"})
         data = json.loads(path.read_text(encoding="utf-8"))
         assert data["name"] == "hello"
+
+
+class TestRunLedgerUnified:
+    def test_emit_event_creates_ledger_jsonl(self, tmp_path: Path) -> None:
+        ledger = RunLedger.create(tmp_path, "unified")
+        ledger.emit_event(EventType.RUN_INITIATED, payload={"purpose": "test"})
+        assert (ledger.run_dir / "ledger.jsonl").exists()
+
+    def test_emit_event_creates_hash_file(self, tmp_path: Path) -> None:
+        ledger = RunLedger.create(tmp_path, "unified")
+        ledger.emit_event(EventType.RUN_INITIATED)
+        assert (ledger.run_dir / "ledger.hash").exists()
+
+    def test_emit_event_returns_event(self, tmp_path: Path) -> None:
+        ledger = RunLedger.create(tmp_path, "unified")
+        event = ledger.emit_event(EventType.TOOL_CALLED, tool_id="shell", payload={"cmd": "ls"})
+        assert event.event_type == EventType.TOOL_CALLED
+        assert event.tool_id == "shell"
+        assert event.payload == {"cmd": "ls"}
+        assert event.run_id == ledger.run_dir.name
+
+    def test_emit_event_increments_sequence(self, tmp_path: Path) -> None:
+        ledger = RunLedger.create(tmp_path, "unified")
+        e1 = ledger.emit_event(EventType.RUN_INITIATED)
+        e2 = ledger.emit_event(EventType.TOOL_CALLED)
+        e3 = ledger.emit_event(EventType.RUN_COMPLETED)
+        assert e1.sequence == 0
+        assert e2.sequence == 1
+        assert e3.sequence == 2
+
+    def test_legacy_and_unified_coexist(self, tmp_path: Path) -> None:
+        """Old append_jsonl and new emit_event can be used together."""
+        ledger = RunLedger.create(tmp_path, "mixed")
+        ledger.append_jsonl("tool_calls.jsonl", {"tool": "shell"})
+        ledger.emit_event(EventType.TOOL_CALLED, tool_id="shell")
+
+        # Legacy file exists and has the raw entry
+        legacy = (ledger.run_dir / "tool_calls.jsonl").read_text(encoding="utf-8").strip()
+        assert json.loads(legacy)["tool"] == "shell"
+
+        # Unified ledger has the structured event
+        events = ledger.read_ledger()
+        assert len(events) == 1
+        assert events[0].event_type == EventType.TOOL_CALLED

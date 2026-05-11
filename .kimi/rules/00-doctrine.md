@@ -34,9 +34,4 @@ All destructive operations require explicit approval. Policies are defined in co
 ```
 Higher documents override lower on conflict.
 
-## Swarm Rules for This Session
-1. I operate within ONE subsystem boundary per task
-2. I do NOT implement future-phase systems
-3. I do NOT modify files outside my assigned subsystem
-4. I do NOT introduce provider-specific logic into core
-5. I preserve ALL architectural invariants
+

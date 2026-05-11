@@ -114,5 +114,92 @@ pytest tests/test_desktop_ui.py -v
 ## Architecture Check
 
 ```powershell
-python scripts/roadmap-check.py --phase 6 --ci
+python scripts/roadmap-check.py --phase 7 --ci
+```
+
+## Slice 1: Event Foundation
+
+```powershell
+pytest -q tests/test_events.py -v
+pytest -q tests/test_ledger_hash.py -v
+pytest -q tests/test_ledger_index.py -v
+pytest -q tests/test_ledger_checkpoints.py -v
+```
+
+## Slice 2: Runtime Engine
+
+```powershell
+pytest -q tests/test_error_classification.py -v
+pytest -q tests/test_retry_engine.py -v
+pytest -q tests/test_step_budget.py -v
+pytest -q tests/test_workflow_runner.py -v
+pytest -q tests/test_workflow_runner_parallel.py -v
+```
+
+## Slice 3: Artifacts & Protocols
+
+```powershell
+pytest -q tests/test_artifact_store.py -v
+pytest -q tests/test_context_packer.py -v
+pytest -q tests/test_agent_protocol.py -v
+pytest -q tests/test_public_api.py -v
+```
+
+## Slice 4: Boundaries & Loading
+
+```powershell
+pytest -q tests/test_provider_lazy_loading.py -v
+pytest -q tests/test_interface_isolation.py -v
+pytest -q tests/test_import_linting.py -v
+```
+
+## Slice 5: Safety & Privacy
+
+```powershell
+pytest -q tests/test_policy_engine.py -v
+pytest -q tests/test_privacy_enforcer.py -v
+pytest -q tests/test_approval_workflow.py -v
+pytest -q tests/test_policy_audit.py -v
+```
+
+## Phase 7: Production Hardening Tests (Future Slices)
+
+```powershell
+# Runtime Engine
+pytest -q tests/test_error_classification.py -v
+pytest -q tests/test_retry_engine.py -v
+pytest -q tests/test_step_budget.py -v
+pytest -q tests/test_workflow_runner.py -v
+pytest -q tests/test_workflow_runner_parallel.py -v
+
+# Artifacts & Protocols
+pytest -q tests/test_artifact_store.py -v
+pytest -q tests/test_context_packer.py -v
+pytest -q tests/test_agent_protocol.py -v
+pytest -q tests/test_public_api.py -v
+
+# Boundaries & Loading
+pytest -q tests/test_provider_lazy_loading.py -v
+pytest -q tests/test_interface_isolation.py -v
+pytest -q tests/test_import_linting.py -v
+
+# Safety & Privacy
+pytest -q tests/test_policy_engine.py -v
+pytest -q tests/test_privacy_enforcer.py -v
+pytest -q tests/test_approval_workflow.py -v
+pytest -q tests/test_policy_audit.py -v
+
+# Advanced Routing & Resume
+pytest -q tests/test_cascading_router.py -v
+pytest -q tests/test_fallback_chains.py -v
+pytest -q tests/test_resume.py -v
+pytest -q tests/test_replay.py -v
+```
+
+## Project Skills Validation
+
+```powershell
+python C:\Users\juliu\.codex\skills\.system\skill-creator\scripts\quick_validate.py .\skills\agentheim-devtest-runner
+python C:\Users\juliu\.codex\skills\.system\skill-creator\scripts\quick_validate.py .\skills\agentheim-roadmap-guard
+python C:\Users\juliu\.codex\skills\.system\skill-creator\scripts\quick_validate.py .\skills\agentheim-release-hygiene
 ```
