@@ -7,7 +7,7 @@ from workflows.docs_maintenance.agents.base import load_prompt
 from workflows.docs_maintenance.agents.detector import DetectorAgent, DetectionResult
 from workflows.docs_maintenance.agents.updater import UpdaterAgent, UpdateResult
 from workflows.docs_maintenance.agents.aligner import AlignerAgent, AlignmentResult
-from core.model_registry import ModelRegistry
+from core.public_api import ModelRegistry
 
 WORKFLOW_ID = "docs_maintenance"
 

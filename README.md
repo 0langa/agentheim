@@ -1,7 +1,7 @@
 # Agentheim
 
-[![Tests](https://img.shields.io/badge/tests-372%20passing-brightgreen)](https://github.com/0langa/agentheim/actions)
-[![Phase](https://img.shields.io/badge/phase-6%20advanced-blue)](docs/roadmap/06_PHASED_DEVELOPMENT_PLAN.md)
+[![Tests](https://img.shields.io/badge/tests-692%20passing-brightgreen)](https://github.com/0langa/agentheim/actions)
+[![Phase](https://img.shields.io/badge/phase-7%20production_hardening-blue)](docs/roadmap/06_PHASED_DEVELOPMENT_PLAN.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **A local-first, preset-driven AI automation platform.**
@@ -59,6 +59,8 @@ agentheim start codebase-assistant --input repo=./my-project --input task="Revie
 ```powershell
 agentheim doctor
 agentheim ping-models
+agentheim list-runs --repo .
+agentheim resume --repo . --run-id <run-id>
 ```
 
 ---
@@ -92,7 +94,7 @@ Core Runtime (Generic)    →  DAG execution, policy engine, ledger, model regis
 pytest tests\ -v
 ```
 
-**372 tests passing, 1 skipped.** Coverage baseline ~59%.
+**692 tests passing, 3 skipped in this validated environment.** The skipped tests are optional GUI-environment checks when desktop dependencies are unavailable.
 
 ---
 

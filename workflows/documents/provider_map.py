@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from core.model_registry import ProviderDescriptor
+from core.public_api import ProviderDescriptor
 
 
 DEFAULT_PROVIDER_MAP: dict[str, ProviderDescriptor] = {

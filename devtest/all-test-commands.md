@@ -25,10 +25,11 @@ pytest -q tests/core/test_model_registry.py tests/core/test_schemas.py tests/cor
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode narrow
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targeted
-powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode broad
-powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode full
+powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode phase7 -NoPrompt
+powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode broad -NoPrompt
+powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode full -NoPrompt
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targeted -K registry
-powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode full -K "not slow"
+powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode full -K "not slow" -NoPrompt
 ```
 
 ## AI Connectivity Test
@@ -52,7 +53,7 @@ agentheim guided --help
 ## Workflow Smoke Tests
 
 ```powershell
-python -c "import sys; sys.path.insert(0, '.'); import workflows.research; print('research workflow registered:', [e.id for e in __import__('core.capability_registry', fromlist=['list_workflows']).list_workflows()])"
+python -c "from workflows.registry import register_builtin_workflows; from core.capability_registry import list_workflows; register_builtin_workflows(); print('registered workflows:', [e.id for e in list_workflows()])"
 python -c "from workflows.documents import DocumentsWorkflow; print('documents workflow import ok')"
 python -c "from workflows.documents.runtime import plan_task, run_task; print('documents runtime import ok')"
 python -c "from workflows.file_organization import FileOrganizationWorkflow; print('file_organization workflow import ok')"
@@ -150,6 +151,7 @@ pytest -q tests/test_public_api.py -v
 ```powershell
 pytest -q tests/test_provider_lazy_loading.py -v
 pytest -q tests/test_interface_isolation.py -v
+pytest -q tests/test_workflow_isolation.py -v
 pytest -q tests/test_import_linting.py -v
 ```
 
@@ -181,6 +183,7 @@ pytest -q tests/test_public_api.py -v
 # Boundaries & Loading
 pytest -q tests/test_provider_lazy_loading.py -v
 pytest -q tests/test_interface_isolation.py -v
+pytest -q tests/test_workflow_isolation.py -v
 pytest -q tests/test_import_linting.py -v
 
 # Safety & Privacy
@@ -191,9 +194,8 @@ pytest -q tests/test_policy_audit.py -v
 
 # Advanced Routing & Resume
 pytest -q tests/test_cascading_router.py -v
-pytest -q tests/test_fallback_chains.py -v
 pytest -q tests/test_resume.py -v
-pytest -q tests/test_replay.py -v
+pytest -q tests/test_replay_engine.py -v
 ```
 
 ## Project Skills Validation

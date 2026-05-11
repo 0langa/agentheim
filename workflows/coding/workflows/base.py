@@ -7,7 +7,7 @@ from typing import TypeVar
 from pydantic import BaseModel
 
 from workflows.coding.agents.base import BaseAgent, load_prompt
-from core.model_registry import ModelRegistry
+from core.public_api import ModelRegistry
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
 

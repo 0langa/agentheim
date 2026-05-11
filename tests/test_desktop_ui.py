@@ -19,7 +19,10 @@ class TestDesktopUI:
             pytest.skip("PyQt6 not available")
 
     def test_tkinter_import(self) -> None:
-        import tkinter
+        try:
+            import tkinter
+        except ImportError:
+            pytest.skip("tkinter not available")
 
         assert tkinter is not None
 

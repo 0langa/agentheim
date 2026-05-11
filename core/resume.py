@@ -49,8 +49,8 @@ class ResumeOrchestrator:
 
     Usage::
 
-        orchestrator = ResumeOrchestrator(repo_root)
-        results = orchestrator.resume(run_id, workflow, runner)
+        resume_manager = ResumeOrchestrator(repo_root)
+        results = resume_manager.resume(run_id, workflow, runner)
     """
 
     def __init__(self, repo_root: str | Path) -> None:

@@ -6,7 +6,7 @@ from workflows.base import Workflow, Step, StepContext, StepResult, ExecutionDAG
 from workflows.command_assistant.agents.base import load_prompt
 from workflows.command_assistant.agents.parser import ParserAgent, ParsedIntent
 from workflows.command_assistant.agents.generator import GeneratorAgent, GeneratedCommand
-from core.model_registry import ModelRegistry
+from core.public_api import ModelRegistry
 
 WORKFLOW_ID = "command_assistant"
 

@@ -5,8 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from config.config import load_team_config
-from core.ledger import RunLedger
-from core.model_registry import ModelRegistry
+from core.public_api import ModelRegistry, RunLedger
 from workflows.coding.provider_map import DEFAULT_PROVIDER_MAP
 from workflows.command_assistant.reports.final_report import CommandRecord, FinalReport
 from workflows.command_assistant.reports.markdown import render_final_report_markdown

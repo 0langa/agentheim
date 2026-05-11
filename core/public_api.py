@@ -79,6 +79,7 @@ from core.model_registry import ProviderDescriptor as ProviderDescriptor
 from core.approval_workflow import ApprovalRequest as ApprovalRequest
 from core.approval_workflow import ApprovalWorkflow as ApprovalWorkflow
 from core.policy_engine import PolicyDecision as PolicyDecision
+from core.policy_engine import PolicyConfig as PolicyConfig
 from core.policy_engine import PolicyEngine as PolicyEngine
 from core.privacy_enforcer import PrivacyEnforcer as PrivacyEnforcer
 from core.privacy_enforcer import PrivacyMode as PrivacyMode
@@ -115,12 +116,29 @@ from core.context_packer import ContextPacker as ContextPacker
 # ─── Redaction ──────────────────────────────────────────────────────
 from core.redaction import redact_dict as redact_dict
 from core.redaction import redact_text as redact_text
+from core.json_repair import repair_json_text as repair_json_text
+
+# ─── Runtime internals used by workflow-facing code ────────────────
+from core.patching import PatchApplier as PatchApplier
+from core.repo.scanner import RepoScanResult as RepoScanResult
+from core.schemas_runtime import AgentResult as AgentResult
+from core.schemas_runtime import ImplementationPlan as ImplementationPlan
+from core.schemas_runtime import PatchPlan as PatchPlan
+from core.schemas_runtime import UserTask as UserTask
+from core.schemas_runtime import VerificationReport as VerificationReport
+from core.schemas_runtime import WorkOrder as WorkOrder
+from core.state_machine import RuntimeState as RuntimeState
+from core.state_machine import RuntimeStateMachine as RuntimeStateMachine
+from core.policies import CommandPolicy as CommandPolicy
+from core.policies import classify_command as classify_command
 
 # ─── Schemas ────────────────────────────────────────────────────────
 from core.schemas import ArtifactRef as ArtifactRef
+from core.schemas import AgentMessage as WorkflowAgentMessage
 from core.schemas import WorkflowRun as WorkflowRun
 from core.schemas import WorkflowStep as WorkflowStep
 from core.schemas import WorkflowStepStatus as WorkflowStepStatus
+from core.schemas_runtime import AgentMessage as RuntimeAgentMessage
 
 __all__ = [
     # Events
@@ -184,6 +202,7 @@ __all__ = [
     "ApprovalRequest",
     "ApprovalWorkflow",
     "PolicyDecision",
+    "PolicyConfig",
     "PolicyEngine",
     "PrivacyEnforcer",
     "PrivacyMode",
@@ -215,9 +234,25 @@ __all__ = [
     # Redaction
     "redact_dict",
     "redact_text",
+    "repair_json_text",
+    # Workflow-facing runtime internals
+    "PatchApplier",
+    "RepoScanResult",
+    "AgentResult",
+    "ImplementationPlan",
+    "PatchPlan",
+    "UserTask",
+    "VerificationReport",
+    "WorkOrder",
+    "RuntimeState",
+    "RuntimeStateMachine",
+    "CommandPolicy",
+    "classify_command",
     # Schemas
     "ArtifactRef",
+    "WorkflowAgentMessage",
     "WorkflowRun",
     "WorkflowStep",
     "WorkflowStepStatus",
+    "RuntimeAgentMessage",
 ]

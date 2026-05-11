@@ -19,14 +19,19 @@ from config.config import load_team_config
 from core.public_api import (
     AIteamError,
     ConfigError,
+    EventType,
     ProviderError,
+    PolicyEngine,
     RunLedger,
     ModelRegistry,
+    ResumeOrchestrator,
+    ToolRegistry,
+    WorkflowRunner,
     build_context_pack,
+    get_workflow,
     inspect_repository,
     list_resume_runs as list_runs,
     load_final_report,
-    load_run,
 )
 import importlib.util
 
@@ -261,8 +266,51 @@ def resume(
     repo: str = typer.Option(..., "--repo", help="Target repository path."),
     run_id: str = typer.Option(..., "--run-id", help="Run id under .ai-team/runs."),
 ) -> None:
-    run_data = load_run(repo, run_id)
-    console.print_json(json.dumps(run_data))
+    repo_root = Path(repo).resolve()
+    run_dir = repo_root / ".ai-team" / "runs" / run_id
+    if not run_dir.exists():
+        raise typer.BadParameter(f"Run '{run_id}' not found under {repo_root}")
+
+    ledger = RunLedger(repo_root=repo_root, run_dir=run_dir)
+    events = ledger.read_ledger()
+    started = next((event for event in events if event.event_type == EventType.RUN_INITIATED), None)
+    if started is None:
+        console.print_json(json.dumps({"run_id": run_id, "status": "no-run-initiated-event"}))
+        raise typer.Exit(code=1)
+
+    workflow_id = str(started.payload.get("workflow_id", "")).strip()
+    metadata = started.payload.get("metadata") or {}
+    if not workflow_id:
+        console.print_json(json.dumps({"run_id": run_id, "status": "missing-workflow-id"}))
+        raise typer.Exit(code=1)
+
+    from workflows.registry import register_builtin_workflows
+
+    register_builtin_workflows()
+    try:
+        workflow_entry = get_workflow(workflow_id)
+    except KeyError as exc:
+        raise typer.BadParameter(f"Workflow '{workflow_id}' is not registered") from exc
+
+    config = load_team_config()
+    registry = ModelRegistry.from_team_config(config)
+    workflow = workflow_entry.factory(
+        model_registry=registry,
+        tool_registry=ToolRegistry(),
+        policy_engine=PolicyEngine(),
+        ledger=ledger,
+    )
+
+    runner = WorkflowRunner()
+    resume_manager = ResumeOrchestrator(repo_root)
+    results = resume_manager.resume(run_id, workflow, runner, metadata=metadata)
+    summary = {
+        "run_id": run_id,
+        "workflow_id": workflow_id,
+        "resumed_steps": [result.step_id for result in results],
+        "all_success": all(result.success for result in results),
+    }
+    console.print_json(json.dumps(summary))
 
 
 @app.command("presets")

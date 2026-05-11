@@ -1,7 +1,8 @@
 param(
     [ValidateSet("narrow", "targeted", "broad", "full", "phase7")]
     [string]$Mode = "targeted",
-    [string]$K = ""
+    [string]$K = "",
+    [switch]$NoPrompt
 )
 
 $ErrorActionPreference = "Stop"
@@ -87,10 +88,14 @@ switch ($Mode) {
             "tests/test_context_packer.py",
             "tests/test_agent_protocol.py",
             "tests/test_public_api.py",
+            "tests/test_workflow_isolation.py",
             "tests/test_policy_engine.py",
             "tests/test_privacy_enforcer.py",
             "tests/test_approval_workflow.py",
-            "tests/test_policy_audit.py"
+            "tests/test_policy_audit.py",
+            "tests/test_cascading_router.py",
+            "tests/test_resume.py",
+            "tests/test_replay_engine.py"
         ))
         Invoke-TestSet -Label "broad (memory suite)" -PytestArgs ($baseArgs + @("tests/memory/"))
     }
@@ -114,16 +119,33 @@ switch ($Mode) {
             "tests/test_public_api.py",
             "tests/test_provider_lazy_loading.py",
             "tests/test_interface_isolation.py",
+            "tests/test_workflow_isolation.py",
             "tests/test_import_linting.py",
             "tests/test_approval_workflow.py",
             "tests/test_policy_audit.py",
             "tests/test_privacy_enforcer.py",
-            "tests/test_policy_engine.py"
+            "tests/test_policy_engine.py",
+            "tests/test_cascading_router.py",
+            "tests/test_resume.py",
+            "tests/test_replay_engine.py"
         ))
     }
 }
 
 Write-Host "Done: mode=$Mode"
+if ($Mode -eq "phase7") {
+    Write-Host "==> phase7 architecture gate"
+    Push-Location $RepoRoot
+    try {
+        & python scripts/roadmap-check.py --phase 7 --ci
+        if ($LASTEXITCODE -ne 0) {
+            throw "roadmap-check failed with exit code $LASTEXITCODE"
+        }
+    }
+    finally {
+        Pop-Location
+    }
+}
 Write-Host ""
 Write-Host "Optional post-run actions:"
 Write-Host "1) Clear pytest temp artifacts"
@@ -136,6 +158,7 @@ $runAll = $false
 
 function Ask-YNA {
     param([string]$Question)
+    if ($NoPrompt) { return "N" }
     if ($runAll) { return "Y" }
     $reply = Read-Host "$Question [Y/N/A]"
     if (-not $reply) { return "N" }
@@ -160,5 +183,5 @@ if ((Ask-YNA "Run action 2 now?") -eq "Y") {
 
 if ((Ask-YNA "Run action 3 now?") -eq "Y") {
     Write-Host "Re-running mode=$Mode"
-    & powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "run-devtest.ps1") -Mode $Mode -K $K
+    & powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "run-devtest.ps1") -Mode $Mode -K $K -NoPrompt:$NoPrompt
 }

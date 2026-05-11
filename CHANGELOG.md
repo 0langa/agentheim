@@ -355,3 +355,23 @@
   - `run-devtest.ps1`: Added Slice 3 test paths to `broad` mode.
 - Full test suite: **593 passed, 2 skipped** (+41 from Slice 3).
 
+
+## [unreleased] Phase 7 — Recovery, Boundary Cleanup, and Prerelease Validation
+
+- Fixed `core/cascading_router.py` health TTL expiration and healthy-candidate selection so fallback/routing behavior is deterministic under test and resume validation.
+- Hardened `scripts/roadmap-check.py`:
+  - ignores docstring/string-literal false positives in core keyword scans,
+  - adds explicit workflow-facing `core.public_api` boundary enforcement alongside interface enforcement.
+- Removed workflow import-time registration side effects; added explicit builtin registration entrypoint in `workflows/registry.py`.
+- Migrated workflow-facing modules and runtimes from direct `core.*` imports to `core.public_api`, and expanded `core/public_api.py` with the workflow-facing runtime symbols still required by shipped workflow packs.
+- Upgraded CLI resume path in `interfaces/cli/cli.py` from run JSON dump to actual workflow-runner resume for ledger-backed workflow executions.
+- Synced release/devtest assets:
+  - added `tests/test_workflow_isolation.py`,
+  - updated `devtest/run-devtest.ps1` Phase 7/broad coverage and non-interactive `-NoPrompt` mode,
+  - updated `devtest/all-test-commands.md`,
+  - refreshed README Phase/Test status,
+  - added root forensic report `PHASE7_AUDIT.md`.
+- Validation:
+  - `python scripts/roadmap-check.py --phase 7 --ci` passed,
+  - `devtest` phase7/broad/full modes passed,
+  - final `pytest -q` passed with **692 passed, 3 skipped**.

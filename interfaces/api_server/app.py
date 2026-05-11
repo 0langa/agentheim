@@ -187,13 +187,9 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
 
     def _import_workflows() -> None:
         try:
-            import workflows.coding
-            import workflows.command_assistant
-            import workflows.docs_maintenance
-            import workflows.documents
-            import workflows.file_organization
-            import workflows.github_maintenance
-            import workflows.research
+            from workflows.registry import register_builtin_workflows
+
+            register_builtin_workflows()
         except Exception:
             pass
 
@@ -305,7 +301,7 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
             WorkflowListItem(
                 workflow_id=w.id,
                 name=w.id.replace("_", " ").title(),
-                description=getattr(w, "description", "") or "",
+                description=w.metadata.get("description", "") or "",
             )
             for w in cap_list_workflows()
         ]
@@ -319,9 +315,9 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
                 return WorkflowDetail(
                     workflow_id=w.id,
                     name=w.id.replace("_", " ").title(),
-                    description=getattr(w, "description", "") or "",
-                    required_agents=getattr(w, "required_agents", []),
-                    required_tools=getattr(w, "required_tools", []),
+                    description=w.metadata.get("description", "") or "",
+                    required_agents=[agent.id for agent in getattr(w.factory, "required_agents", [])],
+                    required_tools=getattr(w.factory, "required_tools", []),
                 )
         raise HTTPException(status_code=404, detail=f"Workflow '{workflow_id}' not found")
 
@@ -341,7 +337,7 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
         workflow_cls = None
         for w in cap_list_workflows():
             if w.id == workflow_id:
-                workflow_cls = w
+                workflow_cls = w.factory
                 break
         if workflow_cls is None:
             raise HTTPException(status_code=404, detail=f"Workflow '{workflow_id}' not found")

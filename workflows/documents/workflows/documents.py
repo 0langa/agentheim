@@ -8,7 +8,7 @@ from workflows.documents.agents.base import load_prompt
 from workflows.documents.agents.indexer import IndexerAgent, IndexerOutput
 from workflows.documents.agents.retriever import RetrieverAgent, RetrieverOutput
 from workflows.documents.agents.answerer import AnswerAgent, AnswererOutput
-from core.model_registry import ModelRegistry
+from core.public_api import ModelRegistry
 
 
 WORKFLOW_ID = "documents"

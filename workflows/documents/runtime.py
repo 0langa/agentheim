@@ -4,12 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from config.config import load_team_config
-from core.ledger import RunLedger
-from core.model_registry import ModelRegistry
-from core.policy_engine import PolicyEngine
-from core.repo.scanner import inspect_repository
-from core.schemas import AgentMessage
-from core.tool_protocol import ToolRegistry
+from core.public_api import ModelRegistry, PolicyEngine, RunLedger, ToolRegistry, WorkflowAgentMessage, inspect_repository
 from workflows.documents.provider_map import DEFAULT_PROVIDER_MAP
 from workflows.documents.reports.final_report import Citation, DocumentChatReport
 from workflows.documents.reports.markdown import render_document_chat_report_markdown
@@ -36,7 +31,7 @@ def plan_task(
         ledger.write_json("repo_snapshot.json", scan.model_dump())
         ledger.write_json(
             "model_messages.json",
-            {"messages": [AgentMessage(actor="user", content=query).model_dump()]},
+            {"messages": [WorkflowAgentMessage(actor="user", content=query).model_dump()]},
         )
         ledger_dir = ledger.run_dir
     return scan, query, ledger_dir
@@ -61,7 +56,7 @@ def run_task(
         )
         ledger.write_json(
             "model_messages.json",
-            {"messages": [AgentMessage(actor="user", content=query).model_dump()]},
+            {"messages": [WorkflowAgentMessage(actor="user", content=query).model_dump()]},
         )
         ledger_dir = ledger.run_dir
 

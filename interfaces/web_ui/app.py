@@ -181,17 +181,15 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
     @app.get("/api/workflows", response_model=list[WorkflowListItem])
     def list_workflows() -> list[WorkflowListItem]:
         """List registered workflows."""
-        # Import workflows to ensure registration
         _import_workflows()
-        from core.public_api import list_workflows as cap_list
 
         return [
             WorkflowListItem(
                 workflow_id=w.id,
                 name=w.id.replace("_", " ").title(),
-                description=getattr(w, "description", "") or "",
+                description=w.metadata.get("description", "") or "",
             )
-            for w in cap_list()
+            for w in cap_list_workflows()
         ]
 
     @app.post("/api/workflows/{workflow_id}/execute", response_model=ExecuteResponse)
@@ -201,7 +199,7 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
         workflow_cls = None
         for w in cap_list_workflows():
             if w.id == workflow_id:
-                workflow_cls = w
+                workflow_cls = w.factory
                 break
         if workflow_cls is None:
             raise HTTPException(status_code=404, detail=f"Workflow '{workflow_id}' not found")
@@ -365,15 +363,11 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
 
 
 def _import_workflows() -> None:
-    """Import all workflow modules to trigger registration."""
+    """Register all workflow packs explicitly."""
     try:
-        import workflows.coding
-        import workflows.command_assistant
-        import workflows.docs_maintenance
-        import workflows.documents
-        import workflows.file_organization
-        import workflows.github_maintenance
-        import workflows.research
+        from workflows.registry import register_builtin_workflows
+
+        register_builtin_workflows()
     except Exception:
         pass
 
@@ -408,7 +402,7 @@ def _dashboard_html() -> str:
 </head>
 <body>
 <h1>Agentheim</h1>
-<p class="subtitle">Web UI Prototype &mdash; Phase 6</p>
+<p class="subtitle">Web UI Prototype &mdash; Phase 7 Production Hardening</p>
 <div id="status">Loading...</div>
 <div class="grid">
   <div class="card">

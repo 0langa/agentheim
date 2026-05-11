@@ -6,8 +6,7 @@ from workflows.coding.agents.base import load_prompt
 from workflows.coding.agents.coder import CoderAgent
 from workflows.coding.agents.orchestrator import OrchestratorAgent
 from workflows.coding.agents.verifier import VerifierAgent
-from core.model_registry import ModelRegistry
-from core.schemas_runtime import ImplementationPlan, PatchPlan, VerificationReport
+from core.public_api import ImplementationPlan, ModelRegistry, PatchPlan, VerificationReport
 
 WORKFLOW_ID = "coding"
 

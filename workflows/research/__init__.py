@@ -1,4 +1,3 @@
 from workflows.research.workflows.research import ResearchWorkflow
-from core.capability_registry import register_workflow
 
-register_workflow(ResearchWorkflow)
+__all__ = ["ResearchWorkflow"]

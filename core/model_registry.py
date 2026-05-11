@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from importlib import import_module
 
-from config.config import AgentModelConfig, TeamConfig
+from config.config import AgentModelConfig, TeamConfig, load_team_config
 from providers.base import ModelProvider
 
 
@@ -27,7 +27,12 @@ class ModelRegistry:
         self._models = models
 
     @classmethod
-    def from_team_config(cls, config: TeamConfig, provider_map: dict[str, ProviderDescriptor] | None = None) -> "ModelRegistry":
+    def from_team_config(
+        cls,
+        config: TeamConfig | None = None,
+        provider_map: dict[str, ProviderDescriptor] | None = None,
+    ) -> "ModelRegistry":
+        config = config or load_team_config()
         providers = provider_map or {}
         models = {}
         for model in config.models.values():

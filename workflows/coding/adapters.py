@@ -9,10 +9,18 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from core.ledger import RunLedger
-from core.model_registry import ModelDescriptor, ModelRegistry
-from core.policy_engine import PolicyConfig, PolicyEngine
-from core.tool_protocol import ToolContext, ToolRegistry as CoreToolRegistry, ToolResult
+from core.public_api import (
+    CommandPolicy,
+    ModelDescriptor,
+    ModelRegistry,
+    PolicyConfig,
+    PolicyEngine,
+    RunLedger,
+    ToolContext,
+    ToolRegistry as CoreToolRegistry,
+    ToolResult,
+    classify_command,
+)
 
 
 def model_resolve(registry: ModelRegistry, role: str, required_capability: str) -> ModelDescriptor:
@@ -117,8 +125,6 @@ def policy_evaluate(command: list[str], context: dict | None = None) -> dict:
     Returns a dict matching the canonical PolicyDecision shape:
         { "decision": "allow" | "block" | "prompt", "policy": "...", "reason": "..." }
     """
-    from core.policies import CommandPolicy, classify_command
-
     policy = classify_command(command)
     if policy == CommandPolicy.SAFE:
         return {

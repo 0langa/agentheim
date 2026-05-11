@@ -6,7 +6,7 @@ from workflows.base import Workflow, Step, StepContext, StepResult, ExecutionDAG
 from workflows.github_maintenance.agents.base import load_prompt
 from workflows.github_maintenance.agents.summarizer import SummarizerAgent, SummaryResult
 from workflows.github_maintenance.agents.drafter import DrafterAgent, DraftResult
-from core.model_registry import ModelRegistry
+from core.public_api import ModelRegistry
 
 WORKFLOW_ID = "github_maintenance"
 

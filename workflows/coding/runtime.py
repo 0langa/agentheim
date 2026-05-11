@@ -5,20 +5,31 @@ from pathlib import Path
 from typing import Any
 
 from config.config import ModelRole, load_team_config
-from core.model_registry import ModelRegistry
-from core.errors import AIteamError, ExecutionError, PatchApplicationError, VerificationError
+from core.public_api import (
+    AIteamError,
+    ExecutionError,
+    ImplementationPlan,
+    ModelRegistry,
+    PatchApplier,
+    PatchApplicationError,
+    PatchPlan,
+    RepoScanResult,
+    RunLedger,
+    RuntimeState,
+    RuntimeStateMachine,
+    RuntimeAgentMessage,
+    UserTask,
+    VerificationError,
+    VerificationReport,
+    WorkOrder,
+    build_context_pack,
+    inspect_repository,
+)
 from tools.git.github_cli import GitHubCliAdapter
 from tools.integrations.mcp_client import MCPClientAdapter
 from tools.integrations.web_research import WebResearchAdapter
-from core.ledger import RunLedger
-from core.patching import PatchApplier
-from core.repo.context_pack import build_context_pack
-from core.repo.scanner import RepoScanResult, inspect_repository
 from workflows.coding.reports.final_report import FinalReport, VerificationRecord
 from workflows.coding.reports.markdown import render_final_report_markdown
-from core.schemas import AgentMessage
-from core.schemas_runtime import ImplementationPlan, PatchPlan, UserTask, VerificationReport, WorkOrder
-from core.state_machine import RuntimeState, RuntimeStateMachine
 from workflows.coding.provider_map import DEFAULT_PROVIDER_MAP
 from workflows.coding.adapters import ledger_append, model_resolve, policy_evaluate, tool_invoke
 from workflows.coding.workflows.coding import create_orchestrator_agent, create_coder_agent, create_verifier_agent
@@ -106,7 +117,7 @@ def plan_task(task_text: str, repo_path: str | Path, write_ledger: bool = False)
         ledger_append(ledger, "tool_calls.jsonl", {"tool": "orchestrator.run_structured", "role": "orchestrator"})
         ledger_append(ledger, "state_transitions.jsonl", {"state": "planning_started", "task": task_text})
         planner_config = team_config.by_role()[ModelRole.PLANNER]
-        ledger.write_json("model_messages.json", {"messages": [AgentMessage(role=planner_config.role, content=prompt).model_dump()]})
+        ledger.write_json("model_messages.json", {"messages": [RuntimeAgentMessage(role=planner_config.role, content=prompt).model_dump()]})
         ledger.write_text("raw_model_output.txt", result.raw_output)
         if result.parsed_output is not None:
             ledger.write_json("plan.json", result.parsed_output)

@@ -1,4 +1,3 @@
 from workflows.github_maintenance.workflows.github_maintenance import GitHubMaintenanceWorkflow
-from core.capability_registry import register_workflow
 
-register_workflow(GitHubMaintenanceWorkflow)
+__all__ = ["GitHubMaintenanceWorkflow"]

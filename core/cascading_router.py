@@ -62,8 +62,10 @@ class CascadingRouter:
             )
 
         candidates = sorted(candidates, key=self._cost_key)
-        primary = candidates[0]
-        fallbacks = [c for c in candidates[1:] if self.is_healthy(c.id)]
+        healthy = [candidate for candidate in candidates if self.is_healthy(candidate.id)]
+        primary_pool = healthy or candidates
+        primary = primary_pool[0]
+        fallbacks = [candidate for candidate in primary_pool[1:] if candidate.id != primary.id]
 
         if self.ledger:
             self.ledger.emit_event(
@@ -117,7 +119,8 @@ class CascadingRouter:
         if model_id not in self._health_cache:
             return True
         healthy, ts = self._health_cache[model_id]
-        if time.monotonic() - ts > self._health_ttl:
+        if self._health_ttl <= 0 or time.monotonic() - ts >= self._health_ttl:
+            self._health_cache.pop(model_id, None)
             return True
         return healthy
 

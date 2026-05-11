@@ -234,12 +234,15 @@ class ArchitectureChecker:
             return
 
         for py_file in self.core_dir.rglob('*.py'):
-            content = py_file.read_text(encoding='utf-8')
+            content = py_file.read_text(encoding='utf-8', errors='ignore')
+            ignored_lines = self._ignored_literal_lines(content)
             for pattern in PROVIDER_PATTERNS:
                 matches = re.finditer(pattern, content, re.IGNORECASE)
                 for match in matches:
                     # Skip comments and strings
                     line_num = content[:match.start()].count('\n') + 1
+                    if line_num in ignored_lines:
+                        continue
                     line = content.split('\n')[line_num - 1].strip()
                     if line.startswith('#') or line.startswith('"""') or line.startswith("'''"):
                         continue
@@ -260,11 +263,14 @@ class ArchitectureChecker:
             return
 
         for py_file in self.core_dir.rglob('*.py'):
-            content = py_file.read_text(encoding='utf-8')
+            content = py_file.read_text(encoding='utf-8', errors='ignore')
+            ignored_lines = self._ignored_literal_lines(content)
             for pattern in WORKFLOW_PATTERNS:
                 matches = re.finditer(pattern, content, re.IGNORECASE)
                 for match in matches:
                     line_num = content[:match.start()].count('\n') + 1
+                    if line_num in ignored_lines:
+                        continue
                     line = content.split('\n')[line_num - 1].strip()
                     if line.startswith('#') or '"' in line or "'" in line:
                         continue
@@ -476,6 +482,65 @@ class ArchitectureChecker:
                         message=f"Interface imports from '{node.module}'; must use 'core.public_api'",
                         fix="Replace with 'from core.public_api import ...'",
                     ))
+
+        workflow_paths = [
+            self.root / 'workflows',
+        ]
+        allowed_workflow_exceptions = {
+            'workflows/base.py',
+        }
+        for base_dir in workflow_paths:
+            if not base_dir.exists():
+                continue
+            for py_file in base_dir.rglob('*.py'):
+                rel_path = str(py_file.relative_to(self.root)).replace('\\', '/')
+                if rel_path in allowed_workflow_exceptions:
+                    continue
+                if '/agents/' in rel_path:
+                    continue
+                try:
+                    content = py_file.read_text(encoding='utf-8', errors='ignore')
+                    tree = ast.parse(content)
+                except SyntaxError:
+                    continue
+
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.ImportFrom) and node.module:
+                        if not node.module.startswith('core.'):
+                            continue
+                        if node.module == 'core.public_api' or node.module.startswith('core.public_api.'):
+                            continue
+                        self.violations.append(Violation(
+                            level=ViolationLevel.LEVEL_3,
+                            rule="Phase 7: Workflow Public API Boundary",
+                            file=rel_path,
+                            line=node.lineno,
+                            message=f"Workflow imports from '{node.module}'; use 'core.public_api' in workflow-facing code",
+                            fix="Replace with 'from core.public_api import ...' or move internal-only code behind the public facade",
+                        ))
+
+    def _ignored_literal_lines(self, content: str) -> set[int]:
+        """Return 1-based line numbers occupied by docstrings or bare string literals."""
+        try:
+            tree = ast.parse(content)
+        except SyntaxError:
+            return set()
+
+        ignored: set[int] = set()
+        for node in ast.walk(tree):
+            value = None
+            if isinstance(node, ast.Expr):
+                value = node.value
+            elif isinstance(node, ast.Constant):
+                value = node
+            if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                start = getattr(value, "lineno", None)
+                end = getattr(value, "end_lineno", start)
+                if start is None:
+                    continue
+                for line_no in range(start, (end or start) + 1):
+                    ignored.add(line_no)
+        return ignored
 
 
 # ─── Reporter ────────────────────────────────────────────────────────────────
