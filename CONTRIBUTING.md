@@ -35,20 +35,20 @@ pip install -e .
 ### Running tests
 ```bash
 # Full suite
-$env:PYTHONPATH="."; pytest tests\ -v
+pytest tests\ -v
 
 # Specific module
-$env:PYTHONPATH="."; pytest tests\test_api_server.py -v
+pytest tests\test_api_server.py -v
 
 # With coverage
-$env:PYTHONPATH="."; pytest tests\ --cov=core --cov=tools --cov=workflows
+pytest tests\ --cov=core --cov=tools --cov=workflows
 ```
 
 ### Running the CLI locally
 ```bash
-python -m ai_team doctor
-python -m ai_team ping-models
-python -m ai_team inspect --repo .
+agentheim doctor
+agentheim ping-models
+agentheim inspect --repo .
 ```
 
 ## Project Structure
@@ -86,7 +86,7 @@ git checkout -b feature/your-feature-name
 ### 4. Run checks before submitting
 ```bash
 # Tests must pass
-$env:PYTHONPATH="."; pytest tests\ -q
+pytest tests\ -q
 
 # Architecture check must pass
 python scripts/roadmap-check.py --phase 6 --ci

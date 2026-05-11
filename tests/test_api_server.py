@@ -204,7 +204,7 @@ class TestOpenAPI:
         response = client.get("/openapi.json")
         assert response.status_code == 200
         schema = response.json()
-        assert schema["info"]["title"] == "Local Agent Orchestra API"
+        assert schema["info"]["title"] == "Agentheim API"
         paths = list(schema["paths"].keys())
         assert "/api/health" in paths
         assert "/api/tools" in paths

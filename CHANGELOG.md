@@ -2,6 +2,21 @@
 
 ## 2026-05-10
 
+### Validation & Production Hardening
+- Fixed missing `os` import in `interfaces/cli/cli.py` causing `doctor` command to crash with `NameError`.
+- Added root `pyproject.toml` making project installable via `pip install -e .` with `agentheim` console script entry point.
+- Fixed all "Agentwerk" → "Agentheim" branding in README.md and public docs.
+- Fixed all API/Web/Desktop UI titles from "Local Agent Orchestra" → "Agentheim".
+- Updated all public docs (README, CONTRIBUTING, INSTALL, CONFIGURATION, API) to reference `agentheim` CLI instead of broken `python -m ai_team`.
+- Improved config loading error message to tell users exactly how to set up `.env`.
+- Added required-input validation to `agentheim start <preset>` command.
+- Fixed `tests/test_api_server.py` and `tests/test_web_ui.py` to match new API/Web UI titles.
+- Rewrote `devtest/` scripts (`run-devtest.ps1`, `ai_test.ps1`, `all-test-commands.md`) to reflect current root-project test structure.
+- Updated `Agent-Team/docs/` internal references from `python -m ai_team` → `agentheim`.
+- Full test suite: **372 passed, 1 skipped**. Architecture check: PASSED.
+
+## 2026-05-10
+
 ### unreleased (Phase 6 scaffolds)
 - Fixed `StubMultimodalProcessor` import path in `tests/test_multimodal.py`.
 - Fixed `TaskScheduler` test: `test_task_retry_on_failure` now registers worker with matching capabilities.

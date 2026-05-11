@@ -107,7 +107,7 @@ class RunStatusResponse(BaseModel):
 def create_api_app(repo_root: str | Path = ".") -> FastAPI:
     repo_root = Path(repo_root).resolve()
     app = FastAPI(
-        title="Local Agent Orchestra API",
+        title="Agentheim API",
         description="Production API for agent orchestration, tool invocation, and workflow management.",
         version="0.1.0",
         docs_url="/docs",

@@ -21,10 +21,10 @@ pip install -e .
 
 ```bash
 # Check CLI is available
-python -m ai_team --help
+agentheim --help
 
 # Run system diagnostics
-python -m ai_team doctor
+agentheim doctor
 ```
 
 ## Configure a Provider
@@ -59,7 +59,7 @@ OPENAI_API_KEY=sk-your-key-here
 ### Test Provider Connectivity
 
 ```bash
-python -m ai_team ping-models
+agentheim ping-models
 ```
 
 ## Optional: Install Playwright (for Browser Tool)
@@ -91,10 +91,10 @@ Set `PYTHONPATH` to include the repo root:
 
 ```powershell
 # Windows
-$env:PYTHONPATH="."; pytest tests\ -q
+pytest tests\ -q
 
 # Linux/Mac
-PYTHONPATH="." pytest tests/ -q
+pytest tests/ -q
 ```
 
 ### `doctor` reports missing provider

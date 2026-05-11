@@ -39,7 +39,7 @@ def _run_pyqt6(repo_root: Path, port: int) -> None:
 
     app = QApplication(sys.argv)
     window = QMainWindow()
-    window.setWindowTitle("Local Agent Orchestra")
+    window.setWindowTitle("Agentheim")
     window.setGeometry(100, 100, 1280, 800)
 
     central = QWidget()
@@ -61,10 +61,10 @@ def _run_tkinter(repo_root: Path, port: int) -> None:
     from tkinter import messagebox
 
     root = tk.Tk()
-    root.title("Local Agent Orchestra")
+    root.title("Agentheim")
     root.geometry("800x600")
 
-    tk.Label(root, text="Local Agent Orchestra", font=("Helvetica", 20)).pack(pady=20)
+    tk.Label(root, text="Agentheim", font=("Helvetica", 20)).pack(pady=20)
     tk.Label(root, text=f"Server running at http://127.0.0.1:{port}", font=("Helvetica", 12)).pack(pady=10)
 
     def open_browser() -> None:

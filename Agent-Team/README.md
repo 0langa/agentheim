@@ -1,6 +1,6 @@
 # Agent-Team
 
-Local-first multi-agent automation runtime for [Agentwerk](../README.md).
+Local-first multi-agent automation runtime for [Agentheim](../README.md).
 
 ## Scope
 
@@ -31,16 +31,16 @@ See `.env.example` for all model roles.
 ## Core commands
 
 ```powershell
-python -m ai_team config-dump --redacted
-python -m ai_team ping-models
-python -m ai_team inspect --repo <path>
-python -m ai_team plan "Task text" --repo <path>
-python -m ai_team run "Task text" --repo <path> --mode apply
-python -m ai_team run "Task text" --repo <path> --mode auto
-python -m ai_team run "Task text" --repo <path> --mode ci
-python -m ai_team list-runs --repo <path>
-python -m ai_team report --repo <path> --run-id <id>
-python -m ai_team resume --repo <path> --run-id <id>
+agentheim config-dump --redacted
+agentheim ping-models
+agentheim inspect --repo <path>
+agentheim plan "Task text" --repo <path>
+agentheim run "Task text" --repo <path> --mode apply
+agentheim run "Task text" --repo <path> --mode auto
+agentheim run "Task text" --repo <path> --mode ci
+agentheim list-runs --repo <path>
+agentheim report --repo <path> --run-id <id>
+agentheim resume --repo <path> --run-id <id>
 ```
 
 ## Ledger

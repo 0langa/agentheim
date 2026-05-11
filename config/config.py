@@ -272,7 +272,7 @@ def _load_legacy_grok_config() -> TeamConfig:
 
         if not endpoint or not api_key:
             raise ConfigError(
-                "Missing legacy GROK_* env vars. Migrate to AI_TEAM_PROVIDER_* and AI_TEAM_MODEL_* configuration."
+                "No provider configuration found. Copy Agent-Team/.env.example to .env and configure AI_TEAM_PROVIDER_IDS and AI_TEAM_PROVIDER_* variables."
             )
         provider_id = f"legacy-{model_id}"
         api_key_env = f"AI_TEAM_LEGACY_{model_id.upper()}_API_KEY"

@@ -79,7 +79,7 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
     """Create and configure the FastAPI application."""
     repo_root = Path(repo_root).resolve()
     app = FastAPI(
-        title="Local Agent Orchestra",
+        title="Agentheim",
         description="Web UI prototype for agent orchestration",
         version="0.1.0-prototype",
     )
@@ -224,7 +224,7 @@ def _dashboard_html() -> str:
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Local Agent Orchestra</title>
+<title>Agentheim</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; padding: 2rem; }
@@ -247,7 +247,7 @@ def _dashboard_html() -> str:
 </style>
 </head>
 <body>
-<h1>Local Agent Orchestra</h1>
+<h1>Agentheim</h1>
 <p class="subtitle">Web UI Prototype &mdash; Phase 6</p>
 <div id="status">Loading...</div>
 <div class="grid">

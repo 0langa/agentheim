@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -297,6 +298,13 @@ def start_preset(
         elif lower == "false":
             value = False  # type: ignore[assignment]
         inputs[key] = value
+
+    # Validate required inputs
+    for question in preset.guided_questions:
+        if question.key not in inputs and question.default is None:
+            raise typer.BadParameter(f"Missing required input: {question.key}")
+        if question.key not in inputs and question.default is not None:
+            inputs[question.key] = question.default
 
     console.print(f"[bold]Running preset:[/bold] {preset.name}")
     result = preset.run(inputs)

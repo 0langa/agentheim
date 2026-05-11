@@ -9,7 +9,7 @@ pip install -e .
 ## Ping models
 
 ```powershell
-python -m ai_team ping-models
+agentheim ping-models
 ```
 
 `ping-models` reads provider/model registry config and tests planner/executor/verifier bindings.
@@ -17,16 +17,16 @@ python -m ai_team ping-models
 ## Inspect and plan
 
 ```powershell
-python -m ai_team inspect --repo <path>
-python -m ai_team plan "Add a README section" --repo <path>
+agentheim inspect --repo <path>
+agentheim plan "Add a README section" --repo <path>
 ```
 
 ## Run modes
 
 ```powershell
-python -m ai_team run "Task text" --repo <path> --mode apply
-python -m ai_team run "Task text" --repo <path> --mode auto
-python -m ai_team run "Task text" --repo <path> --mode ci
+agentheim run "Task text" --repo <path> --mode apply
+agentheim run "Task text" --repo <path> --mode auto
+agentheim run "Task text" --repo <path> --mode ci
 ```
 
 ## Ledger
@@ -36,7 +36,7 @@ Runs are stored under `.ai-team/runs/<run-id>` inside the repo root.
 ## Resume and reports
 
 ```powershell
-python -m ai_team list-runs --repo <path>
-python -m ai_team report --repo <path> --run-id <id>
-python -m ai_team resume --repo <path> --run-id <id>
+agentheim list-runs --repo <path>
+agentheim report --repo <path> --run-id <id>
+agentheim resume --repo <path> --run-id <id>
 ```

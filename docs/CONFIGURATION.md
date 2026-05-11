@@ -97,7 +97,7 @@ Agentheim enforces privacy at the policy engine level:
 Set via the CLI:
 
 ```bash
-python -m ai_team run --preset coding --privacy local-only
+agentheim start codebase-assistant --input repo=. --input task="Review code"
 ```
 
 ## Approval Behavior
@@ -109,7 +109,7 @@ python -m ai_team run --preset coding --privacy local-only
 | `risk-based` | Default — LOW auto-runs, MEDIUM asks, HIGH blocks |
 
 ```bash
-python -m ai_team run --preset coding --approval risk-based
+agentheim start codebase-assistant --input repo=. --input task="Review code" --input mode=apply
 ```
 
 ## MCP Integration

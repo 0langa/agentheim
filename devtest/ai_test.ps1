@@ -5,21 +5,16 @@ param(
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
-$ProjectRoot = Join-Path $RepoRoot "Agent-Team"
 
-if (-not (Test-Path $ProjectRoot)) {
-    throw "Agent-Team folder not found at: $ProjectRoot"
-}
-
-Push-Location $ProjectRoot
+Push-Location $RepoRoot
 try {
     @'
 import json
 import sys
 
-from ai_team.config import load_team_config
-from ai_team.core.model_registry import ModelRegistry
-from ai_team.providers.base import ModelRequest
+from config.config import load_team_config
+from core.model_registry import ModelRegistry
+from providers.base import ModelRequest
 
 
 PURPOSE_BY_ROLE = {

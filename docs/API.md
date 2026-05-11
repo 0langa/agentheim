@@ -12,7 +12,7 @@ app = create_api_app(".")
 uvicorn.run(app, host="127.0.0.1", port=8000)
 ```
 
-Or programmatically:
+Or from the command line:
 
 ```bash
 python -c "from interfaces.api_server import create_api_app; import uvicorn; uvicorn.run(create_api_app('.'), host='0.0.0.0', port=8000)"
@@ -153,6 +153,10 @@ Agentheim also includes a prototype web dashboard:
 
 ```python
 from interfaces.web_ui import create_app
+import uvicorn
+
+app = create_app(".")
+uvicorn.run(app, host="127.0.0.1", port=8080)
 ```
 
 Provides HTML pages for browsing tools, workflows, and presets in a browser.
@@ -166,4 +170,4 @@ from interfaces.desktop_ui import run_desktop_app
 run_desktop_app()
 ```
 
-Falls back to tkinter if PyQt6 is not installed.
+Falls back to tkinter if PyQt6 is not installed, then to opening a browser window.

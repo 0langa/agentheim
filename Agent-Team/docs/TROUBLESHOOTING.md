@@ -9,9 +9,9 @@ Use `--allow-dirty` only when you intentionally want to work on an already modif
 Inspect the ledger:
 
 ```powershell
-python -m ai_team list-runs --repo <path>
-python -m ai_team report --repo <path> --run-id <id>
-python -m ai_team resume --repo <path> --run-id <id>
+agentheim list-runs --repo <path>
+agentheim report --repo <path> --run-id <id>
+agentheim resume --repo <path> --run-id <id>
 ```
 
 ## Model issues
@@ -19,8 +19,8 @@ python -m ai_team resume --repo <path> --run-id <id>
 Run:
 
 ```powershell
-python -m ai_team config-dump --redacted
-python -m ai_team ping-models
+agentheim config-dump --redacted
+agentheim ping-models
 ```
 
 ## Optional integrations unavailable

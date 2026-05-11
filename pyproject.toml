@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentheim"
+version = "0.1.0"
+description = "Local-first, preset-driven AI automation platform"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+  { name = "Agentheim Contributors" }
+]
+keywords = ["ai", "agents", "automation", "local-first", "orchestration"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+dependencies = [
+  "openai>=1.30.0",
+  "pydantic>=2.7.0",
+  "typer>=0.12.3",
+  "rich>=13.7.1",
+  "pyyaml>=6.0.1",
+  "fastapi",
+  "uvicorn",
+  "starlette",
+  "requests",
+  "beautifulsoup4",
+  "filelock",
+  "platformdirs",
+  "numpy",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2.0",
+  "pytest-cov",
+  "playwright",
+]
+
+[project.scripts]
+agentheim = "interfaces.cli.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/0langa/agentheim"
+Repository = "https://github.com/0langa/agentheim"
+Documentation = "https://github.com/0langa/agentheim#readme"
+Issues = "https://github.com/0langa/agentheim/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+  "core*",
+  "config*",
+  "interfaces*",
+  "memory*",
+  "presets*",
+  "providers*",
+  "tools*",
+  "workflows*",
+]
+exclude = [
+  "tests*",
+  "Agent-Team*",
+  "devtest*",
+  "extracted*",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

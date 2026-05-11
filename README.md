@@ -1,4 +1,4 @@
-# Agentwerk
+# Agentheim
 
 [![Tests](https://img.shields.io/badge/tests-372%20passing-brightgreen)](https://github.com/0langa/agentheim/actions)
 [![Phase](https://img.shields.io/badge/phase-6%20advanced-blue)](docs/roadmap/06_PHASED_DEVELOPMENT_PLAN.md)
@@ -8,7 +8,7 @@
 
 > *Simple on the surface. Serious underneath. Extensible when needed. Safe by default. Local-first by default.*
 
-Agentwerk lets you run multi-agent workflows entirely on your own machine. Your data never leaves your box unless you explicitly allow it. Pick a preset, answer three questions, and watch a team of specialized AI agents code, research, organize, or maintain your projects.
+Agentheim lets you run multi-agent workflows entirely on your own machine. Your data never leaves your box unless you explicitly allow it. Pick a preset, answer three questions, and watch a team of specialized AI agents code, research, organize, or maintain your projects.
 
 ---
 
@@ -48,24 +48,24 @@ cp Agent-Team/.env.example .env
 
 ```powershell
 # Interactive preset picker
-python -m ai_team run
+agentheim guided
 
 # Or run a specific preset directly
-python -m ai_team run --preset coding --repo ./my-project
+agentheim start codebase-assistant --input repo=./my-project --input task="Review code"
 ```
 
 ### Check system health
 
 ```powershell
-python -m ai_team doctor
-python -m ai_team ping-models
+agentheim doctor
+agentheim ping-models
 ```
 
 ---
 
 ## 🏗️ Architecture
 
-Agentwerk serves three user layers from the same runtime:
+Agentheim serves three user layers from the same runtime:
 
 ```
 Beginner (Presets)        →  Pick intent, system handles the rest
@@ -89,7 +89,7 @@ Core Runtime (Generic)    →  DAG execution, policy engine, ledger, model regis
 ## 🧪 Test suite
 
 ```powershell
-$env:PYTHONPATH="."; pytest tests\ -v
+pytest tests\ -v
 ```
 
 **372 tests passing, 1 skipped.** Coverage baseline ~59%.

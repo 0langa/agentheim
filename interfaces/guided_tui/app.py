@@ -41,7 +41,7 @@ def _questions_to_dicts(questions: list[Question]) -> list[dict[str, Any]]:
 
 
 def run_guided_tui() -> None:
-    print_header(console, "Local Agent Orchestra")
+    print_header(console, "Agentheim")
     print_info(console, "Select a preset to get started.")
 
     presets = PRESET_REGISTRY.list()

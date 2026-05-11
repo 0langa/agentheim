@@ -28,7 +28,7 @@ class TestDashboard:
         response = client.get("/")
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
-        assert "Local Agent Orchestra" in response.text
+        assert "Agentheim" in response.text
 
 
 class TestTools:
