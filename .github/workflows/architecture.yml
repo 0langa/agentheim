@@ -11,5 +11,5 @@ jobs:
       - run: pip install pytest pytest-cov fastapi starlette uvicorn pydantic requests beautifulsoup4 playwright rich typer filelock platformdirs numpy pyyaml openai httpx
       - run: playwright install chromium
       - run: pip install -e . --no-deps
-      - run: python scripts/roadmap-check.py --phase 6 --ci
+      - run: python scripts/roadmap-check.py --phase 7 --ci
       - run: pytest tests/ --cov --cov-fail-under=60 -q

@@ -44,9 +44,11 @@ def _make_model_registry() -> ModelRegistry:
 
 class TestWorkflowImports:
     def test_coding_workflow_imports(self) -> None:
-        # Coding workflow predates the Workflow base class; uses agent factories
-        from workflows.coding.workflows.coding import WORKFLOW_ID
+        from workflows.coding.workflows.coding import WORKFLOW_ID, CodingWorkflow
         assert WORKFLOW_ID == "coding"
+        assert CodingWorkflow.workflow_id == "coding"
+        assert len(CodingWorkflow.required_agents) > 0
+        assert CodingWorkflow.dag is None or len(CodingWorkflow.dag.steps) > 0
 
     def test_documents_workflow_imports(self) -> None:
         from workflows.documents import DocumentsWorkflow
@@ -57,6 +59,31 @@ class TestWorkflowImports:
         from workflows.research import ResearchWorkflow
         assert ResearchWorkflow.workflow_id == "research"
         assert len(ResearchWorkflow.required_agents) > 0
+
+
+class TestBuiltinWorkflowRegistry:
+    def test_coding_is_registered(self) -> None:
+        from workflows.registry import register_builtin_workflows
+        from core.capability_registry import get_registry, list_workflows
+        reg = get_registry()
+        # Clear workflows registered by other tests
+        for entry in list_workflows():
+            reg._entries.pop(f"workflow:{entry.id}", None)
+        register_builtin_workflows()
+        all_ids = {w.id for w in list_workflows()}
+        assert "coding" in all_ids, f"Expected 'coding' in registered workflows, got {all_ids}"
+
+    def test_all_expected_workflows_registered(self) -> None:
+        from workflows.registry import register_builtin_workflows
+        from core.capability_registry import get_registry, list_workflows
+        reg = get_registry()
+        for entry in list_workflows():
+            reg._entries.pop(f"workflow:{entry.id}", None)
+        register_builtin_workflows()
+        all_ids = {w.id for w in list_workflows()}
+        expected = {"command_assistant", "coding", "docs_maintenance", "documents", "file_organization", "github_maintenance", "research"}
+        missing = expected - all_ids
+        assert not missing, f"Expected workflows: {missing}"
 
     def test_file_organization_workflow_imports(self) -> None:
         from workflows.file_organization import FileOrganizationWorkflow

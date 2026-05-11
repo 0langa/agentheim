@@ -100,6 +100,7 @@ class TestWorkflows:
         assert isinstance(data, list)
         workflow_ids = {w["workflow_id"] for w in data}
         assert "research" in workflow_ids
+        assert "coding" in workflow_ids, f"Expected 'coding' in workflow list, got {workflow_ids}"
 
 
 class TestPresets:

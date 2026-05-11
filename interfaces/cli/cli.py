@@ -23,7 +23,7 @@ from core.public_api import (
     ProviderError,
     PolicyEngine,
     RunLedger,
-    ModelRegistry,
+    build_model_registry,
     ResumeOrchestrator,
     ToolRegistry,
     WorkflowRunner,
@@ -57,7 +57,7 @@ def config_dump(redacted: bool = typer.Option(True, "--redacted/--raw", help="Re
 def ping_models() -> None:
     """Ping configured models with tiny deterministic request."""
     config = load_team_config()
-    registry = ModelRegistry.from_team_config(config)
+    registry = build_model_registry(config)
     table = Table(title="Model Ping Results")
     table.add_column("role")
     table.add_column("provider")
@@ -293,7 +293,7 @@ def resume(
         raise typer.BadParameter(f"Workflow '{workflow_id}' is not registered") from exc
 
     config = load_team_config()
-    registry = ModelRegistry.from_team_config(config)
+    registry = build_model_registry(config)
     workflow = workflow_entry.factory(
         model_registry=registry,
         tool_registry=ToolRegistry(),
@@ -434,7 +434,7 @@ def doctor_cmd(
     checks: list[tuple[str, str, str]] = []
 
     # Python version
-    py_ok = sys.version_info >= (3, 10)
+    py_ok = sys.version_info >= (3, 12)
     checks.append(("Python version", "PASS" if py_ok else "FAIL", f"{platform.python_version()}"))
 
     # Required packages
@@ -480,7 +480,7 @@ def doctor_cmd(
     if not skip_connectivity and has_provider and not missing:
         try:
             config = load_team_config()
-            registry = ModelRegistry.from_team_config(config)
+            registry = build_model_registry(config)
             by_role = config.by_role()
             first_role = next(iter(by_role))
             model = registry.resolve_model(first_role.value, "json")

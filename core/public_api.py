@@ -72,6 +72,8 @@ from core.tool_protocol import ToolSchema as ToolSchema
 from core.cascading_router import CascadingRouter as CascadingRouter
 from core.cascading_router import ModelBinding as ModelBinding
 from core.model_registry import ModelDescriptor as ModelDescriptor
+from core.model_registry import DEFAULT_PROVIDER_MAP as DEFAULT_PROVIDER_MAP
+from core.model_registry import build_model_registry as build_model_registry
 from core.model_registry import ModelRegistry as ModelRegistry
 from core.model_registry import ProviderDescriptor as ProviderDescriptor
 
@@ -196,8 +198,10 @@ __all__ = [
     "CascadingRouter",
     "ModelBinding",
     "ModelDescriptor",
+    "DEFAULT_PROVIDER_MAP",
     "ModelRegistry",
     "ProviderDescriptor",
+    "build_model_registry",
     # Policy
     "ApprovalRequest",
     "ApprovalWorkflow",

@@ -15,6 +15,7 @@ from core.public_api import (
     RunStatus,
     ToolContext,
     ToolResult,
+    build_model_registry,
     list_workflows as cap_list_workflows,
 )
 from memory.bus import MemoryBus
@@ -205,9 +206,9 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
             raise HTTPException(status_code=404, detail=f"Workflow '{workflow_id}' not found")
 
         def _run():
-            from core.public_api import RunLedger, ModelRegistry, PolicyEngine
+            from core.public_api import RunLedger, PolicyEngine
             ledger = RunLedger.create(repo_root, f"webui-{workflow_id}")
-            registry = ModelRegistry.from_team_config()
+            registry = build_model_registry()
             policy = PolicyEngine()
             wf = workflow_cls(registry, tool_registry, policy, ledger)
             return wf.run(repo_root, metadata=body.inputs)

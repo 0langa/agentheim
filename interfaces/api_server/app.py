@@ -12,12 +12,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
+from config.config import ConfigError
 from core.public_api import (
+    DEFAULT_PROVIDER_MAP,
     RunExecutor,
     RunRecord,
     RunStatus,
     ToolContext,
     ToolResult,
+    build_model_registry,
     list_workflows as cap_list_workflows,
 )
 from memory.bus import MemoryBus
@@ -208,22 +211,14 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
 
     def _check_provider_health(provider_id: str) -> tuple[bool, str | None]:
         """Check if a provider is healthy by attempting a lightweight operation."""
-        provider_map = {
-            "openai_v1": ("providers.openai_v1", "OpenAIProvider"),
-            "aws_bedrock": ("providers.aws_bedrock", "AWSBedrockProvider"),
-            "azure_foundry": ("providers.azure_foundry", "AzureFoundryProvider"),
-            "oci_genai": ("providers.oci_genai", "OCIGenAIProvider"),
-        }
-        if provider_id not in provider_map:
+        descriptor = DEFAULT_PROVIDER_MAP.get(provider_id)
+        if descriptor is None:
             return False, "Unknown provider"
-        module_path, class_name = provider_map[provider_id]
         try:
             import importlib
+            module_path, class_name = descriptor.import_path.split(":", 1)
             module = importlib.import_module(module_path)
-            cls = getattr(module, class_name)
-            instance = cls()
-            if hasattr(instance, "health_check"):
-                instance.health_check()
+            getattr(module, class_name)
             return True, None
         except Exception as exc:
             return False, str(exc)
@@ -343,9 +338,9 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
             raise HTTPException(status_code=404, detail=f"Workflow '{workflow_id}' not found")
 
         def _run():
-            from core.public_api import RunLedger, ModelRegistry, PolicyEngine
+            from core.public_api import RunLedger, PolicyEngine
             ledger = RunLedger.create(repo_root, f"api-{workflow_id}")
-            registry = ModelRegistry.from_team_config()
+            registry = build_model_registry()
             policy = PolicyEngine()
             wf = workflow_cls(registry, tool_registry, policy, ledger)
             return wf.run(repo_root, metadata=request.params)
@@ -414,22 +409,20 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
     @app.get("/api/models", response_model=list[ModelListItem], tags=["models"])
     def list_models() -> list[ModelListItem]:
         """List configured models and their capabilities."""
-        from core.public_api import ModelRegistry
-
         try:
-            registry = ModelRegistry.from_team_config()
-            items = []
-            for binding in registry._bindings.values():
-                items.append(
-                    ModelListItem(
-                        model_id=binding.model_id,
-                        provider=binding.provider,
-                        capabilities=list(binding.capabilities),
-                    )
+            registry = build_model_registry()
+            return [
+                ModelListItem(
+                    model_id=model.id,
+                    provider=model.config.provider,
+                    capabilities=sorted(model.capabilities),
                 )
-            return items
-        except Exception:
+                for model in registry.list_models()
+            ]
+        except (ConfigError, ValueError):
             return []
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Failed to list models: {exc}") from exc
 
     @app.get("/api/providers", response_model=list[ProviderListItem], tags=["providers"])
     def list_providers() -> list[ProviderListItem]:

@@ -55,12 +55,17 @@ Repository = "https://github.com/0langa/agentheim"
 Documentation = "https://github.com/0langa/agentheim#readme"
 Issues = "https://github.com/0langa/agentheim/issues"
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.packages.find]
 where = ["."]
+namespaces = true
 include = [
   "core*",
   "config*",
   "interfaces*",
+  "agents*",
   "memory*",
   "presets*",
   "providers*",
