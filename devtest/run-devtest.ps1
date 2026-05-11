@@ -16,11 +16,12 @@ if (-not (Test-Path $ProjectRoot)) {
 function Invoke-TestSet {
     param(
         [string]$Label,
-        [string[]]$PytestArgs
+        [string[]]$PytestArgs,
+        [string]$WorkingDir = $ProjectRoot
     )
     Write-Host "==> $Label"
     Write-Host "pytest $($PytestArgs -join ' ')"
-    Push-Location $ProjectRoot
+    Push-Location $WorkingDir
     try {
         & pytest @PytestArgs
         if ($LASTEXITCODE -ne 0) {
@@ -75,9 +76,11 @@ switch ($Mode) {
             "tests/test_json_repair.py",
             "tests/test_redaction.py"
         ))
+        Invoke-TestSet -Label "broad (root core + memory + smoke suites)" -PytestArgs ($baseArgs + @("tests/core", "tests/memory", "tests/smoke")) -WorkingDir $RepoRoot
     }
     "full" {
         Invoke-TestSet -Label "full (entire project test suite)" -PytestArgs $baseArgs
+        Invoke-TestSet -Label "full (root core + memory + smoke suites)" -PytestArgs ($baseArgs + @("tests/core", "tests/memory", "tests/smoke")) -WorkingDir $RepoRoot
     }
 }
 

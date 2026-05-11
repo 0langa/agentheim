@@ -1,0 +1,6 @@
+from __future__ import annotations
+
+from core.capability_registry import register_workflow
+from workflows.file_organization.workflows.file_organization import FileOrganizationWorkflow
+
+register_workflow(FileOrganizationWorkflow)

@@ -20,12 +20,13 @@ Tier 1: Working Memory (Ephemeral)
 Tier 2: Run Memory (Repository-Scoped)
     └── Cross-run for a specific repository
     └── Previous plans, patterns, frequently modified files
-    └── Stored in .agent-arena/memory/ within repo
+    └── Stored in `<repo-root>/.ai-team/memory/` within repo
 
 Tier 3: Global Memory (Cross-Repository)
     └── Cross-project persistence
     └── User preferences, coding style, model profiles
-    └── Stored in ~/.agent-arena/global-memory/
+    └── Stored in platform-appropriate user data dir via `platformdirs`
+    └── Default: `~/.local/share/agent-arena/` (Linux), `~/Library/Application Support/agent-arena/` (macOS), `%LOCALAPPDATA%\agent-arena\` (Windows)
 ```
 
 ---
@@ -47,7 +48,14 @@ Tier 3: Global Memory (Cross-Repository)
 | Tool call queue | Pending tool invocations | In-memory |
 | Policy decisions | Recent approval/denial decisions | Ledger |
 
-### 2.3 Working Memory Lifecycle
+### 2.3 Implementation
+- **Module:** `memory/tiers/working.py`
+- **Class:** `WorkingMemory`
+- **API:** `set(key, value)`, `get(key, default)`, `append(key, item)`, `get_list(key)`, `snapshot()`, `flush()`, `clear()`
+- **Persistence:** In-memory dict + optional `RunLedger` flush to `working_memory.json`
+- **Integration:** `Workflow.run()` instantiates `WorkingMemory` and passes it via `StepContext.working_memory`
+
+### 2.4 Working Memory Lifecycle
 ```
 Run Start → Allocate working memory
     |
@@ -87,13 +95,18 @@ Working memory deallocated
 
 ### 3.3 Storage Location
 ```
-<repo-root>/.agent-arena/memory/
-    project_facts.jsonl       # Structured project facts
-    run_summaries.jsonl       # Summaries of past runs
-    file_stats.json           # File modification statistics
-    pattern_index.json        # Discovered patterns
-    agent_performance.json    # Model performance per task type
+<repo-root>/.ai-team/memory/
+    episodes/                 # EpisodicMemory JSONL files (monthly shards)
+    semantic/                 # SemanticMemory JSONL files
+    .project_scope            # Fingerprint file for project scoping validation
 ```
+
+### 3.4 Implementation
+- **EpisodicMemory:** `memory/episodic.py` — timeline of `Episode` records with importance scoring and LRU eviction (default `max_episodes=1000`)
+- **SemanticMemory:** `memory/semantic.py` — concept graph of `Concept` records with bidirectional relations and vector similarity query
+- **Brain:** `memory/brain.py` — unified orchestrator; `perceive()` records episodes + auto-extracts concepts; `remember()` fuses episodic recall + semantic query
+- **MemoryBus:** `memory/bus.py` — cross-process safe locking via `filelock.FileLock` + `threading.RLock`; singleton per `repo_root`
+- **EmbeddingEngine:** `memory/embeddings.py` — hash-based random projections for lightweight vector encoding
 
 ### 3.4 Run Memory Example
 The Orchestrator can query: "Last time we modified the auth module, we broke 3 tests. Let's be careful this time."
@@ -123,12 +136,19 @@ The Orchestrator can query: "Last time we modified the auth module, we broke 3 t
 
 ### 4.3 Storage Location
 ```
-~/.agent-arena/global-memory/
-    preferences.json          # User preferences
-    coding_style.json         # Coding style preferences
-    model_profiles.json       # Model performance profiles
-    approval_history.jsonl    # Approval/denial history
+<platform-user-data>/agent-arena/
+    global_memory.db          # SQLite database (WAL mode)
+        preferences           # key-value JSON store
+        approval_history      # approval decision log
+        model_profiles        # per-model performance stats
 ```
+
+### 4.4 Implementation
+- **Module:** `memory/tiers/global_.py`
+- **Class:** `GlobalMemory`
+- **API:** `get_preference(key, default)`, `set_preference(key, value)`, `record_approval(decision, tool_name, context)`, `get_approval_history(limit)`, `record_model_result(model_id, task_type, success, latency_ms)`, `get_model_profile(model_id)`
+- **Privacy:** Values redacted via `core.redaction.redact_dict()` before JSON serialization; never stores repo-specific data
+- **CLI:** `python -m core memory get --key <key>`, `python -m core memory set --key <key> --value <json>`
 
 ### 4.4 Global Memory Privacy
 - Global memory is stored locally
@@ -142,26 +162,29 @@ The Orchestrator can query: "Last time we modified the auth module, we broke 3 t
 
 ### 5.1 Structured Memory (Key-Value)
 - Simple key-value storage for project facts
-- JSON/JSONL format
+- JSON/JSONL format via `JsonlBackend` (`memory/backends/jsonl.py`)
+- SQLite format via `SqliteBackend` (`memory/backends/sqlite.py`)
 - Synchronous read/write
 - Used for: project configuration, known issues, dependencies
 
 ### 5.2 Episodic Memory (What Happened)
-- Vector database storing summarized run episodes
-- Retrieved via semantic similarity
+- Vector-backed timeline of run episodes
+- Retrieved via semantic similarity over embeddings
 - Used for: "Has this agent ever dealt with a CORS issue before?"
-- **DEFERRED to Phase 5** — requires vector DB backend
+- **Implemented:** `memory/episodic.py` — `EpisodicMemory` class
 
 ### 5.3 Semantic Memory (What Is True)
 - Structured knowledge graph of domain concepts
-- Updated by the Orchestrator
+- Updated by the Orchestrator via `Brain._extract_concepts()`
 - Used for: "This is how authentication works in this codebase"
-- **DEFERRED to Phase 5** — requires knowledge graph backend
+- **Implemented:** `memory/semantic.py` — `SemanticMemory` class
+- Deduplication: similarity > 0.85 merges, > 0.60 relates, below creates new
 
 ### 5.4 Procedural Memory (How To Do Things)
 - Learned workflows and patterns
 - Derived from successful run histories
 - Used for: "For this codebase, write tests first, then implementation"
+- **Status:** Partial — deduplicated concepts in SemanticMemory capture patterns; full procedural extraction deferred
 
 ---
 

@@ -1,17 +1,134 @@
-# local-agent-orchestra
+# Agentwerk
 
-Primary project is [`Agent-Team/`](./Agent-Team): local-first orchestrator/coder/verifier runtime for bounded, auditable coding runs.
+[![Tests](https://img.shields.io/badge/tests-372%20passing-brightgreen)](https://github.com/0langa/agentheim/actions)
+[![Phase](https://img.shields.io/badge/phase-6%20advanced-blue)](docs/roadmap/06_PHASED_DEVELOPMENT_PLAN.md)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-## Quick start
+**A local-first, preset-driven AI automation platform.**
+
+> *Simple on the surface. Serious underneath. Extensible when needed. Safe by default. Local-first by default.*
+
+Agentwerk lets you run multi-agent workflows entirely on your own machine. Your data never leaves your box unless you explicitly allow it. Pick a preset, answer three questions, and watch a team of specialized AI agents code, research, organize, or maintain your projects.
+
+---
+
+## ✨ What it does
+
+| Preset | What happens |
+|--------|-------------|
+| **Codebase Assistant** | Inspects → plans → patches → tests → reports on your code |
+| **Research Report** | Gathers sources → summarizes → compares → writes a report |
+| **Local Document Chat** | Indexes your documents → answers questions with citations |
+| **File Organizer** | Analyzes → proposes → previews → applies file organization |
+| **Docs Maintainer** | Detects stale documentation → updates or aligns it |
+| **GitHub Maintainer** | Summarizes issues → drafts PR descriptions |
+| **Command Assistant** | Parses natural language → generates safe shell commands |
+
+All workflows run through the same core engine: a **generic, provider-agnostic orchestration runtime** with event-sourced ledgers, policy-gated tools, and capability-based model resolution.
+
+---
+
+## 🚀 Quick start
+
+### Install
 
 ```powershell
-cd Agent-Team
 pip install -e .
-python -m ai_team ping-models
-python -m ai_team inspect --repo ..
 ```
 
-## Run artifacts
+### Configure
 
-Ledger artifacts are written under `.ai-team/runs/<run-id>` in target repo.
-Artifacts avoid host-specific absolute-path coupling so repository rename/move remains portable.
+Copy `.env.example` to `.env` and fill in your provider details:
+
+```powershell
+cp Agent-Team/.env.example .env
+```
+
+### Run a preset
+
+```powershell
+# Interactive preset picker
+python -m ai_team run
+
+# Or run a specific preset directly
+python -m ai_team run --preset coding --repo ./my-project
+```
+
+### Check system health
+
+```powershell
+python -m ai_team doctor
+python -m ai_team ping-models
+```
+
+---
+
+## 🏗️ Architecture
+
+Agentwerk serves three user layers from the same runtime:
+
+```
+Beginner (Presets)        →  Pick intent, system handles the rest
+    ↓
+Power-User (CLI/Config)   →  Override models, privacy modes, approval rules
+    ↓
+Developer (Extensible)    →  Add workflow packs, providers, tools — no core changes
+    ↓
+Core Runtime (Generic)    →  DAG execution, policy engine, ledger, model registry
+```
+
+**Key design principles:**
+- **Core ignorance** — `core/` knows no provider, model, or workflow names
+- **Local-first** — zero external services required; privacy modes enforced in code
+- **Safety by default** — destructive ops require approval; policies are code, not prompts
+- **Fully auditable** — every run produces an append-only event ledger
+- **Provider-agnostic** — swap Grok, OpenAI, Azure, Ollama, LM Studio without code changes
+
+---
+
+## 🧪 Test suite
+
+```powershell
+$env:PYTHONPATH="."; pytest tests\ -v
+```
+
+**372 tests passing, 1 skipped.** Coverage baseline ~59%.
+
+---
+
+## 📂 Repository layout
+
+```
+agentheim/
+├── core/               # Generic runtime engine (provider/workflow/tool agnostic)
+├── providers/          # Lazy-loaded provider adapters (OpenAI, Azure, Ollama, ...)
+├── workflows/          # Workflow packs (coding, research, documents, ...)
+├── tools/              # Mediated tools with policy gating (filesystem, shell, git, browser, MCP)
+├── memory/             # Three-tier memory system (working, episodic, semantic, global)
+├── interfaces/         # CLI, TUI, Web UI, API server, Desktop UI
+├── presets/            # Beginner-friendly preset definitions
+├── config/             # Configuration schemas and loader
+├── tests/              # Full test suite
+└── docs/roadmap/       # Architecture roadmap and subsystem definitions
+```
+
+---
+
+## 📄 Documentation
+
+- [CLI Runbook](Agent-Team/docs/CLI_RUNBOOK.md)
+- [Architecture Principles](docs/roadmap/02_CORE_ARCHITECTURE_PRINCIPLES.md)
+- [Safety Model](docs/roadmap/18_SAFETY_AND_PERMISSION_MODEL.md)
+- [Phased Development Plan](docs/roadmap/06_PHASED_DEVELOPMENT_PLAN.md)
+
+---
+
+## 🤝 Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, architecture rules, and the phase-locked development workflow.
+
+---
+
+## 📜 License
+
+MIT — see [LICENSE](LICENSE).

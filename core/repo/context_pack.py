@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from core.redaction import redact_text
 from core.repo.scanner import RepoScanResult
 
 
@@ -51,4 +52,4 @@ def build_context_pack(scan: RepoScanResult) -> str:
     lines.append("## Warnings")
     for warning in scan.warnings or ["none"]:
         lines.append(f"- {warning}")
-    return "\n".join(lines).strip() + "\n"
+    return redact_text("\n".join(lines).strip() + "\n")

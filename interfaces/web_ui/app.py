@@ -1,0 +1,313 @@
+"""FastAPI web UI prototype for agent orchestration."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+
+from core.tool_protocol import ToolContext, ToolResult
+from memory.bus import MemoryBus
+from tools.registry import ToolRegistry
+
+
+# ------------------------------------------------------------------
+# Pydantic models (module-level for FastAPI compatibility)
+# ------------------------------------------------------------------
+
+class HealthResponse(BaseModel):
+    status: str = "ok"
+    version: str = "0.1.0-prototype"
+
+
+class ToolListItem(BaseModel):
+    tool_id: str
+    risk_level: str
+    description: str
+
+
+class ToolInvokeRequest(BaseModel):
+    tool_id: str
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
+class ToolInvokeResponse(BaseModel):
+    success: bool
+    data: Any = None
+    error: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class WorkflowListItem(BaseModel):
+    workflow_id: str
+    name: str
+    description: str
+
+
+class PresetListItem(BaseModel):
+    preset_id: str
+    name: str
+    description: str
+
+
+class MemoryReadResponse(BaseModel):
+    scope: str
+    key: str
+    value: Any = None
+    found: bool = False
+
+
+class MemoryWriteRequest(BaseModel):
+    value: dict[str, Any]
+
+
+class MemoryWriteResponse(BaseModel):
+    scope: str
+    key: str
+    status: str = "written"
+
+
+# ------------------------------------------------------------------
+# App factory
+# ------------------------------------------------------------------
+
+def create_app(repo_root: str | Path = ".") -> FastAPI:
+    """Create and configure the FastAPI application."""
+    repo_root = Path(repo_root).resolve()
+    app = FastAPI(
+        title="Local Agent Orchestra",
+        description="Web UI prototype for agent orchestration",
+        version="0.1.0-prototype",
+    )
+
+    tool_registry = ToolRegistry(repo_root)
+    memory_bus = MemoryBus(repo_root)
+
+    # Serve static files if the directory exists
+    static_dir = Path(__file__).parent / "static"
+    if static_dir.is_dir():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+    # ------------------------------------------------------------------
+    # Routes
+    # ------------------------------------------------------------------
+
+    @app.get("/", response_class=HTMLResponse)
+    def root() -> str:
+        """Serve the prototype dashboard."""
+        return _dashboard_html()
+
+    @app.get("/api/health", response_model=HealthResponse)
+    def health() -> HealthResponse:
+        return HealthResponse()
+
+    @app.get("/api/tools", response_model=list[ToolListItem])
+    def list_tools() -> list[ToolListItem]:
+        """List all available tools with their risk levels."""
+        items = []
+        for attr_name in dir(tool_registry):
+            if attr_name.startswith("_"):
+                continue
+            tool = getattr(tool_registry, attr_name)
+            if hasattr(tool, "tool_id") and hasattr(tool, "schema"):
+                items.append(
+                    ToolListItem(
+                        tool_id=tool.tool_id,
+                        risk_level=tool.risk_level.value,
+                        description=tool.schema.description,
+                    )
+                )
+        return sorted(items, key=lambda x: x.tool_id)
+
+    @app.post("/api/tools/invoke", response_model=ToolInvokeResponse)
+    def invoke_tool(body: ToolInvokeRequest) -> ToolInvokeResponse:
+        """Invoke a tool with the given parameters."""
+        tool = None
+        for attr_name in dir(tool_registry):
+            if attr_name.startswith("_"):
+                continue
+            candidate = getattr(tool_registry, attr_name)
+            if getattr(candidate, "tool_id", None) == body.tool_id:
+                tool = candidate
+                break
+
+        if tool is None:
+            raise HTTPException(status_code=404, detail=f"Tool '{body.tool_id}' not found")
+
+        # Prototype safety: block high/critical risk tools via web UI
+        if tool.risk_level.value in ("high", "critical"):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Tool '{body.tool_id}' has risk level '{tool.risk_level.value}' and is blocked in web UI prototype",
+            )
+
+        ctx = ToolContext(network_allowed=False)
+        result: ToolResult = tool.invoke(body.params, ctx)
+        return ToolInvokeResponse(
+            success=result.success,
+            data=result.data,
+            error=result.error,
+            metadata=result.metadata,
+        )
+
+    @app.get("/api/workflows", response_model=list[WorkflowListItem])
+    def list_workflows() -> list[WorkflowListItem]:
+        """List registered workflows."""
+        # Import workflows to ensure registration
+        _import_workflows()
+        from core.capability_registry import list_workflows as cap_list
+
+        return [
+            WorkflowListItem(
+                workflow_id=w.id,
+                name=w.id.replace("_", " ").title(),
+                description=getattr(w, "description", "") or "",
+            )
+            for w in cap_list()
+        ]
+
+    @app.get("/api/presets", response_model=list[PresetListItem])
+    def list_presets() -> list[PresetListItem]:
+        """List available presets."""
+        from presets import PRESET_REGISTRY
+
+        return [
+            PresetListItem(
+                preset_id=p.preset_id,
+                name=getattr(p, "name", p.preset_id) or p.preset_id,
+                description=getattr(p, "description", "") or "",
+            )
+            for p in PRESET_REGISTRY.list()
+        ]
+
+    @app.get("/api/memory/{scope}/{key}", response_model=MemoryReadResponse)
+    def read_memory(scope: str, key: str) -> MemoryReadResponse:
+        """Read a value from the memory bus."""
+        value = memory_bus.read(scope, key)
+        return MemoryReadResponse(
+            scope=scope,
+            key=key,
+            value=value,
+            found=value is not None,
+        )
+
+    @app.post("/api/memory/{scope}/{key}", response_model=MemoryWriteResponse)
+    def write_memory(scope: str, key: str, body: MemoryWriteRequest) -> MemoryWriteResponse:
+        """Write a value to the memory bus."""
+        memory_bus.write(scope, key, body.value)
+        return MemoryWriteResponse(scope=scope, key=key)
+
+    return app
+
+
+def _import_workflows() -> None:
+    """Import all workflow modules to trigger registration."""
+    try:
+        import workflows.coding
+        import workflows.command_assistant
+        import workflows.docs_maintenance
+        import workflows.documents
+        import workflows.file_organization
+        import workflows.github_maintenance
+        import workflows.research
+    except Exception:
+        pass
+
+
+def _dashboard_html() -> str:
+    return """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Local Agent Orchestra</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; padding: 2rem; }
+  h1 { font-size: 1.75rem; margin-bottom: 0.5rem; }
+  .subtitle { color: #94a3b8; margin-bottom: 2rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+  .card { background: #1e293b; border-radius: 0.5rem; padding: 1.25rem; border: 1px solid #334155; }
+  .card h2 { font-size: 1.1rem; margin-bottom: 0.75rem; color: #60a5fa; }
+  .card ul { list-style: none; }
+  .card li { padding: 0.35rem 0; border-bottom: 1px solid #334155; font-size: 0.9rem; }
+  .card li:last-child { border-bottom: none; }
+  .risk-high { color: #f87171; }
+  .risk-medium { color: #fbbf24; }
+  .risk-low { color: #34d399; }
+  .risk-none { color: #94a3b8; }
+  .badge { font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 0.25rem; background: #334155; margin-left: 0.5rem; }
+  #status { margin-bottom: 1.5rem; font-size: 0.85rem; color: #34d399; }
+  .loading { color: #94a3b8; }
+  .error { color: #f87171; }
+</style>
+</head>
+<body>
+<h1>Local Agent Orchestra</h1>
+<p class="subtitle">Web UI Prototype &mdash; Phase 6</p>
+<div id="status">Loading...</div>
+<div class="grid">
+  <div class="card">
+    <h2>Tools</h2>
+    <ul id="tools-list"><li class="loading">Loading...</li></ul>
+  </div>
+  <div class="card">
+    <h2>Workflows</h2>
+    <ul id="workflows-list"><li class="loading">Loading...</li></ul>
+  </div>
+  <div class="card">
+    <h2>Presets</h2>
+    <ul id="presets-list"><li class="loading">Loading...</li></ul>
+  </div>
+</div>
+<script>
+async function fetchJSON(url) {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+    return await r.json();
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+function riskClass(level) {
+  const map = { high: 'risk-high', medium: 'risk-medium', low: 'risk-low', none: 'risk-none' };
+  return map[level] || 'risk-none';
+}
+async function loadAll() {
+  const status = document.getElementById('status');
+  const [health, tools, workflows, presets] = await Promise.all([
+    fetchJSON('/api/health'),
+    fetchJSON('/api/tools'),
+    fetchJSON('/api/workflows'),
+    fetchJSON('/api/presets')
+  ]);
+
+  if (health.error) {
+    status.textContent = 'Error: ' + health.error;
+    status.className = 'error';
+    return;
+  }
+  status.textContent = 'API connected &mdash; v' + health.version;
+
+  const toolsList = document.getElementById('tools-list');
+  if (tools.error) { toolsList.innerHTML = '<li class="error">' + tools.error + '</li>'; }
+  else { toolsList.innerHTML = tools.map(t => '<li>' + t.tool_id + '<span class="badge ' + riskClass(t.risk_level) + '">' + t.risk_level + '</span></li>').join(''); }
+
+  const wfList = document.getElementById('workflows-list');
+  if (workflows.error) { wfList.innerHTML = '<li class="error">' + workflows.error + '</li>'; }
+  else { wfList.innerHTML = workflows.map(w => '<li>' + w.workflow_id + '</li>').join(''); }
+
+  const presetList = document.getElementById('presets-list');
+  if (presets.error) { presetList.innerHTML = '<li class="error">' + presets.error + '</li>'; }
+  else { presetList.innerHTML = presets.map(p => '<li>' + p.preset_id + '</li>').join(''); }
+}
+loadAll();
+</script>
+</body>
+</html>
+"""

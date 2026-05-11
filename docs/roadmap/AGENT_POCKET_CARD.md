@@ -19,16 +19,31 @@
 
 ---
 
-## Current Phase: **0 — FOUNDATION**
+## Current Phase: **6 — ADVANCED SYSTEMS**
 
 ### I May Work On
-`core/` (refactor only), `providers/<name>/`, `workflows/coding/`, `tools/base.py`, `providers/base.py`, directory structure, import linting, CI
+`core/`, `providers/<name>/`, `workflows/coding/`, `workflows/documents/`, `workflows/research/`, `workflows/file_organization/`, `workflows/docs_maintenance/`, `workflows/github_maintenance/`, `workflows/command_assistant/`, `tools/`, `tools/mcp/`, `tools/browser/`, `tools/local_db/`, `interfaces/cli/`, `interfaces/guided_tui/`, `interfaces/web_ui/`, `interfaces/desktop_ui/`, `interfaces/api_server/`, `presets/`, `memory/`, `config/`, directory structure, import linting, CI
 
 ### I Must NOT Touch
-`workflows/documents/`, `workflows/research/`, `memory/vector_retrieval.py`, `interfaces/guided_tui/`, `interfaces/web_ui/`, `tools/mcp/`, `tools/browser/`, `presets/` — all LOCKED or RESERVED
+Nothing — Phase 6 is fully unlocked.
 
-### Phase 0 Exit Gates (ALL must pass)
-G0.1 No provider logic in core | G0.2 No workflow logic in core | G0.3 Canonical dirs | G0.4 CI enforces | G0.5 Import lint passes | G0.6 Generic ModelRegistry
+### Passed Gates
+G0.1–G0.6 | G1.1–G1.8 | G2.1–G2.7 | G3.1–G3.7 | G4.1–G4.6 | G5.1–G5.5
+
+### Phase 5 Exit Gates (ALL PASSED)
+G5.1 ✅ At least 3 workflow packs functional beyond coding | G5.2 ✅ Guided TUI beginner-friendly | G5.3 ✅ Memory system with 2+ backends | G5.4 ✅ All workflow packs produce complete artifacts | G5.5 ✅ Platform usable by non-technical users
+
+### Phase 6 Exit Gates (ALL must pass)
+G6.1 MCP integration functional | G6.2 Browser tool operational | G6.3 Web UI prototype | G6.4 API server with OpenAPI spec | G6.5 Desktop UI scaffold | G6.6 Distributed worker protocol defined
+
+### Memory System Status: HARDENED
+- 3 storage backends (JSONL, SQLite, Vector) | 103 tests passing
+- EpisodicMemory (timeline, bounded growth, importance scoring) | SemanticMemory (concept graph, deduplication)
+- Brain (unified orchestrator: perceive/remember/learn/relate/summarize)
+- MemoryBus (cross-process file locking + intra-process RLock, reentrant)
+- Project scoping (repo_root required, `.project_scope` fingerprint)
+- Tier 1: WorkingMemory (`memory/tiers/working.py`) — ephemeral, single-run, ledger-flushed
+- Tier 3: GlobalMemory (`memory/tiers/global_.py`) — cross-project, SQLite-backed, `platformdirs` path
 
 ---
 
@@ -121,10 +136,10 @@ Want to modify roadmap? → Architecture Lead approval required
 - "This workflow needs a core hook" → **NO. Extend the base class.**
 - "I'll import the tool directly" → **NO. Use tool_protocol.**
 - "Global config is easier" → **NO. Explicit injection.**
-- "I'll add the vector DB" → **NO. Phase 5.**
-- "MCP would help here" → **NO. Phase 6 RESERVED.**
+- "I'll add the vector DB" → **OK. Phase 5 complete.**
+- "MCP would help here" → **OK. Phase 6 is unlocked.**
 
 ---
 
 *This card is derived from docs/roadmap/00-20. If this card conflicts with the roadmap, the roadmap wins.*
-*Last updated: Phase 0 activation.*
+*Last updated: Phase 6 unlocked. Architecture Lead approved.*

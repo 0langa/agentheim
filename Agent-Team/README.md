@@ -1,6 +1,6 @@
 # Agent-Team
 
-Local-first three-agent coding team runtime.
+Local-first multi-agent automation runtime for [Agentwerk](../README.md).
 
 ## Scope
 
@@ -12,10 +12,11 @@ Local-first three-agent coding team runtime.
 - Runtime is provider-agnostic.
 - Providers are configured in a provider registry (`AI_TEAM_PROVIDER_*` env vars).
 - Workflow roles bind to logical models:
-- planner
-- executor
-- verifier
-- Grok is optional and works as one OpenAI-compatible provider configuration.
+  - planner
+  - executor
+  - verifier
+  - gatherer, summarizer, reporter (research workflow)
+  - indexer, retriever, answerer (documents workflow)
 
 ## Install
 
@@ -25,7 +26,7 @@ pip install -e .
 
 ## Environment variables
 
-See `.env.example` for all three model roles.
+See `.env.example` for all model roles.
 
 ## Core commands
 

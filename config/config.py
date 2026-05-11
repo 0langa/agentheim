@@ -15,6 +15,12 @@ class ModelRole(StrEnum):
     PLANNER = "planner"
     EXECUTOR = "executor"
     VERIFIER = "verifier"
+    INDEXER = "indexer"
+    RETRIEVER = "retriever"
+    ANSWERER = "answerer"
+    GATHERER = "gatherer"
+    SUMMARIZER = "summarizer"
+    REPORTER = "reporter"
 
 
 class ProviderConfig(BaseModel):
@@ -114,11 +120,13 @@ class TeamConfig(BaseModel):
         )
 
     def by_role(self) -> dict[ModelRole, AgentModelConfig]:
-        return {
-            ModelRole.PLANNER: self.resolve_role(ModelRole.PLANNER),
-            ModelRole.EXECUTOR: self.resolve_role(ModelRole.EXECUTOR),
-            ModelRole.VERIFIER: self.resolve_role(ModelRole.VERIFIER),
-        }
+        seen: set[ModelRole] = set()
+        result: dict[ModelRole, AgentModelConfig] = {}
+        for model in self.models.values():
+            if model.role not in seen:
+                seen.add(model.role)
+                result[model.role] = self.resolve_role(model.role)
+        return result
 
     def dump(self, redacted: bool = True) -> dict[str, Any]:
         providers = {
@@ -205,6 +213,12 @@ def _load_registry_config() -> TeamConfig:
             "planner": ("planner", "default", "replace-with-planner-model", ["plan", "reasoning", "json"]),
             "executor": ("executor", "default", "replace-with-executor-model", ["code_edit", "json"]),
             "verifier": ("verifier", "default", "replace-with-verifier-model", ["verify", "json"]),
+            "gatherer": ("gatherer", "default", "replace-with-gatherer-model", ["web_search", "fetch", "json"]),
+            "summarizer": ("summarizer", "default", "replace-with-summarizer-model", ["summarize", "compare", "json"]),
+            "reporter": ("reporter", "default", "replace-with-reporter-model", ["report", "synthesize", "json"]),
+            "indexer": ("indexer", "default", "replace-with-indexer-model", ["file_read", "embedding_index", "json"]),
+            "retriever": ("retriever", "default", "replace-with-retriever-model", ["search", "summarize", "json"]),
+            "answerer": ("answerer", "default", "replace-with-answerer-model", ["synthesize", "cite", "json"]),
         }
         for model_id, (role_value, provider_default, name_default, capabilities_default) in model_defaults.items():
             role = ModelRole(role_value)

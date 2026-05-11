@@ -1,0 +1,84 @@
+from __future__ import annotations
+
+import json
+import logging
+from typing import Any
+
+from core.tool_protocol import (
+    BaseTool,
+    ParamSchema,
+    ReturnSchema,
+    RiskLevel,
+    ToolContext,
+    ToolResult,
+    ToolSchema,
+)
+from tools.mcp.client import MCPClient
+
+logger = logging.getLogger(__name__)
+
+
+def _mcp_type_to_param_type(mcp_type: str) -> str:
+    mapping = {
+        "string": "str",
+        "integer": "int",
+        "number": "float",
+        "boolean": "bool",
+        "array": "list",
+        "object": "dict",
+    }
+    return mapping.get(mcp_type, "str")
+
+
+def _convert_schema(mcp_input_schema: dict[str, Any]) -> dict[str, ParamSchema]:
+    """Convert MCP JSON Schema input to our ParamSchema dict."""
+    parameters: dict[str, ParamSchema] = {}
+    properties = mcp_input_schema.get("properties", {})
+    required = set(mcp_input_schema.get("required", []))
+
+    for name, prop in properties.items():
+        ptype = _mcp_type_to_param_type(prop.get("type", "string"))
+        description = prop.get("description", "")
+        enum = prop.get("enum")
+        parameters[name] = ParamSchema(
+            type=ptype,
+            description=description,
+            required=name in required,
+            enum=list(enum) if enum else None,
+        )
+    return parameters
+
+
+class MCPTool(BaseTool):
+    """Wraps an MCP server tool as a BaseTool."""
+
+    def __init__(self, client: MCPClient, tool_info: dict[str, Any]) -> None:
+        self._client = client
+        self._tool_info = tool_info
+        name = tool_info.get("name", "unknown")
+        description = tool_info.get("description", "MCP tool")
+        input_schema = tool_info.get("inputSchema", {})
+        parameters = _convert_schema(input_schema)
+        schema = ToolSchema(
+            description=description,
+            parameters=parameters,
+            returns=ReturnSchema(type="dict", description="MCP tool result"),
+        )
+        super().__init__(tool_id=f"mcp.{name}", schema=schema, risk_level=RiskLevel.MEDIUM)
+
+    def invoke(self, params: dict[str, Any], context: ToolContext) -> ToolResult:
+        name = self._tool_info.get("name", "")
+        try:
+            result = self._client.call_tool(name, params)
+            content = result.get("content", [])
+            # MCP content is a list of {type, text} objects
+            texts = [item.get("text", "") for item in content if isinstance(item, dict)]
+            output = "\n".join(texts) if texts else json.dumps(result)
+            return ToolResult(success=True, data=result, metadata={"source": "mcp"})
+        except Exception as exc:
+            logger.warning("MCP tool '%s' invocation failed: %s", name, exc)
+            return ToolResult(
+                success=False,
+                error=str(exc),
+                metadata={"source": "mcp", "tool": name},
+            )

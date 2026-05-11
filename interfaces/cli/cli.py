@@ -1,21 +1,34 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+from typing import Any
+
+# Ensure repo root is on sys.path when running this script directly
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
 
 from rich.console import Console
 from rich.table import Table
 import typer
 
-from ai_team.config import load_team_config
-from ai_team.core.model_registry import ModelRegistry
-from ai_team.errors import AIteamError, ConfigError, ProviderError
-from ai_team.ledger import RunLedger
-from ai_team.providers.base import ModelRequest
-from ai_team.repo.context_pack import build_context_pack
-from ai_team.repo.scanner import inspect_repository
-from ai_team.resume import list_runs, load_final_report, load_run
-from ai_team.runtime import plan_task, run_task
+from config.config import load_team_config
+from core.errors import AIteamError, ConfigError, ProviderError
+from core.ledger import RunLedger
+from core.model_registry import ModelRegistry
+from core.repo.context_pack import build_context_pack
+from core.repo.scanner import inspect_repository
+from core.resume import list_runs, load_final_report, load_run
+import importlib.util
+
+from memory.tiers.global_ import GlobalMemory
+from presets import PRESET_REGISTRY
+from providers.base import ModelRequest
+from tools.mcp.client import MCPClient
+from tools.mcp.config import load_mcp_config
+from workflows.coding.runtime import plan_task, run_task
 
 app = typer.Typer(help="Local-first three-agent runtime.")
 console = Console()
@@ -243,6 +256,285 @@ def resume(
 ) -> None:
     run_data = load_run(repo, run_id)
     console.print_json(json.dumps(run_data))
+
+
+@app.command("presets")
+def list_presets_cmd() -> None:
+    """List all available presets."""
+    presets = PRESET_REGISTRY.list()
+    if not presets:
+        console.print("No presets found.")
+        return
+    table = Table(title="Available Presets")
+    table.add_column("ID", style="green")
+    table.add_column("Name")
+    table.add_column("Workflow")
+    table.add_column("Description")
+    for preset in presets:
+        table.add_row(preset.preset_id, preset.name, preset.workflow_id, preset.description)
+    console.print(table)
+
+
+@app.command("start")
+def start_preset(
+    preset_id: str = typer.Argument(..., help="Preset ID to run."),
+    input_args: list[str] = typer.Option([], "--input", help="Key=value input pairs."),
+) -> None:
+    """Run a preset with the given inputs."""
+    try:
+        preset = PRESET_REGISTRY.get(preset_id)
+    except KeyError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    inputs: dict[str, Any] = dict(preset.default_config)
+    for arg in input_args:
+        if "=" not in arg:
+            raise typer.BadParameter(f"Input must be key=value: {arg}")
+        key, value = arg.split("=", 1)
+        lower = value.lower()
+        if lower == "true":
+            value = True  # type: ignore[assignment]
+        elif lower == "false":
+            value = False  # type: ignore[assignment]
+        inputs[key] = value
+
+    console.print(f"[bold]Running preset:[/bold] {preset.name}")
+    result = preset.run(inputs)
+    console.print(result)
+
+
+@app.command("guided")
+def guided() -> None:
+    """Launch the guided TUI preset picker."""
+    from interfaces.guided_tui.app import run_guided_tui
+
+    run_guided_tui()
+
+
+@app.command("memory")
+def memory_cmd(
+    action: str = typer.Argument(..., help="get|set|history|profile"),
+    key: str = typer.Option(None, "--key", help="Preference key for get/set."),
+    value: str = typer.Option(None, "--value", help="JSON value for set."),
+    model_id: str = typer.Option(None, "--model-id", help="Model ID for profile."),
+) -> None:
+    """Interact with global memory (Tier 3)."""
+    gm = GlobalMemory()
+    if action == "get":
+        if not key:
+            raise typer.BadParameter("--key required for get")
+        result = gm.get_preference(key)
+        console.print_json(json.dumps({"key": key, "value": result}))
+    elif action == "set":
+        if not key or value is None:
+            raise typer.BadParameter("--key and --value required for set")
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            parsed = value
+        gm.set_preference(key, parsed)
+        console.print(f"[green]Set preference[/green] {key}")
+    elif action == "history":
+        history = gm.get_approval_history()
+        table = Table(title="Approval History")
+        table.add_column("Decision")
+        table.add_column("Tool")
+        table.add_column("Timestamp")
+        for item in history:
+            table.add_row(item["decision"], item["tool_name"], item["timestamp"])
+        console.print(table)
+    elif action == "profile":
+        if not model_id:
+            raise typer.BadParameter("--model-id required for profile")
+        profile = gm.get_model_profile(model_id)
+        if profile is None:
+            console.print(f"[yellow]No profile found for {model_id}")
+        else:
+            console.print_json(json.dumps(profile))
+    else:
+        raise typer.BadParameter(f"Unknown action: {action}")
+
+
+@app.command("doctor")
+def doctor_cmd(
+    skip_connectivity: bool = typer.Option(False, "--skip-connectivity", help="Skip live model connectivity check."),
+) -> None:
+    """Diagnose common configuration and environment issues."""
+    import platform
+    import subprocess
+    import sys
+
+    table = Table(title="System Diagnostics")
+    table.add_column("Check")
+    table.add_column("Status")
+    table.add_column("Detail")
+
+    checks: list[tuple[str, str, str]] = []
+
+    # Python version
+    py_ok = sys.version_info >= (3, 10)
+    checks.append(("Python version", "PASS" if py_ok else "FAIL", f"{platform.python_version()}"))
+
+    # Required packages
+    required = ["pydantic", "rich", "typer", "numpy", "filelock", "platformdirs"]
+    missing: list[str] = []
+    for pkg in required:
+        spec = importlib.util.find_spec(pkg)
+        if spec is None:
+            missing.append(pkg)
+    pkg_status = "PASS" if not missing else "FAIL"
+    pkg_detail = "all present" if not missing else f"missing: {', '.join(missing)}"
+    checks.append(("Required packages", pkg_status, pkg_detail))
+
+    # Provider env vars
+    provider_envs = ["AI_TEAM_PROVIDER_IDS"]
+    has_provider = any(os.getenv(ev) for ev in provider_envs)
+    checks.append(("Provider config", "PASS" if has_provider else "WARN", "AI_TEAM_PROVIDER_IDS set" if has_provider else "No provider env vars found"))
+
+    # Writable .ai-team/
+    ai_team_path = Path(".ai-team")
+    try:
+        ai_team_path.mkdir(exist_ok=True)
+        test_file = ai_team_path / ".doctor_write_test"
+        test_file.write_text("ok", encoding="utf-8")
+        test_file.unlink()
+        writable = True
+    except Exception as exc:
+        writable = False
+    checks.append(("Workspace writable", "PASS" if writable else "FAIL", str(ai_team_path.resolve()) if writable else str(exc)))
+
+    # Git available
+    git_ok = False
+    git_detail = ""
+    try:
+        result = subprocess.run(["git", "--version"], capture_output=True, text=True, timeout=5)
+        git_ok = result.returncode == 0
+        git_detail = result.stdout.strip() if git_ok else "git not found"
+    except Exception as exc:
+        git_detail = str(exc)
+    checks.append(("Git available", "PASS" if git_ok else "WARN", git_detail))
+
+    # Model connectivity (optional)
+    if not skip_connectivity and has_provider and not missing:
+        try:
+            config = load_team_config()
+            registry = ModelRegistry.from_team_config(config)
+            by_role = config.by_role()
+            first_role = next(iter(by_role))
+            model = registry.resolve_model(first_role.value, "json")
+            provider = registry.create_provider(model.config)
+            response = provider.invoke(
+                ModelRequest(
+                    role=model.config.role,
+                    system_prompt="Reply with exactly: pong",
+                    user_prompt="ping",
+                    temperature=0.0,
+                )
+            )
+            conn_ok = bool(response.content.strip())
+            conn_detail = f"{model.config.provider} / {model.config.model} responded"
+        except Exception as exc:
+            conn_ok = False
+            conn_detail = str(exc)
+        checks.append(("Model connectivity", "PASS" if conn_ok else "FAIL", conn_detail))
+    else:
+        checks.append(("Model connectivity", "SKIP", "--skip-connectivity or missing config"))
+
+    for check, status, detail in checks:
+        color = {"PASS": "[green]", "FAIL": "[red]", "WARN": "[yellow]", "SKIP": "[dim]"}.get(status, "")
+        table.add_row(check, f"{color}{status}[/]{color}", detail)
+
+    console.print(table)
+
+    fail_count = sum(1 for _, s, _ in checks if s == "FAIL")
+    if fail_count:
+        console.print(f"[red]{fail_count} check(s) failed.[/red]")
+        raise typer.Exit(code=1)
+    console.print("[green]All checks passed.[/green]")
+
+
+@app.command("mcp-list")
+def mcp_list_cmd(
+    config: str = typer.Option(".ai-team/mcp.json", "--config", help="Path to MCP config file."),
+) -> None:
+    """List MCP tools from configured servers."""
+    config_path = Path(config)
+    if not config_path.exists():
+        console.print(f"[yellow]MCP config not found:[/yellow] {config_path}")
+        raise typer.Exit(code=1)
+
+    try:
+        servers = load_mcp_config(config_path)
+    except Exception as exc:
+        console.print(f"[red]Failed to load MCP config:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    table = Table(title="MCP Tools")
+    table.add_column("Server")
+    table.add_column("Tool")
+    table.add_column("Description")
+
+    for server in servers:
+        if not server.enabled:
+            table.add_row(server.name, "[dim]disabled", "")
+            continue
+        try:
+            with MCPClient(server.command, env=server.env) as client:
+                tools = client.list_tools()
+                for tool in tools:
+                    table.add_row(server.name, tool.get("name", "?"), tool.get("description", "")[:50])
+        except Exception as exc:
+            table.add_row(server.name, f"[red]error: {exc}", "")
+
+    console.print(table)
+
+
+@app.command("mcp-call")
+def mcp_call_cmd(
+    tool_name: str = typer.Argument(..., help="MCP tool name (format: server.tool or just tool)."),
+    args: list[str] = typer.Option([], "--arg", help="Key=value arguments."),
+    config: str = typer.Option(".ai-team/mcp.json", "--config", help="Path to MCP config file."),
+) -> None:
+    """Invoke an MCP tool directly."""
+    config_path = Path(config)
+    if not config_path.exists():
+        console.print(f"[yellow]MCP config not found:[/yellow] {config_path}")
+        raise typer.Exit(code=1)
+
+    arguments: dict[str, Any] = {}
+    for arg in args:
+        if "=" not in arg:
+            raise typer.BadParameter(f"Argument must be key=value: {arg}")
+        key, value = arg.split("=", 1)
+        # Try JSON parse first, then fall back to string
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            pass
+        arguments[key] = value
+
+    try:
+        servers = load_mcp_config(config_path)
+    except Exception as exc:
+        console.print(f"[red]Failed to load MCP config:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    for server in servers:
+        if not server.enabled:
+            continue
+        try:
+            with MCPClient(server.command, env=server.env) as client:
+                tools = client.list_tools()
+                names = {t.get("name", "") for t in tools}
+                if tool_name in names:
+                    result = client.call_tool(tool_name, arguments)
+                    console.print_json(json.dumps(result, ensure_ascii=False))
+                    return
+        except Exception as exc:
+            console.print(f"[dim]{server.name}: {exc}[/dim]")
+
+    console.print(f"[red]Tool '{tool_name}' not found on any enabled MCP server.[/red]")
+    raise typer.Exit(code=1)
 
 
 def main() -> None:

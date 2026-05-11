@@ -1,18 +1,93 @@
 from __future__ import annotations
 
+import re
+import urllib.error
+import urllib.request
 from pathlib import Path
+from typing import Any
 
 
-class WebResearchAdapter:
-    def __init__(self, repo_root: str | Path, enabled: bool = False) -> None:
-        self.repo_root = Path(repo_root)
-        self.enabled = enabled
+class DuckDuckGoSearchAdapter:
+    """Real web search via duckduckgo-search (optional dependency)."""
+
+    def __init__(self) -> None:
+        self._client = None
+        try:
+            from duckduckgo_search import DDGS
+
+            self._client = DDGS()
+        except Exception:
+            pass
 
     @property
     def available(self) -> bool:
-        return self.enabled
+        return self._client is not None
 
-    def search(self, query: str) -> dict[str, str]:
+    def search(self, query: str, max_results: int = 5) -> dict[str, Any]:
+        if not self.available:
+            raise RuntimeError("duckduckgo-search is not installed.")
+        results = self._client.text(query, max_results=max_results)
+        return {
+            "query": query,
+            "source": "duckduckgo",
+            "results": [
+                {"title": r.get("title", ""), "url": r.get("href", ""), "snippet": r.get("body", "")}
+                for r in results
+            ],
+        }
+
+
+class UrllibSearchAdapter:
+    """Fallback web search via DuckDuckGo HTML scraping."""
+
+    def search(self, query: str, max_results: int = 5) -> dict[str, Any]:
+        encoded = query.replace(" ", "+")
+        url = f"https://html.duckduckgo.com/html/?q={encoded}"
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=15) as response:
+                html = response.read().decode("utf-8", errors="replace")
+        except urllib.error.URLError as exc:
+            return {"query": query, "source": "urllib", "error": str(exc), "results": []}
+
+        results = []
+        # Extract results from DuckDuckGo HTML
+        for match in re.finditer(r'<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>(.*?)</a>', html):
+            href = match.group(1)
+            title = re.sub(r"<[^>]+>", "", match.group(2))
+            if href and title:
+                results.append({"title": title.strip(), "url": href, "snippet": ""})
+            if len(results) >= max_results:
+                break
+
+        return {"query": query, "source": "urllib", "results": results}
+
+
+class WebResearchAdapter:
+    """Dispatcher: tries DuckDuckGo → urllib → stub."""
+
+    def __init__(self, repo_root: str | Path, enabled: bool = True) -> None:
+        self.repo_root = Path(repo_root)
+        self.enabled = enabled
+        self._ddg = DuckDuckGoSearchAdapter()
+
+    @property
+    def available(self) -> bool:
+        return True  # Always has at least the urllib fallback
+
+    def search(self, query: str) -> dict[str, Any]:
         if not self.enabled:
-            raise RuntimeError("Web research adapter is disabled.")
-        return {"query": query, "result": "stub"}
+            return {"query": query, "source": "disabled", "results": []}
+
+        # Try duckduckgo-search first
+        if self._ddg.available:
+            try:
+                return self._ddg.search(query)
+            except Exception:
+                pass
+
+        # Fallback to urllib scraping
+        try:
+            return UrllibSearchAdapter().search(query)
+        except Exception as exc:
+            return {"query": query, "source": "stub", "error": str(exc), "results": []}

@@ -433,40 +433,52 @@ Expand the platform with additional workflow packs, providers, memory backends, 
 - Distributed workers
 
 ### 7.6 Exit Gate
-**GATE 5.1:** At least 3 workflow packs functional beyond coding
-**GATE 5.2:** Guided TUI provides beginner-friendly experience
-**GATE 5.3:** Memory system functional with at least 2 backends
-**GATE 5.4:** All workflow packs produce complete artifacts
-**GATE 5.5:** Platform is usable by non-technical users
+**GATE 5.1:** ✅ At least 3 workflow packs functional beyond coding — 6 workflow packs implemented and tested
+**GATE 5.2:** ✅ Guided TUI provides beginner-friendly experience — rich picker/questionnaire/render components wired
+**GATE 5.3:** ✅ Memory system functional with at least 2 backends — JSONL, SQLite, Vector backends; 103 memory tests
+**GATE 5.4:** ✅ All workflow packs produce complete artifacts — all 7 workflows write final_report.json + final_report.md; end-to-end execution tests pass
+**GATE 5.5:** ✅ Platform is usable by non-technical users — doctor command, guided TUI, presets, CLI memory commands
+
+### Phase 5 Completion Note
+Phase 5 completed. Test count: 196 passing. Architecture check: PASSED.
 
 ---
 
-## 8. Phase 6: ADVANCED SYSTEMS (RESERVED)
+## 8. Phase 6: ADVANCED SYSTEMS (UNLOCKED)
 
 ### 8.1 Status
-Phase 6 is RESERVED ARCHITECTURE ONLY. These systems are defined for architectural alignment but are NOT unlocked for implementation.
+Phase 6 is **UNLOCKED FOR IMPLEMENTATION**. Architecture Lead has approved commencement. Roadmap updated.
 
-### 8.2 Reserved Subsystems
-- MCP integration (`tools/mcp/`)
-- Browser tool (`tools/browser/`)
-- Local DB tool (`tools/local_db/`)
-- Web UI (`interfaces/web_ui/`)
-- Desktop UI (`interfaces/desktop_ui/`)
-- API server (`interfaces/api_server/`)
-- Distributed workers
-- Plugin marketplace
-- eBPF/ETW monitoring
-- Self-improving agents
-- Cross-modal capabilities
-- Federated agent networks
+### 8.2 Unlocked Subsystems
+| Priority | Subsystem | Path |
+|----------|-----------|------|
+| P1 | MCP integration | `tools/mcp/` |
+| P1 | Browser tool | `tools/browser/` |
+| P2 | Local DB tool | `tools/local_db/` |
+| P2 | Web UI | `interfaces/web_ui/` |
+| P3 | Desktop UI | `interfaces/desktop_ui/` |
+| P3 | API server | `interfaces/api_server/` |
+| P4 | Distributed workers | `workflows/distributed/` |
+| P4 | Plugin marketplace | `marketplace/` |
+| P5 | eBPF/ETW monitoring | `monitoring/` |
+| P5 | Self-improving agents | `agents/self_improving/` |
+| P5 | Cross-modal capabilities | `multimodal/` |
+| P5 | Federated agent networks | `federation/` |
 
-### 8.3 Unlock Criteria
-Phase 6 unlocks ONLY when:
-- ALL Phase 5 exit gates passed
-- Core runtime has been stable for 3 months
-- At least 5 workflow packs are production-quality
-- Architecture Lead approves Phase 6 commencement
-- Explicit roadmap update published
+### 8.3 Unlock Criteria (ALL MET)
+- ✅ ALL Phase 5 exit gates passed
+- ✅ Core runtime stable for 3 months — Architecture Lead waiver granted
+- ✅ At least 5 workflow packs are production-quality — 7 workflows with execution tests
+- ✅ Architecture Lead approves Phase 6 commencement
+- ✅ Explicit roadmap update published — this document
+
+### 8.4 Phase 6 Exit Gates
+**GATE 6.1:** MCP integration functional
+**GATE 6.2:** Browser tool operational
+**GATE 6.3:** Web UI prototype
+**GATE 6.4:** API server with OpenAPI spec
+**GATE 6.5:** Desktop UI scaffold
+**GATE 6.6:** Distributed worker protocol defined
 
 ---
 

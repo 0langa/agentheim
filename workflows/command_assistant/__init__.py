@@ -1,0 +1,4 @@
+from workflows.command_assistant.workflows.command_assistant import CommandAssistantWorkflow
+from core.capability_registry import register_workflow
+
+register_workflow(CommandAssistantWorkflow)

@@ -1,4 +1,4 @@
-# Contributing to local-agent-orchestra
+# Contributing to Agentwerk
 
 ## Before You Start
 
@@ -16,7 +16,7 @@ When starting work with an AI agent, paste this preamble:
 
 ```markdown
 ## OPERATING CONTEXT
-**Project:** local-agent-orchestra
+**Project:** Agentwerk
 **Current Phase:** [see 01-phase-lock.md]
 **My Subsystem:** [your assigned directory]
 **Task:** [description]

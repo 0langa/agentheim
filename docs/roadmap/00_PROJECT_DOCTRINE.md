@@ -1,5 +1,5 @@
 # 00 — PROJECT DOCTRINE
-## The Binding Engineering Constitution for `local-agent-orchestra`
+## The Binding Engineering Constitution for `agentheim`
 
 **Status:** IMMUTABLE FOUNDATION
 **Version:** 1.0
@@ -10,7 +10,7 @@
 
 ## 1. Identity Statement
 
-`local-agent-orchestra` is a **preset-driven, local-first AI automation platform** with a serious generic orchestration runtime underneath. The system must simultaneously satisfy three user layers — beginner, power-user, and developer — without compromising any layer's integrity.
+`agentheim` is a **preset-driven, local-first AI automation platform** with a serious generic orchestration runtime underneath. The system must simultaneously satisfy three user layers — beginner, power-user, and developer — without compromising any layer's integrity.
 
 **The north star:**
 - Simple on the surface.

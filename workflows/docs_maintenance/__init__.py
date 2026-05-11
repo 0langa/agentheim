@@ -1,0 +1,4 @@
+from workflows.docs_maintenance.workflows.docs_maintenance import DocsMaintenanceWorkflow
+from core.capability_registry import register_workflow
+
+register_workflow(DocsMaintenanceWorkflow)

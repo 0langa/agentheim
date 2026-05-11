@@ -20,7 +20,7 @@ from core.schemas import AgentMessage
 from core.schemas_runtime import ImplementationPlan, PatchPlan, UserTask, VerificationReport, WorkOrder
 from core.state_machine import RuntimeState, RuntimeStateMachine
 from workflows.coding.provider_map import DEFAULT_PROVIDER_MAP
-from workflows.coding.shims import ledger_append, model_resolve, policy_evaluate, tool_invoke
+from workflows.coding.adapters import ledger_append, model_resolve, policy_evaluate, tool_invoke
 from workflows.coding.workflows.coding import create_orchestrator_agent, create_coder_agent, create_verifier_agent
 
 

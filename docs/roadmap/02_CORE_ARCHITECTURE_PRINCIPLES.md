@@ -10,7 +10,7 @@
 ## 1. Canonical Directory Structure
 
 ```
-local-agent-orchestra/
+agentheim/
 |
 +-- core/                          # GENERIC RUNTIME — no provider/workflow/tool specifics
 |   +-- __init__.py

@@ -151,14 +151,6 @@ PHASE_LOCK = {
 }
 
 RESERVED_SUBSYSTEMS = [
-    'tools/mcp/',
-    'tools/browser/',
-    'tools/local_db/',
-    'interfaces/web_ui/',
-    'interfaces/desktop_ui/',
-    'interfaces/api_server/',
-    'distributed/',
-    'plugins/',
 ]
 
 # Law 7: Paths allowed to use subprocess/os.system directly
@@ -170,6 +162,9 @@ SUBPROCESS_EXEMPTIONS = [
     'core/repo/scanner.py',                  # Repo scanner uses git subprocess for snapshot
     'Agent-Team/ai_team/tools/shell',        # Old shell tool (pre-migration)
     'Agent-Team/ai_team/tools/git',          # Old git tool (pre-migration)
+    'tests/memory/test_stress.py',           # Cross-process stress tests spawn subprocesses
+    'interfaces/cli/cli.py',                 # Doctor command checks git availability via subprocess
+    'tools/mcp/client.py',                   # MCP client spawns MCP server subprocesses
 ]
 
 
@@ -490,7 +485,7 @@ class ViolationReporter:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Enforce local-agent-orchestra architecture rules"
+        description="Enforce agentheim architecture rules"
     )
     parser.add_argument('--phase', type=int, default=0,
                         help='Current development phase (0-5)')

@@ -53,3 +53,8 @@ pip-wheel-metadata/
 # OS
 Thumbs.db
 .DS_Store
+
+# Plan-mode artifacts and coverage output
+*.zip
+cov_err.txt
+cov_report.txt

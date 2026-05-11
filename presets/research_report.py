@@ -1,0 +1,29 @@
+from __future__ import annotations
+
+from typing import Any
+
+from presets.base import PRESET_REGISTRY, Preset, Question
+
+
+class ResearchReportPreset(Preset):
+    def __init__(self) -> None:
+        super().__init__(
+            preset_id="research-report",
+            workflow_id="research",
+            name="Research Report",
+            description="Gather, summarize, and report on a research topic.",
+            guided_questions=[
+                Question(key="topic", type="text", text="Research topic?"),
+                Question(key="depth", type="choice", text="Depth level?", options=["quick", "standard", "deep"], default="standard"),
+            ],
+            default_config={},
+            required_capabilities=["web_search", "fetch", "summarize", "report"],
+        )
+
+    def run(self, inputs: dict[str, Any]) -> Any:
+        from workflows.research.runtime import run_task
+        # Depth is advisory for now; run_task only needs topic
+        return run_task(topic=inputs["topic"])
+
+
+PRESET_REGISTRY.register(ResearchReportPreset())

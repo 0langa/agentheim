@@ -1,0 +1,4 @@
+from workflows.documents.workflows.documents import DocumentsWorkflow
+from core.capability_registry import register_workflow
+
+register_workflow(DocumentsWorkflow)
