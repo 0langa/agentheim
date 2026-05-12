@@ -138,7 +138,7 @@ agentheim/
 ├── config/                    # Configuration loading
 ├── tests/                     # Full test suite
 ├── docs/                      # Documentation (you are here)
-├── scripts/                   # Tooling (roadmap-check, etc.)
+├── scripts/                   # Tooling (directive checks, validation helpers, legacy checks)
 └── skills/                    # Copilot agent skill definitions
 ```
 
@@ -229,7 +229,7 @@ Multiple interfaces all backed by the same core runtime:
 
 ## Architectural Laws
 
-The project is governed by **7 Immutable Laws** defined in the [Project Doctrine](roadmap/00_PROJECT_DOCTRINE.md):
+The project is governed by **7 Immutable Laws** defined in the [Project Doctrine](../.github/instructions/01-doctrine.md):
 
 | # | Law | One-Line Rule |
 |---|-----|---------------|
@@ -269,7 +269,7 @@ The project is governed by **7 Immutable Laws** defined in the [Project Doctrine
 
 ## Ownership Model
 
-Every directory has a designated owner. See [Repository Boundaries](roadmap/05_REPOSITORY_BOUNDARIES.md) for the full ownership map.
+Every directory has an implied subsystem owner. Cross-boundary changes must explain the impact and preserve the rules in `.github/instructions/`.
 
 | Directory | Owner |
 |-----------|-------|
@@ -282,15 +282,16 @@ Every directory has a designated owner. See [Repository Boundaries](roadmap/05_R
 | `presets/` | Product Team |
 | `config/` | Platform Team |
 | `tests/` | Quality Team |
-| `docs/roadmap/` | Architecture Lead (FROZEN) |
-| `docs/` (other) | Documentation Team |
+| `docs/` | Documentation Team |
+| `.github/instructions/` | Project governance |
+| `.github/agents/` | Agent definitions |
 
 ---
 
 ## See Also
 
-- [Roadmap: Core Architecture Principles](roadmap/02_CORE_ARCHITECTURE_PRINCIPLES.md) — canonical directory structure
-- [Roadmap: Repository Boundaries](roadmap/05_REPOSITORY_BOUNDARIES.md) — ownership and merge rules
-- [Roadmap: Execution Model](roadmap/03_EXECUTION_MODEL.md) — DAG, retry, budget details
-- [Roadmap: Event and Ledger Architecture](roadmap/11_EVENT_AND_LEDGER_ARCHITECTURE.md) — event sourcing deep dive
-- [Roadmap: Agent Pocket Card](roadmap/AGENT_POCKET_CARD.md) — cheat sheet for AI agents
+- [Project Doctrine](../.github/instructions/01-doctrine.md) — binding project laws
+- [Forbidden Behaviors](../.github/instructions/02-forbidden-behaviors.md) — hard rejection rules
+- [Traceability](../.github/instructions/03-traceability.md) — evidence and verification expectations
+- [AICtx Integration Rules](../.github/instructions/04-AICtx-integration.md) — integration-specific rules
+- [AICtx Integration Plan](AICTX_INTEGRATION_PLAN.md) — milestone plan

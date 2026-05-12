@@ -1,7 +1,7 @@
 # PROJECT DOCTRINE — BINDING LAW
 
 ## Identity
-local-agent-orchestra is a preset-driven, local-first AI automation platform. The core is a generic orchestration runtime. Coding is ONE workflow pack among many — not the product identity.
+agentheim (formerly known as local-agent-orchestration) is a preset-driven, local-first AI automation platform. The core is a generic orchestration runtime. Coding is ONE workflow pack among many — not the product identity.
 
 ## The 7 Immutable Laws
 
@@ -28,10 +28,5 @@ Default operation requires zero external services beyond model APIs. Privacy mod
 ### Law 7: Safety by Default
 All destructive operations require explicit approval. Policies are defined in code, not by models. Side effects are mediated through the tool protocol.
 
-## Authority Hierarchy
-```
-00_PROJECT_DOCTRINE.md > 02_CORE_ARCHITECTURE_PRINCIPLES.md > 06_PHASED_DEVELOPMENT_PLAN.md > 07_SUBSYSTEM_DEFINITIONS.md > all other specs
-```
-Higher documents override lower on conflict.
 
 

@@ -2,7 +2,7 @@
 
 > **Full contribution guide is at [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).**
 
-This file provides quick-start instructions. For the complete guide — including phase-locked development, cross-boundary changes, subsystem ownership, and architecture checks — see the documentation directory.
+This file provides quick-start instructions. For the complete guide, including governed development, cross-boundary changes, subsystem ownership, and directive checks, see the documentation directory.
 
 ## Quick Start
 
@@ -18,8 +18,8 @@ pip install -e .
 pytest tests\ -q        # Windows
 PYTHONPATH="." pytest tests/ -q             # Linux/Mac
 
-# 4. Run the architecture check
-python scripts/roadmap-check.py --phase 7
+# 4. Run directive governance checks
+python scripts/check-agent-instructions.py
 ```
 
 ## Documentation
@@ -31,7 +31,8 @@ All project documentation is in the [`docs/`](docs/README.md) directory:
 | [Contributing Guide](docs/CONTRIBUTING.md) | Full development setup, standards, and governance |
 | [Architecture](docs/ARCHITECTURE.md) | System design, module overview, boundary rules |
 | [Development & Testing](docs/DEV_TESTING.md) | Complete test command reference |
-| [Roadmap](docs/roadmap/) | Architecture specification (design docs) |
+| [Agent Instructions](AGENTS.md) | Binding agent and integration rules |
+| [Agent Operations](docs/AGENT_OPERATIONS.md) | Agent workflow, validation, and directive-system guidance |
 
 ## Key Rules
 
@@ -39,7 +40,7 @@ All project documentation is in the [`docs/`](docs/README.md) directory:
 - All tool calls go through the policy engine
 - All runs produce append-only event ledgers
 - Safety is the default state
-- Run `python scripts/roadmap-check.py --phase 7 --ci` before submitting
+- Run `python scripts/check-agent-instructions.py` before submitting docs, instruction, template, skill, or validation changes
 
 - **Type hints** required for all public methods
 - **Docstrings** for all public APIs
@@ -66,9 +67,10 @@ All project documentation is in the [`docs/`](docs/README.md) directory:
 
 If you want to understand the system deeply:
 
-- [`docs/roadmap/00_PROJECT_DOCTRINE.md`](docs/roadmap/00_PROJECT_DOCTRINE.md) — Core principles and laws
-- [`docs/roadmap/02_CORE_ARCHITECTURE_PRINCIPLES.md`](docs/roadmap/02_CORE_ARCHITECTURE_PRINCIPLES.md) — Structure and boundaries
-- [`docs/roadmap/06_PHASED_DEVELOPMENT_PLAN.md`](docs/roadmap/06_PHASED_DEVELOPMENT_PLAN.md) — Current phase and unlocked subsystems
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Structure and boundaries
+- [`docs/SAFETY.md`](docs/SAFETY.md) — Safety and privacy model
+- [`AGENTS.md`](AGENTS.md) — Agent entrypoint and binding instruction files
+- [`.github/instructions/01-doctrine.md`](.github/instructions/01-doctrine.md) — Core principles and laws
 
 ## License
 

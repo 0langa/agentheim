@@ -13,7 +13,7 @@
 - [Secret Redaction](#secret-redaction)
 - [Path Confinement](#path-confinement)
 - [Security Features Summary](#security-features-summary)
-- [Known Limitations](#known-limitations)
+- [Security Fixes — Resolved Limitations](#security-fixes--resolved-limitations)
 - [Reporting a Vulnerability](#reporting-a-vulnerability)
 - [Supported Versions](#supported-versions)
 
@@ -140,14 +140,78 @@ All filesystem operations are scoped to the workspace:
 | Budget enforcement | Token/time/call limits | `step_budget.py` |
 | Tamper detection | SHA-256 hash chain on events | `ledger.py` |
 | Safe defaults | All destructive ops blocked by default | Policy engine |
+| **Shell process sandbox** | `ShellSandbox` with env filtering, injection prevention, path confinement | `tools/shell/sandbox.py` |
+| **Network host enforcement** | `NetworkEnforcer` with IP range / host / DNS validation | `tools/http/__init__.py` via `tools/network/__init__.py` |
+| **Plugin crypto signatures** | Ed25519 signature verification with trusted key registry | `marketplace/signing.py` + `marketplace/manager.py` |
 
 ---
 
-## Known Limitations
+## Security Fixes — Resolved Limitations
 
-- The shell tool allowlist is a safety net, not a sandbox. Running Agentheim on untrusted codebases is not recommended.
-- Network policies are advisory at the tool level; a compromised host could bypass them.
-- The plugin marketplace (Phase 6 scaffold) does not yet have cryptographic signature verification.
+The following previously documented limitations have been fully resolved:
+
+### Shell Tool Sandbox (Resolved)
+
+The shell tool no longer relies on a safety-net allowlist.  Every command runs through a
+process-level ``ShellSandbox`` that provides:
+
+- **Strict command prefix allowlist** — only explicitly permitted commands may execute
+- **Shell metacharacter injection prevention** — blocks `\``, `$()`, `;`, `|`, `&&`, shell redirects
+- **Path traversal blocking** — prevents `../` escape from the workspace
+- **Environment variable filtering** — only inherits a curated allowlist of env vars
+- **Process group isolation** — enables reliable cleanup on timeout or cancellation
+- **Working directory confinement** — commands cannot escape the repository root
+- **Output size limits** — prevents memory exhaustion from large output
+
+| Capability | Implementation | Enforced By |
+|-----------|---------------|-------------|
+| Command allowlist | `SandboxConfig.allowed_commands` | `ShellSandbox._validate()` |
+| Shell injection prevention | Metacharacter detection | `ShellSandbox._validate_arg()` |
+| Path traversal blocking | `..` detection in args | `ShellSandbox._validate_arg()` |
+| Env filtering | `SandboxConfig.allowed_env_vars` | `ShellSandbox._build_env()` |
+| Process isolation | Process group / `start_new_session` | `ShellSandbox.execute()` |
+| Output limits | `SandboxConfig.max_output_bytes` | `ShellSandbox.execute()` |
+
+### Network Policy Enforcement (Resolved)
+
+Network policies are enforced at the tool implementation level, not merely advisory.
+The ``NetworkEnforcer`` validates every outbound request against:
+
+- **Global network access flag** — denies all outbound traffic when disabled
+- **URL scheme validation** — defaults to HTTPS-only
+- **Host allow/deny lists** — glob-pattern matching prevents access to internal services
+- **Private IP range blocking** — denies RFC 1918 (10.x, 172.16-31.x, 192.168.x), loopback (127.x), and IPv6 unique-local (fc00::/7)
+- **Link-local blocking** — denies 169.254.x.x and fe80::/10
+- **Cloud metadata service protection** — blocks metadata.google.internal and similar
+- **DNS-level resolution checks** — resolves hostnames to detect rebinding attacks
+
+| Capability | Implementation | Enforced By |
+|-----------|---------------|-------------|
+| Network access gate | `NetworkPolicy.allowed` | `NetworkEnforcer.validate()` |
+| URL scheme restriction | `NetworkPolicy.allowed_schemes` | `NetworkEnforcer.validate()` |
+| Host allow/deny lists | Glob pattern matching | `NetworkEnforcer.validate()` |
+| Private IP blocking | CIDR range checks | `NetworkEnforcer._check_ip_ranges()` |
+| Link-local blocking | CIDR range checks | `NetworkEnforcer._check_ip_ranges()` |
+| DNS resolution | `socket.getaddrinfo()` | `NetworkEnforcer._check_ip_ranges()` |
+
+### Plugin Marketplace Cryptographic Signatures (Resolved)
+
+Plugin packages are verified using **Ed25519** public-key cryptography at load time.
+The non-cryptographic SHA-256 hash has been replaced with a proper signature scheme:
+
+- **Ed25519 key generation** — ``PluginSigner.generate_keypair()`` creates a PEM-encoded key pair
+- **Package signing** — ``PluginSigner.sign_package()`` signs all package files with the private key, storing the base64-encoded signature in ``manifest.json``
+- **Trusted key registry** — public keys are stored in ``~/.agentheim/trusted-keys/`` or ``.agentheim/trusted-keys/`` and referenced by ``trusted_key_id`` in the manifest
+- **Mandatory verification** — unsigned plugins are rejected with a clear error message
+- **Canonical signing message** — all files in the plugin directory are hashed in sorted order, excluding the signature field itself, ensuring deterministic verification
+
+| Capability | Implementation | Enforced By |
+|-----------|---------------|-------------|
+| Key generation | `PluginSigner.generate_keypair()` | Ed25519 (`cryptography`) |
+| Package signing | `PluginSigner.sign_package()` | Ed25519 (`cryptography`) |
+| Signature verification | `PluginSigner.verify_package()` | Ed25519 (`cryptography`) |
+| Trusted key resolution | `PluginManager._resolve_public_key()` | Searches `trusted_key_dirs` |
+| Mandatory signing | Rejection in `PluginManager.load()` | Production policy |
 
 ---
 
@@ -182,4 +246,4 @@ Agentheim is currently in active development. Only the latest commit on `main` r
 
 - [User Guide](USER_GUIDE.md) — privacy mode usage in daily operation
 - [Architecture](ARCHITECTURE.md) — policy engine and enforcement details
-- [Roadmap: Safety & Permission Model](roadmap/18_SAFETY_AND_PERMISSION_MODEL.md) — design specification
+- [Forbidden Behaviors](../.github/instructions/02-forbidden-behaviors.md) — safety-related rejection rules

@@ -23,24 +23,22 @@
 | [API Reference](API_REFERENCE.md) | REST API endpoints, SDK usage, WebSocket streaming |
 | [Contributing](CONTRIBUTING.md) | Setup, coding standards, PR workflow, and governance |
 | [Development & Testing](DEV_TESTING.md) | Test commands, smoke tests, devtest runner, CI |
+| [Agent Operations](AGENT_OPERATIONS.md) | How agents, instructions, skills, docs, and validation fit together |
 | [Changelog](CHANGELOG.md) | Release history and notable changes |
 | [AICtx Integration Plan](AICTX_INTEGRATION_PLAN.md) | Milestone plan for fully absorbing AICtx into Agentheim |
 
-### 📐 Architecture Roadmap (Design Docs)
+### 🤖 Agent And Governance Rules
 
-The [roadmap/](roadmap/) directory contains the architectural specification that governs development:
+The active agent governance surface is in the repository root and `.github/`:
 
-| # | Document | Purpose |
-|---|----------|---------|
-| 00 | [Project Doctrine](roadmap/00_PROJECT_DOCTRINE.md) | **Immutable** — 7 Laws, identity statement, anti-patterns |
-| 01 | [System Vision](roadmap/01_SYSTEM_VISION.md) | Three-layer user model, progressive disclosure |
-| 02 | [Core Architecture Principles](roadmap/02_CORE_ARCHITECTURE_PRINCIPLES.md) | Directory structure, runtime invariants, subsystem separation |
-| 03 | [Execution Model](roadmap/03_EXECUTION_MODEL.md) | Workflow DAG, retry, budgets, event sourcing |
-| 04 | [Swarm Governance](roadmap/04_SWARM_GOVERNANCE.md) | Agent coordination, handoff, escalation |
-| 05 | [Repository Boundaries](roadmap/05_REPOSITORY_BOUNDARIES.md) | Ownership domains, merge rules, forbidden behaviors |
-| 06 | [Phased Development Plan](roadmap/06_PHASED_DEVELOPMENT_PLAN.md) | **Active** — current phase, exit gates, as-built notes |
-| 07–20 | [Subsystem Definitions & Future](roadmap/) | Provider architecture, memory, tools, safety, future plans |
-| — | [Agent Pocket Card](roadmap/AGENT_POCKET_CARD.md) | One-page cheat sheet for AI agents working on this codebase |
+| Document | Purpose |
+|----------|---------|
+| [Agent Instructions](../AGENTS.md) | GitHub-facing agent entrypoint |
+| [Autonomous Engineer Agent](../.github/agents/agentheim-autonomous-engineer.agent.md) | Main project agent definition |
+| [Project Doctrine](../.github/instructions/01-doctrine.md) | Binding project laws |
+| [Forbidden Behaviors](../.github/instructions/02-forbidden-behaviors.md) | Rejection-level anti-patterns |
+| [Traceability](../.github/instructions/03-traceability.md) | Required evidence and reporting |
+| [AICtx Integration Rules](../.github/instructions/04-AICtx-integration.md) | Binding rules for AICtx integration work |
 
 ---
 
@@ -53,15 +51,12 @@ docs/
 ├── ARCHITECTURE.md        # System design, modules, boundaries
 ├── API_REFERENCE.md       # REST API endpoints and integration
 ├── CONTRIBUTING.md        # Developer setup and contribution workflow
+├── AGENT_OPERATIONS.md    # Agent operating model and validation flow
 ├── SAFETY.md              # Security model, privacy, threat reporting
 ├── TROUBLESHOOTING.md     # Common problems and solutions
 ├── DEV_TESTING.md         # Test commands and runner reference
 ├── AICTX_INTEGRATION_PLAN.md # Milestone plan for AICtx integration
-├── CHANGELOG.md           # Release history
-└── roadmap/               # Architectural specification (design docs)
-    ├── 00_PROJECT_DOCTRINE.md
-    ├── ...
-    └── AGENT_POCKET_CARD.md
+└── CHANGELOG.md           # Release history
 ```
 
 ---

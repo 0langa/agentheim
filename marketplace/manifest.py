@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -20,6 +19,7 @@ class PluginManifest:
     required_tools: list[str] = field(default_factory=list)
     required_providers: list[str] = field(default_factory=list)
     signature: str = ""
+    trusted_key_id: str = ""  # identifier for the public key that signed this plugin
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -32,6 +32,7 @@ class PluginManifest:
             "required_tools": self.required_tools,
             "required_providers": self.required_providers,
             "signature": self.signature,
+            "trusted_key_id": self.trusted_key_id,
         }
 
     @classmethod
@@ -46,6 +47,7 @@ class PluginManifest:
             required_tools=data.get("required_tools", []),
             required_providers=data.get("required_providers", []),
             signature=data.get("signature", ""),
+            trusted_key_id=data.get("trusted_key_id", ""),
         )
 
     @classmethod
@@ -63,11 +65,3 @@ class PluginManifest:
         if not self.author:
             return False, "Author is required"
         return True, ""
-
-    def compute_signature(self, package_path: Path) -> str:
-        """Compute SHA-256 signature of package directory."""
-        sha = hashlib.sha256()
-        for file in sorted(package_path.rglob("*")):
-            if file.is_file():
-                sha.update(file.read_bytes())
-        return sha.hexdigest()

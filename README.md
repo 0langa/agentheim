@@ -1,7 +1,7 @@
 # Agentheim
 
 [![Tests](https://img.shields.io/badge/tests-692%20passing-brightgreen)](https://github.com/0langa/agentheim/actions)
-[![Phase](https://img.shields.io/badge/phase-7%20production_hardening-blue)](docs/roadmap/06_PHASED_DEVELOPMENT_PLAN.md)
+[![Architecture](https://img.shields.io/badge/architecture-local_first-blue)](docs/ARCHITECTURE.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-unified-blue)](docs/README.md)
 
@@ -42,9 +42,9 @@ Full documentation is available in the [`docs/`](docs/README.md) directory:
 | [Safety & Security](docs/SAFETY.md) | Privacy modes, approval gates, vulnerabilities |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and fixes |
 | [Development & Testing](docs/DEV_TESTING.md) | Test commands and runner reference |
+| [Agent Operations](docs/AGENT_OPERATIONS.md) | Agent instructions, skills, validation, and future MCP guidance |
 | [Changelog](docs/CHANGELOG.md) | Release history |
 | [AICtx Integration Plan](docs/AICTX_INTEGRATION_PLAN.md) | Planned full integration path for AICtx |
-| [Roadmap](docs/roadmap/) | Architecture specification (design docs) |
 
 ---
 
@@ -131,7 +131,8 @@ agentheim/
 ├── presets/            # Beginner-friendly preset definitions
 ├── config/             # Configuration schemas and loader
 ├── tests/              # Full test suite
-└── docs/roadmap/       # Architecture roadmap and subsystem definitions
+├── docs/               # Unified documentation
+└── .github/            # Agent, instruction, workflow, and issue templates
 ```
 
 ---
@@ -139,16 +140,16 @@ agentheim/
 ## 📄 Documentation
 
 - [Docs Index](docs/README.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Safety & Security](docs/SAFETY.md)
+- [Agent Instructions](AGENTS.md)
 - [AICtx Integration Plan](docs/AICTX_INTEGRATION_PLAN.md)
-- [Architecture Principles](docs/roadmap/02_CORE_ARCHITECTURE_PRINCIPLES.md)
-- [Safety Model](docs/roadmap/18_SAFETY_AND_PERMISSION_MODEL.md)
-- [Phased Development Plan](docs/roadmap/06_PHASED_DEVELOPMENT_PLAN.md)
 
 ---
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, architecture rules, and the phase-locked development workflow.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, architecture rules, and governed development workflow.
 
 ---
 

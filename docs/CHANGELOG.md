@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-05-12
+
+### Directive System Governance
+- Added binding instruction priority, instruction index, documentation-integrity rules, tooling/verification rules, and canonical US-spelling forbidden-behavior instructions under `.github/instructions/`.
+- Added executable directive linting via `scripts/check-agent-instructions.py`, directive devtest mode, and CI governance replacement for the legacy roadmap checker.
+- Updated agent, skill, docs, PR template, and devtest guidance to use `docs/CHANGELOG.md`, directive checks, and current GitHub instruction files.
+
 ## 2026-05-10
 
 ### Phase 7 Slice 5 — Safety & Privacy

@@ -13,7 +13,7 @@
 - [How to Contribute](#how-to-contribute)
 - [Code Standards](#code-standards)
 - [Commit Messages](#commit-messages)
-- [Phase-Locked Development](#phase-locked-development)
+- [Governed Development](#governed-development)
 - [Cross-Boundary Changes](#cross-boundary-changes)
 
 ---
@@ -32,22 +32,24 @@ pip install -e .
 pytest tests\ -q                  # Windows
 PYTHONPATH="." pytest tests/ -q   # Linux/Mac
 
-# 4. Run the architecture check
-python scripts/roadmap-check.py --phase 7
+# 4. Run directive governance checks
+python scripts/check-agent-instructions.py
 ```
 
 ---
 
 ## Before You Start
 
-### Read the Roadmap
+### Read Binding Instructions
 
-This project is governed by a strict architecture roadmap in `docs/roadmap/`. Every contributor must understand:
+This project is governed by binding repository instructions in `.github/instructions/`. Every contributor and agent must understand:
 
-- **[00_PROJECT_DOCTRINE.md](roadmap/00_PROJECT_DOCTRINE.md)** — The 7 Immutable Laws (supreme authority)
-- **[06_PHASED_DEVELOPMENT_PLAN.md](roadmap/06_PHASED_DEVELOPMENT_PLAN.md)** — Which phase we're in and what's unlocked
-- **[02_CORE_ARCHITECTURE_PRINCIPLES.md](roadmap/02_CORE_ARCHITECTURE_PRINCIPLES.md)** — Directory structure and boundary rules
-- **[05_REPOSITORY_BOUNDARIES.md](roadmap/05_REPOSITORY_BOUNDARIES.md)** — Subsystem ownership
+- **[01-doctrine.md](../.github/instructions/01-doctrine.md)** — The 7 Immutable Laws
+- **[02-forbidden-behaviors.md](../.github/instructions/02-forbidden-behaviors.md)** — rejection-level anti-patterns
+- **[03-traceability.md](../.github/instructions/03-traceability.md)** — required evidence and verification
+- **[04-AICtx-integration.md](../.github/instructions/04-AICtx-integration.md)** — AICtx integration rules
+- **[05-documentation-integrity.md](../.github/instructions/05-documentation-integrity.md)** — documentation drift rules
+- **[06-tooling-and-verification.md](../.github/instructions/06-tooling-and-verification.md)** — canonical validation rules
 
 ### Context Preamble for AI Agents
 
@@ -56,7 +58,6 @@ When starting work with an AI agent, paste this preamble:
 ```markdown
 ## OPERATING CONTEXT
 **Project:** agentheim
-**Current Phase:** [see 01-phase-lock.md]
 **My Subsystem:** [your assigned directory]
 **Task:** [description]
 
@@ -70,14 +71,14 @@ When starting work with an AI agent, paste this preamble:
 - [ ] Progressive disclosure preserved
 ```
 
-### Run Architecture Checks
+### Run Directive Checks
 
 ```bash
 # Before committing
-python scripts/roadmap-check.py --phase 7
+python scripts/check-agent-instructions.py
 
 # In CI (blocks merge on failure)
-python scripts/roadmap-check.py --ci --phase 7
+python scripts/check-agent-instructions.py
 ```
 
 ---
@@ -136,8 +137,8 @@ memory/         # Three-tier memory system
 interfaces/     # CLI, TUI, Web UI, API server, Desktop UI
 presets/        # Beginner-friendly preset definitions
 tests/          # Full test suite
-docs/           # Documentation (roadmap, user guide, API, architecture)
-scripts/        # Tooling (roadmap checker, etc.)
+docs/           # Documentation (user guide, API, architecture, governance)
+scripts/        # Tooling (directive checks and legacy helpers)
 ```
 
 **Key rule:** `core/` knows no provider, model, workflow, or tool names. Everything concrete lives in its own subsystem.
@@ -162,7 +163,7 @@ git checkout -b feature/your-feature-name
 - Follow existing code style (type hints, docstrings for public methods)
 - Add tests for new code
 - Keep changes focused — one concern per PR
-- Respect [subsystem boundaries](roadmap/05_REPOSITORY_BOUNDARIES.md)
+- Respect subsystem boundaries described in [Architecture](ARCHITECTURE.md) and `.github/instructions/`
 
 ### 4. Run Checks Before Submitting
 
@@ -170,8 +171,8 @@ git checkout -b feature/your-feature-name
 # Tests must pass
 pytest tests\ -q
 
-# Architecture check must pass
-python scripts/roadmap-check.py --phase 7 --ci
+# Directive check must pass
+python scripts/check-agent-instructions.py
 ```
 
 ### 5. Submit a PR
@@ -208,7 +209,7 @@ python scripts/roadmap-check.py --phase 7 --ci
 - Unit tests: >80% coverage for all new code
 - Integration tests for all cross-subsystem interactions
 - Run `pytest` before submitting PR
-- Run `python scripts/roadmap-check.py` before submitting PR
+- Run `python scripts/check-agent-instructions.py` before submitting docs, instruction, template, skill, or validation changes
 
 ### Documentation
 
@@ -230,26 +231,25 @@ python scripts/roadmap-check.py --phase 7 --ci
 
 ---
 
-## Phase-Locked Development
-
-We use strict phase gates. Check [`docs/roadmap/06_PHASED_DEVELOPMENT_PLAN.md`](roadmap/06_PHASED_DEVELOPMENT_PLAN.md) for the current phase.
+## Governed Development
 
 **Rules:**
-- Only implement subsystems unlocked for the current phase
-- Do NOT implement future-phase systems
-- Do NOT modify locked subsystems without Architecture Lead approval
+- Preserve the 7 Immutable Laws in `.github/instructions/01-doctrine.md`
+- Do NOT add concrete provider, workflow, tool, or AICtx implementation details to `core/`
+- Do NOT modify unrelated subsystems without explaining the cross-boundary impact
+- Do NOT leave docs, tests, or agent instructions stale after behavior changes
 
-### Phase Advancement Protocol
+### Governance Update Protocol
 
-When ALL exit gates for a phase pass:
+When project governance changes:
 
-1. Architecture Lead updates `docs/roadmap/06_PHASED_DEVELOPMENT_PLAN.md` — mark gates passed
-2. Update `.kimi/rules/01-phase-lock.md` — new phase, new unlocked/locked lists
-3. Update CI workflow — change `--phase N` to `--phase N+1`
-4. Announce to team — which subsystems are now unlocked
-5. Update `AGENT_POCKET_CARD.md` — new phase status
+1. Update the relevant `.github/instructions/*.md` file
+2. Update `.github/agents/agentheim-autonomous-engineer.agent.md` only if the stable agent contract changes
+3. Update affected docs under `docs/`
+4. Update `devtest/all-test-commands.md` if validation commands change
+5. Run docs and instruction smoke checks
 
-Do NOT advance a phase until ALL gates pass. Partial advancement is forbidden.
+Do not change governance by editing only prose in a downstream doc.
 
 ---
 
@@ -270,5 +270,5 @@ If your change touches multiple subsystems:
 
 - [Architecture](ARCHITECTURE.md) — system design and module overview
 - [Development & Testing](DEV_TESTING.md) — complete test reference
-- [Roadmap: Project Doctrine](roadmap/00_PROJECT_DOCTRINE.md) — immutable laws
-- [Roadmap: Repository Boundaries](roadmap/05_REPOSITORY_BOUNDARIES.md) — ownership and merge rules
+- [Project Doctrine](../.github/instructions/01-doctrine.md) — immutable laws
+- [Forbidden Behaviors](../.github/instructions/02-forbidden-behaviors.md) — merge-blocking anti-patterns

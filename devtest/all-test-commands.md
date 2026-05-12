@@ -25,12 +25,15 @@ pytest -q tests/core/test_model_registry.py tests/core/test_schemas.py tests/cor
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode narrow
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targeted
+powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode directive -NoPrompt
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode phase7 -NoPrompt
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode broad -NoPrompt
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode full -NoPrompt
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targeted -K registry
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode full -K "not slow" -NoPrompt
 ```
+
+`phase7` is a legacy roadmap-era validation mode. Prefer `directive` plus `targeted` or `broad` for current directive-system work.
 
 ## AI Connectivity Test
 
@@ -59,7 +62,18 @@ Use the repo-local module entry for CLI smoke checks. In environments with anoth
 import re
 from pathlib import Path
 root = Path('.').resolve()
-files = [root/'README.md', root/'CONTRIBUTING.md', root/'AGENTS.md'] + sorted((root/'docs').glob('*.md')) + [root/'Agent-Team'/'README.md']
+files = [
+    root/'README.md',
+    root/'CONTRIBUTING.md',
+    root/'SECURITY.md',
+    root/'AGENTS.md',
+    root/'Agent-Team'/'README.md',
+]
+files += sorted((root/'docs').glob('*.md'))
+files += sorted((root/'.github').glob('*.md'))
+files += sorted((root/'.github'/'agents').glob('*.md'))
+files += sorted((root/'.github'/'instructions').glob('*.md'))
+files += sorted((root/'.github'/'ISSUE_TEMPLATE').glob('*.md'))
 link_re = re.compile(r'\[[^\]]+\]\(([^)]+)\)')
 problems = []
 for f in files:
@@ -80,6 +94,22 @@ if problems:
     raise SystemExit(1)
 print('markdown links ok')
 '@ | python -
+```
+
+## Directive Governance Checks
+
+```powershell
+python scripts/check-agent-instructions.py
+powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode directive -NoPrompt
+```
+
+Use these after editing root docs, `docs/`, `.github/agents/`, `.github/instructions/`, GitHub templates, skills, or devtest command guidance.
+
+## Agent Instruction Smoke Tests
+
+```powershell
+python -c "from pathlib import Path; files=sorted(Path('.github/instructions').glob('*.md')); assert files and all(f.read_text(encoding='utf-8').strip() for f in files); print('instruction files ok:', [f.name for f in files])"
+python -c "from pathlib import Path; p=Path('.github/agents/agentheim-autonomous-engineer.agent.md'); text=p.read_text(encoding='utf-8'); required=['00-instruction-priority.md','01-doctrine.md','02-forbidden-behaviors.md','03-traceability.md','04-AICtx-integration.md','05-documentation-integrity.md','06-tooling-and-verification.md']; missing=[item for item in required if item not in text]; assert not missing, missing; print('agent references ok')"
 ```
 
 ## Workflow Smoke Tests
@@ -144,11 +174,13 @@ pytest tests/test_tool_protocol.py -v
 pytest tests/test_desktop_ui.py -v
 ```
 
-## Architecture Check
+## Legacy Architecture Check
 
 ```powershell
 python scripts/roadmap-check.py --phase 7 --ci
 ```
+
+`roadmap-check.py` and `phase7` mode are legacy validation paths. Prefer directive governance checks for current agent/instruction work.
 
 ## Slice 1: Event Foundation
 

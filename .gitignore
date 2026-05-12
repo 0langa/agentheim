@@ -67,3 +67,6 @@ cov_report.txt
 
 # Old/stale documentation
 old-docs/
+
+AICtx/
+.kimi\rules

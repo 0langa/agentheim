@@ -9,18 +9,38 @@ from typing import Any
 
 from marketplace.manifest import PluginManifest
 from marketplace.sandbox import Sandbox
+from marketplace.signing import PluginSigner, PluginSigningError
 
 
 class PluginManager:
-    """Discover, validate, and load plugins."""
+    """Discover, validate, and load plugins.
+
+    Plugins are verified using Ed25519 cryptographic signatures before
+    loading.  A trusted public key directory maps key IDs to PEM-encoded
+    Ed25519 public keys.  If verification fails, the plugin is rejected.
+    """
 
     DEFAULT_SCAN_PATHS = [
         Path.home() / ".agentheim" / "plugins",
         Path(".").resolve() / "plugins",
     ]
 
-    def __init__(self, scan_paths: list[Path] | None = None) -> None:
+    # Default directories to look up trusted public keys.
+    # Can be overridden via ``trusted_key_dirs``.
+    DEFAULT_TRUSTED_KEY_DIRS = [
+        Path.home() / ".agentheim" / "trusted-keys",
+        Path(".").resolve() / ".agentheim" / "trusted-keys",
+    ]
+
+    def __init__(
+        self,
+        scan_paths: list[Path] | None = None,
+        trusted_key_dirs: list[Path] | None = None,
+    ) -> None:
         self.scan_paths = scan_paths or [p for p in self.DEFAULT_SCAN_PATHS]
+        self.trusted_key_dirs = trusted_key_dirs or [
+            p for p in self.DEFAULT_TRUSTED_KEY_DIRS
+        ]
         self._loaded: dict[str, Any] = {}
         self._sandbox = Sandbox()
 
@@ -36,7 +56,16 @@ class PluginManager:
         return found
 
     def load(self, plugin_dir: Path) -> tuple[bool, str]:
-        """Load a plugin from its directory with sandboxing and signature verification."""
+        """Load a plugin from its directory with sandboxing and Ed25519 signature verification.
+
+        Verification flow:
+        1. Parse the manifest
+        2. Validate schema fields
+        3. Locate the trusted public key using ``trusted_key_id`` from the manifest
+        4. Verify the Ed25519 signature over all package files
+        5. Load the entry point module
+        6. Execute activation hooks through the sandbox
+        """
         manifest_path = plugin_dir / "manifest.json"
         if not manifest_path.exists():
             return False, "manifest.json not found"
@@ -50,11 +79,21 @@ class PluginManager:
         if not valid:
             return False, err
 
-        # Signature verification
+        # Ed25519 cryptographic signature verification
         if manifest.signature:
-            computed = manifest.compute_signature(plugin_dir)
-            if computed != manifest.signature:
-                return False, "Signature verification failed"
+            if not manifest.trusted_key_id:
+                return False, "Plugin has a signature but no trusted_key_id; cannot verify"
+            try:
+                public_key_path = self._resolve_public_key(manifest.trusted_key_id)
+                PluginSigner.verify_package(plugin_dir, public_key_path)
+            except PluginSigningError as exc:
+                return False, f"Ed25519 signature verification failed: {exc}"
+        else:
+            # In production mode, reject unsigned plugins
+            return False, (
+                "Plugin is not signed.  All plugins must have an Ed25519 signature "
+                "and a trusted_key_id.  Run the PluginSigner to sign this package."
+            )
 
         entry_file = plugin_dir / manifest.entry_point
         if not entry_file.exists():
@@ -96,3 +135,17 @@ class PluginManager:
 
     def get(self, name: str) -> Any:
         return self._loaded.get(name)
+
+    def _resolve_public_key(self, key_id: str) -> Path:
+        """Resolve *key_id* to a public key PEM file path.
+
+        Searches ``trusted_key_dirs`` for a file named ``key_id.pub``.
+        """
+        for key_dir in self.trusted_key_dirs:
+            candidate = key_dir / f"{key_id}.pub"
+            if candidate.exists():
+                return candidate
+        raise PluginSigningError(
+            f"No trusted public key found for key_id='{key_id}'. "
+            f"Searched directories: {[str(d) for d in self.trusted_key_dirs]}"
+        )

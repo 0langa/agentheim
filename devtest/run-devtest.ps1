@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("narrow", "targeted", "broad", "full", "phase7")]
+    [ValidateSet("narrow", "targeted", "broad", "full", "directive", "phase7")]
     [string]$Mode = "targeted",
     [string]$K = "",
     [switch]$NoPrompt
@@ -22,6 +22,26 @@ function Invoke-TestSet {
         & pytest @PytestArgs
         if ($LASTEXITCODE -ne 0) {
             throw "pytest failed in '$Label' with exit code $LASTEXITCODE"
+        }
+    }
+    finally {
+        Pop-Location
+    }
+}
+
+function Invoke-CommandCheck {
+    param(
+        [string]$Label,
+        [string[]]$Command,
+        [string]$WorkingDir = $RepoRoot
+    )
+    Write-Host "==> $Label"
+    Write-Host ($Command -join " ")
+    Push-Location $WorkingDir
+    try {
+        & $Command[0] $Command[1..($Command.Length - 1)]
+        if ($LASTEXITCODE -ne 0) {
+            throw "'$Label' failed with exit code $LASTEXITCODE"
         }
     }
     finally {
@@ -102,7 +122,13 @@ switch ($Mode) {
     "full" {
         Invoke-TestSet -Label "full (entire project test suite)" -PytestArgs $baseArgs
     }
+    "directive" {
+        Invoke-CommandCheck -Label "directive governance lint" -Command @("python", "scripts/check-agent-instructions.py")
+        Invoke-CommandCheck -Label "repo-local cli help smoke" -Command @("python", "-m", "interfaces.cli.cli", "--help")
+        Invoke-CommandCheck -Label "repo-local doctor smoke" -Command @("python", "-m", "interfaces.cli.cli", "doctor", "--skip-connectivity")
+    }
     "phase7" {
+        Write-Host "WARNING: phase7 mode is legacy. Prefer -Mode directive plus targeted/broad tests for new directive-system work."
         Invoke-TestSet -Label "phase7 (production hardening - all new tests)" -PytestArgs ($baseArgs + @(
             "tests/test_events.py",
             "tests/test_ledger_hash.py",
@@ -134,7 +160,7 @@ switch ($Mode) {
 
 Write-Host "Done: mode=$Mode"
 if ($Mode -eq "phase7") {
-    Write-Host "==> phase7 architecture gate"
+    Write-Host "==> legacy phase7 architecture gate"
     Push-Location $RepoRoot
     try {
         & python scripts/roadmap-check.py --phase 7 --ci

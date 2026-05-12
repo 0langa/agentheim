@@ -14,11 +14,11 @@ Brief description of what this PR does.
 ## Checklist
 
 - [ ] Tests pass: `pytest`
-- [ ] Architecture check passes: `python scripts/roadmap-check.py --ci`
-- [ ] No architectural law violations (see `docs/roadmap/00_PROJECT_DOCTRINE.md`)
-- [ ] Only unlocked subsystems modified
+- [ ] Directive checks pass: `python scripts/check-agent-instructions.py`
+- [ ] No architectural law violations (see `.github/instructions/01-doctrine.md`)
+- [ ] Forbidden behaviors checked (see `.github/instructions/02-forbidden-behaviors.md`)
 - [ ] Docs updated for user-facing changes
-- [ ] CHANGELOG entry added
+- [ ] `docs/CHANGELOG.md` entry added
 - [ ] Subsystem owner approval (if applicable)
 
 ## Related Issues

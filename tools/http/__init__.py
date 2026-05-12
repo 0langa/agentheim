@@ -1,22 +1,33 @@
 """HTTP tool implementing ToolProtocol.
 
-Outbound HTTP requests with network policy enforcement.
+Outbound HTTP requests with host-level network policy enforcement.
+Every request is validated by ``NetworkEnforcer`` before transmission.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from core.errors import ToolSafetyError
 from core.tool_protocol import BaseTool, ParamSchema, ReturnSchema, RiskLevel, ToolContext, ToolResult, ToolSchema
+from tools.network import NetworkEnforcer, NetworkPolicy, NetworkViolation
 
 
 class HttpTool(BaseTool):
-    """Outbound HTTP requests with network policy enforcement."""
+    """Outbound HTTP requests with host-level network policy enforcement.
 
-    def __init__(self) -> None:
+    Every request passes through ``NetworkEnforcer`` which validates:
+    - Whether network access is allowed at all
+    - URL scheme (default: https only)
+    - Host allow/deny lists (glob patterns)
+    - Private IP ranges (RFC 1918, loopback)
+    - Link-local addresses
+    - DNS-level protection
+    """
+
+    def __init__(self, network_policy: NetworkPolicy | None = None) -> None:
+        self._enforcer = NetworkEnforcer(network_policy or NetworkPolicy())
         schema = ToolSchema(
-            description="Make outbound HTTP requests.",
+            description="Make outbound HTTP requests with host-level network policy.",
             parameters={
                 "method": ParamSchema(type="string", description="HTTP method", enum=["GET", "POST", "PUT", "DELETE", "PATCH"], required=True),
                 "url": ParamSchema(type="string", description="Request URL", required=True),
@@ -39,9 +50,15 @@ class HttpTool(BaseTool):
         body = params.get("body")
         timeout = params.get("timeout", 30)
 
-        # Network policy check
+        # Network policy check (ToolContext level)
         if not context.network_allowed:
             return ToolResult(success=False, error="Network access is not allowed by policy.")
+
+        # Host-level network enforcement (cannot be bypassed by ToolContext)
+        try:
+            self._enforcer.validate(url)
+        except NetworkViolation as exc:
+            return ToolResult(success=False, error=f"Network policy violation: {exc}")
 
         try:
             import urllib.request

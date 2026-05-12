@@ -37,6 +37,7 @@ dependencies = [
   "filelock",
   "platformdirs",
   "numpy",
+  "cryptography>=41.0.0",
 ]
 
 [project.optional-dependencies]

@@ -2,13 +2,21 @@
 
 ## Mode Selection Heuristics
 
+- `directive`: docs, GitHub templates, `.github/agents`, `.github/instructions`, skills, and validation command changes.
 - `narrow`: quick confidence for critical core + CLI + preset smoke.
-- `targeted`: default for day-to-day changes across a single subsystem.
+- `targeted`: default for day-to-day changes across a single code subsystem.
 - `broad`: high-signal integration pass for cross-module edits.
 - `full`: entire test tree; use before major merge/release.
-- `phase7`: constrained hardening set for phase-7 verification.
+- `phase7`: legacy roadmap-era hardening set. Do not use as the default current governance gate.
 
 ## Trigger Examples
+
+Use `directive` for:
+
+- agent or instruction edits
+- docs link or command guidance changes
+- PR template changes
+- release-hygiene or governance skill changes
 
 Use `targeted` for:
 
@@ -31,6 +39,7 @@ Use `full` for:
 ## Quick Commands
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode directive -NoPrompt
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode narrow
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targeted
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode broad

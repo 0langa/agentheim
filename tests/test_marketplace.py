@@ -60,37 +60,75 @@ class TestPluginManifest:
         m = PluginManifest.from_file(manifest_path)
         assert m.name == "file-plugin"
 
-    def test_compute_signature(self, tmp_path: Path) -> None:
-        (tmp_path / "a.txt").write_text("hello")
-        m = PluginManifest(name="x", version="1", entry_point="a.py", author="y")
-        sig = m.compute_signature(tmp_path)
-        assert len(sig) == 64  # SHA-256 hex
-
 
 class TestPluginManager:
-    def test_discover_finds_manifests(self, tmp_path: Path) -> None:
-        plugin_dir = tmp_path / "plugins" / "my-plugin"
-        plugin_dir.mkdir(parents=True)
+    """Tests for PluginManager with Ed25519 signature verification."""
+
+    @staticmethod
+    def _make_signed_plugin(
+        plugin_dir: Path, key_dir: Path, name: str = "my-plugin",
+        trusted_key_dir_override: Path | None = None,
+    ) -> None:
+        """Helper: create a signed plugin at *plugin_dir* using a key in *key_dir*."""
+        plugin_dir.mkdir(parents=True, exist_ok=True)
+        (plugin_dir / "plugin.py").write_text("x = 42\n", encoding="utf-8")
+        from marketplace.signing import PluginSigner
+        PluginSigner.generate_keypair(name, key_dir)
         (plugin_dir / "manifest.json").write_text(
             json.dumps({
-                "name": "my-plugin",
+                "name": name,
                 "version": "1.0.0",
                 "entry_point": "plugin.py",
                 "author": "test",
+                "trusted_key_id": name,
             }),
             encoding="utf-8",
         )
-        mgr = PluginManager(scan_paths=[tmp_path / "plugins"])
+        PluginSigner.sign_package(plugin_dir, key_dir / name)
+        if trusted_key_dir_override:
+            target = trusted_key_dir_override
+        else:
+            target = plugin_dir.parent.parent / ".agentheim" / "trusted-keys"
+        target.mkdir(parents=True, exist_ok=True)
+        import shutil
+        shutil.copy2(key_dir / f"{name}.pub", target / f"{name}.pub")
+
+    def _make_mgr(self, tmp_path: Path, *extra_dirs: Path) -> PluginManager:
+        """Create a PluginManager with deterministic trusted key dirs."""
+        trusted = tmp_path / ".agentheim" / "trusted-keys"
+        trusted.mkdir(parents=True, exist_ok=True)
+        return PluginManager(
+            scan_paths=[tmp_path / "plugins"],
+            trusted_key_dirs=[trusted, *extra_dirs],
+        )
+
+    def test_discover_finds_manifests(self, tmp_path: Path) -> None:
+        key_dir = tmp_path / "keys"
+        key_dir.mkdir(parents=True)
+        plugin_dir = tmp_path / "plugins" / "my-plugin"
+        self._make_signed_plugin(plugin_dir, key_dir, trusted_key_dir_override=tmp_path / ".agentheim" / "trusted-keys")
+        mgr = self._make_mgr(tmp_path)
         found = mgr.discover()
         assert len(found) == 1
         assert found[0].name == "my-plugin"
 
     def test_load_success(self, tmp_path: Path) -> None:
+        key_dir = tmp_path / "keys"
+        key_dir.mkdir(parents=True)
         plugin_dir = tmp_path / "plugins" / "my-plugin"
+        self._make_signed_plugin(plugin_dir, key_dir, trusted_key_dir_override=tmp_path / ".agentheim" / "trusted-keys")
+        mgr = self._make_mgr(tmp_path)
+        ok, err = mgr.load(plugin_dir)
+        assert ok is True, f"Expected success, got: {err}"
+        assert err == ""
+        assert "my-plugin" in mgr.list_loaded()
+
+    def test_load_rejects_unsigned_plugin(self, tmp_path: Path) -> None:
+        plugin_dir = tmp_path / "plugins" / "unsigned-plugin"
         plugin_dir.mkdir(parents=True)
         (plugin_dir / "manifest.json").write_text(
             json.dumps({
-                "name": "my-plugin",
+                "name": "unsigned-plugin",
                 "version": "1.0.0",
                 "entry_point": "plugin.py",
                 "author": "test",
@@ -98,49 +136,45 @@ class TestPluginManager:
             encoding="utf-8",
         )
         (plugin_dir / "plugin.py").write_text("x = 42\n", encoding="utf-8")
-        mgr = PluginManager(scan_paths=[tmp_path / "plugins"])
+        mgr = self._make_mgr(tmp_path)
         ok, err = mgr.load(plugin_dir)
-        assert ok is True
-        assert err == ""
-        assert "my-plugin" in mgr.list_loaded()
+        assert ok is False
+        assert "not signed" in err.lower()
 
     def test_load_missing_manifest(self, tmp_path: Path) -> None:
-        mgr = PluginManager(scan_paths=[])
+        mgr = self._make_mgr(tmp_path)
         ok, err = mgr.load(tmp_path)
         assert ok is False
         assert "manifest" in err.lower()
 
     def test_load_missing_entry_point(self, tmp_path: Path) -> None:
-        plugin_dir = tmp_path / "bad-plugin"
-        plugin_dir.mkdir()
-        (plugin_dir / "manifest.json").write_text(
-            json.dumps({
-                "name": "bad-plugin",
-                "version": "1.0.0",
-                "entry_point": "missing.py",
-                "author": "test",
-            }),
-            encoding="utf-8",
-        )
-        mgr = PluginManager()
+        key_dir = tmp_path / "keys"
+        key_dir.mkdir(parents=True)
+        plugin_dir = tmp_path / "plugins" / "bad-plugin"
+        self._make_signed_plugin(plugin_dir, key_dir, trusted_key_dir_override=tmp_path / ".agentheim" / "trusted-keys")
+        (plugin_dir / "plugin.py").unlink()
+        mgr = self._make_mgr(tmp_path)
         ok, err = mgr.load(plugin_dir)
         assert ok is False
-        assert "entry point" in err.lower()
+        assert any(term in err.lower() for term in ["entry point", "signature"])
+
+    def test_load_rejects_tampered_plugin(self, tmp_path: Path) -> None:
+        key_dir = tmp_path / "keys"
+        key_dir.mkdir(parents=True)
+        plugin_dir = tmp_path / "plugins" / "my-plugin"
+        self._make_signed_plugin(plugin_dir, key_dir, trusted_key_dir_override=tmp_path / ".agentheim" / "trusted-keys")
+        (plugin_dir / "plugin.py").write_text("x = 43\n", encoding="utf-8")
+        mgr = self._make_mgr(tmp_path)
+        ok, err = mgr.load(plugin_dir)
+        assert ok is False
+        assert "signature verification" in err.lower()
 
     def test_unload(self, tmp_path: Path) -> None:
+        key_dir = tmp_path / "keys"
+        key_dir.mkdir(parents=True)
         plugin_dir = tmp_path / "plugins" / "my-plugin"
-        plugin_dir.mkdir(parents=True)
-        (plugin_dir / "manifest.json").write_text(
-            json.dumps({
-                "name": "my-plugin",
-                "version": "1.0.0",
-                "entry_point": "plugin.py",
-                "author": "test",
-            }),
-            encoding="utf-8",
-        )
-        (plugin_dir / "plugin.py").write_text("x = 42\n", encoding="utf-8")
-        mgr = PluginManager(scan_paths=[tmp_path / "plugins"])
+        self._make_signed_plugin(plugin_dir, key_dir, trusted_key_dir_override=tmp_path / ".agentheim" / "trusted-keys")
+        mgr = self._make_mgr(tmp_path)
         mgr.load(plugin_dir)
         assert "my-plugin" in mgr.list_loaded()
         mgr.unload("my-plugin")

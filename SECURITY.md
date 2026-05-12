@@ -33,9 +33,3 @@ Agentheim is designed with security as a core principle:
 - **Local-first** — By default, no data leaves your machine
 - **Approval gates** — Destructive operations require explicit confirmation
 - **Audit trail** — Every action is recorded in an append-only event ledger
-
-## Known Limitations
-
-- The shell tool allowlist is a safety net, not a sandbox. Running Agentheim on untrusted codebases is not recommended.
-- Network policies are advisory at the tool level; a compromised host could bypass them.
-- The plugin marketplace (Phase 6 scaffold) does not yet have cryptographic signature verification.

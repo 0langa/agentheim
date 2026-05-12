@@ -13,6 +13,8 @@
 - [AI Connectivity Test](#ai-connectivity-test)
 - [CLI Smoke Tests](#cli-smoke-tests)
 - [Docs Smoke Tests](#docs-smoke-tests)
+- [Directive Governance Checks](#directive-governance-checks)
+- [Agent Instruction Smoke Tests](#agent-instruction-smoke-tests)
 - [Workflow Smoke Tests](#workflow-smoke-tests)
 - [Preset Smoke Tests](#preset-smoke-tests)
 - [Memory Smoke Tests](#memory-smoke-tests)
@@ -60,7 +62,10 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode narrow
 # Targeted — specific test areas
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targeted
 
-# Phase 7 — production hardening gates
+# Directive — docs, GitHub instructions, and governance checks
+powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode directive -NoPrompt
+
+# Legacy Phase 7 — roadmap-era production hardening gates
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode phase7 -NoPrompt
 
 # Broad — functional + memory suites
@@ -73,6 +78,8 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode full -N
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targeted -K registry
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode full -K "not slow" -NoPrompt
 ```
+
+`phase7` is a legacy roadmap-era validation mode. Prefer `directive` plus `targeted` or `broad` for current directive-system work.
 
 ---
 
@@ -109,7 +116,18 @@ Use the repo-local module entry for CLI smoke checks. In environments with anoth
 import re
 from pathlib import Path
 root = Path('.').resolve()
-files = [root/'README.md', root/'CONTRIBUTING.md', root/'AGENTS.md'] + sorted((root/'docs').glob('*.md')) + [root/'Agent-Team'/'README.md']
+files = [
+    root/'README.md',
+    root/'CONTRIBUTING.md',
+    root/'SECURITY.md',
+    root/'AGENTS.md',
+    root/'Agent-Team'/'README.md',
+]
+files += sorted((root/'docs').glob('*.md'))
+files += sorted((root/'.github').glob('*.md'))
+files += sorted((root/'.github'/'agents').glob('*.md'))
+files += sorted((root/'.github'/'instructions').glob('*.md'))
+files += sorted((root/'.github'/'ISSUE_TEMPLATE').glob('*.md'))
 link_re = re.compile(r'\[[^\]]+\]\(([^)]+)\)')
 problems = []
 for f in files:
@@ -132,7 +150,29 @@ print('markdown links ok')
 '@ | python -
 ```
 
-Checks local Markdown links across the root docs, `docs/`, and `Agent-Team/README.md`.
+Checks local Markdown links across root GitHub-facing docs, `docs/`, `Agent-Team/README.md`, and GitHub Markdown files.
+
+---
+
+## Directive Governance Checks
+
+```powershell
+python scripts/check-agent-instructions.py
+powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode directive -NoPrompt
+```
+
+Use these after editing root docs, `docs/`, `.github/agents/`, `.github/instructions/`, GitHub templates, skills, or devtest command guidance.
+
+---
+
+## Agent Instruction Smoke Tests
+
+```powershell
+python -c "from pathlib import Path; files=sorted(Path('.github/instructions').glob('*.md')); assert files and all(f.read_text(encoding='utf-8').strip() for f in files); print('instruction files ok:', [f.name for f in files])"
+python -c "from pathlib import Path; p=Path('.github/agents/agentheim-autonomous-engineer.agent.md'); text=p.read_text(encoding='utf-8'); required=['00-instruction-priority.md','01-doctrine.md','02-forbidden-behaviors.md','03-traceability.md','04-AICtx-integration.md','05-documentation-integrity.md','06-tooling-and-verification.md']; missing=[item for item in required if item not in text]; assert not missing, missing; print('agent references ok')"
+```
+
+Confirms binding `.github/instructions/*.md` files are present, non-empty, and referenced by the main autonomous engineer agent.
 
 ---
 
