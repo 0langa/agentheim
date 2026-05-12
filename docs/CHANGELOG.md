@@ -7,6 +7,11 @@
 - Added executable directive linting via `scripts/check-agent-instructions.py`, directive devtest mode, and CI governance replacement for the legacy roadmap checker.
 - Updated agent, skill, docs, PR template, and devtest guidance to use `docs/CHANGELOG.md`, directive checks, and current GitHub instruction files.
 
+### Critical Bug Fixes — Audit Findings Resolved
+- **Package discovery (namespace packages):** Added missing `__init__.py` to `workflows/`, `config/`, `interfaces/cli/`. Verified wheel build includes all 54 packages. Entry point `agentheim` resolves correctly.
+- **Provider map centralization:** All callers already use `build_model_registry()` from `core/model_registry.py`. Fixed remaining bare `from_team_config()` calls in `devtest/ai_test.ps1` and `Agent-Team/tests/test_model_registry.py` to use `build_model_registry()`.
+- **Default API key exposure:** `auth.py` already requires explicit `AI_TEAM_API_KEYS` or dev mode — no hardcoded fallback exists. No change needed.
+
 ## 2026-05-10
 
 ### Phase 7 Slice 5 — Safety & Privacy

@@ -2,7 +2,7 @@ import pytest
 import json
 
 from ai_team.config import load_team_config
-from ai_team.core.model_registry import ModelRegistry
+from ai_team.core.model_registry import build_model_registry
 
 
 def _seed_env(monkeypatch) -> None:
@@ -16,7 +16,7 @@ def _seed_env(monkeypatch) -> None:
 def test_registry_resolves_workflow_roles(monkeypatch) -> None:
     _seed_env(monkeypatch)
     config = load_team_config()
-    registry = ModelRegistry.from_team_config(config)
+    registry = build_model_registry(config)
 
     planner = registry.resolve_model("planner", "plan")
     executor = registry.resolve_model("executor", "code_edit")
@@ -30,7 +30,7 @@ def test_registry_resolves_workflow_roles(monkeypatch) -> None:
 def test_registry_rejects_unknown_capability(monkeypatch) -> None:
     _seed_env(monkeypatch)
     config = load_team_config()
-    registry = ModelRegistry.from_team_config(config)
+    registry = build_model_registry(config)
 
     with pytest.raises(ValueError):
         registry.resolve_model("executor", "verify")
@@ -49,7 +49,7 @@ def test_registry_uses_models_json_override(monkeypatch) -> None:
         ),
     )
     config = load_team_config()
-    registry = ModelRegistry.from_team_config(config)
+    registry = build_model_registry(config)
 
     resolved = registry.resolve_model("planner", "plan")
     assert resolved.id == "planner-fast"

@@ -72,6 +72,28 @@ Define the integration contract before code movement begins.
 - Define deprecation policy for the standalone AICtx CLI.
 - Record integration risks, ownership, and success criteria.
 
+### Additional M0 Backlog Items (from AICtx v1 state analysis)
+
+- **Decide AICtx source namespace**: `agentheim.vendor.aictx` (preserved history subtree) vs slice-by-slice manual import. Prefer subtree merge for `git log` continuity.
+- **Define lockfile schema versioning strategy**: AICtx `context.lock.json` schema is v1.0. Agentheim must either adopt v1.0 directly or wrap it in a versioned envelope. Decide:
+  - Option A: Adopt v1.0 schema as-is (fastest, backward-compatible)
+  - Option B: Wrap in `agentheim-ctx.lock.json` with envelope versioning (cleaner long-term)
+- **Map AICtx provider interface to Agentheim**: AICtx has its own `llm/base.py` (`ModelProvider`, `ChatRequest`, `ChatResponse`). Agentheim has `providers/base.py` (`ModelProvider`, `ModelRequest`, `ModelResponse`). These are structurally similar but not identical. Decide:
+  - M7 scope: adapt AICtx to Agentheim provider interface
+  - Pre-M7: AICtx keeps its own provider abstraction behind `ContextOps` (adapter layer)
+- **Plan test migration**: AICtx has ~95 tests with 7 adversarial repo fixtures (`git_repos.py`). Decide:
+  - Import fixtures and tests into Agentheim `tests/vendor/aictx/`
+  - Run as-is during M1-M2; adapt to Agentheim conventions by M3
+- **Define CLI namespace**: `agentheim ctx <subcommand>` for AICtx operations. Map:
+  - `aictx scan` → `agentheim ctx scan`
+  - `aictx run` → `agentheim ctx run`
+  - `aictx verify` → `agentheim ctx verify`
+  - `aictx public-docs` → `agentheim ctx public-docs`
+  - `aictx snapshot` → `agentheim ctx snapshot`
+  - `aictx oci` → `agentheim ctx oci`
+  - Keep `aictx` as legacy alias during M1-M9
+- **Define verification composition model**: AICtx `verify` is hash-based lockfile verification (deterministic). Agentheim `PolicyEngine` is runtime safety verification. They are orthogonal — compose, not merge. AICtx verify runs at context-use time; PolicyEngine runs at tool-invocation time.
+
 ### Deliverables
 
 - Approved ADR
@@ -101,6 +123,16 @@ Bring AICtx into Agentheim without losing history or collapsing boundaries.
 - Define an internal `ContextOps` service interface for Agentheim.
 - Document which AICtx modules are preserved, adapted, or replaced.
 
+### Additional M1 Backlog Items
+
+- **Analyze provider interface delta**: Compare AICtx `llm/base.py` vs Agentheim `providers/base.py`. Key differences:
+  - AICtx `ChatRequest` has `system_prompt` + `messages` + `json_schema`; Agentheim `ModelRequest` has `system_prompt` + `user_prompt` + `temperature`
+  - AICtx `ChatResponse` has `content` + `finish_reason` + `input_tokens` + `output_tokens`; Agentheim `ModelResponse` has similar fields
+  - Both have `metadata()` and `count_tokens()` pattern
+  - **Decision needed**: write thin adapter or refactor AICtx calls to use Agentheim interface
+- **Import AICtx tests alongside source**: AICtx tests verify lockfile I/O, scanner determinism, secret detection, public-doc mapping, OCI snapshots, bundle integrity. These must survive import to avoid regression gaps.
+- **Fix subprocess calls in AICtx code**: AICtx uses `subprocess.run` for git operations (`git/diff.py`, `git/repo.py`, `git/status.py`, `io/patches.py`). These will trigger Agentheim's Law-7 architecture checker. Either add to `SUBPROCESS_EXEMPTIONS` or route through Agentheim tool protocol.
+
 ### Deliverables
 
 - imported subtree or filtered-history merge
@@ -127,6 +159,44 @@ Expose AICtx core behavior through Agentheim internals.
 - Keep committed output compatibility.
 - Map context outputs into Agentheim artifact/report conventions.
 - Add support for baseline/init, scan, generate, verify, status, and public-doc review operations.
+
+### Additional M2 Backlog Items
+
+- **Define ContextOps API contract concretely** (derived from AICtx actual entry points):
+
+```python
+class ContextOps(ABC):
+    """Internal service interface for AICtx-derived context operations."""
+    
+    @abstractmethod
+    def scan(self, repo_root: Path) -> RepositoryInventory: ...
+    
+    @abstractmethod
+    def plan(self, inventory: RepositoryInventory, scope: str = "full",
+             existing_lock: ContextLock | None = None) -> ContextPlan: ...
+    
+    @abstractmethod
+    def generate(self, repo_root: Path, plan: ContextPlan,
+                 provider: ModelProvider | None = None) -> GeneratedContext: ...
+    
+    @abstractmethod
+    def write(self, repo_root: Path, context: GeneratedContext,
+              write_mode: str = "patch") -> WriteReport: ...
+    
+    @abstractmethod
+    def verify(self, repo_root: Path, strict: bool = False) -> VerificationResult: ...
+    
+    @abstractmethod
+    def status(self, repo_root: Path, strict: bool = False) -> ContextStatus: ...
+    
+    @abstractmethod
+    def public_docs_impact(self, repo_root: Path,
+                           scope: str = "full") -> PublicDocsImpactReport: ...
+```
+
+- **Map AICtx CLI flags to ContextOps parameters**: AICtx CLI has `--scope full|changed`, `--write patch|apply`, `--allow-ai`, `--allow-dirty`, `--provider`. These map to ContextOps method kwargs.
+- **Lockfile I/O adapter**: AICtx `lockfile.py` writes to `docs/AIprojectcontext/context.lock.json`. Agentheim must read/write same path during M1-M5. M6 moves transient state.
+- **Secret scanning integration**: AICtx `scan/secrets.py` runs inline during scan. Agentheim `PrivacyEnforcer` already handles redaction. Compose: AICtx detects → blocks generation; Agentheim redacts at output.
 
 ### Deliverables
 
@@ -373,18 +443,28 @@ Finish migration and retire duplicated systems safely.
 
 ---
 
-## First 10 Implementation Tickets
+## First 20 Implementation Tickets (refined)
 
 1. Write the integration ADR.
-2. Import AICtx with preserved history into a bounded namespace.
-3. Define the `ContextOps` service contract.
-4. Adapt lockfile read/write behind `ContextOps`.
-5. Adapt verifier logic behind `ContextOps`.
-6. Adapt deterministic context generation behind `ContextOps`.
-7. Add golden tests for lockfile and generated context artifacts.
-8. Create the `context-maintainer` workflow pack.
-9. Add CLI/API/web entrypoints for context operations.
-10. Add one end-to-end context run test with ledger and artifact assertions.
+2. Decide AICtx source namespace and lockfile schema versioning.
+3. Import AICtx with preserved history into a bounded namespace.
+4. Define the `ContextOps` service contract.
+5. Add `pathspec>=0.12.0` to Agentheim dependencies.
+6. Adapt lockfile read/write behind `ContextOps`.
+7. Adapt verifier logic behind `ContextOps`.
+8. Adapt deterministic context generation (scanner → planner → writer) behind `ContextOps`.
+9. Add golden tests for lockfile and generated context artifacts.
+10. Add AICtx test fixtures to Agentheim test suite.
+11. Create the `context-maintainer` workflow pack.
+12. Add `agentheim ctx` CLI namespace with all subcommands.
+13. Add API/web entrypoints for context operations.
+14. Add one end-to-end context run test with ledger and artifact assertions.
+15. Make coding workflow context-aware (replace `build_context_pack`).
+16. Make research and docs workflows context-aware.
+17. Add stale-context preflight to workflow runner Step conditions.
+18. Unify public-doc impact mapping with docs-maintenance workflow.
+19. Migrate transient AICtx artifacts under Agentheim runtime storage.
+20. Route AICtx provider usage through Agentheim provider abstractions.
 
 ---
 
@@ -398,3 +478,28 @@ The integration is complete only when all of the following are true:
 - public-doc freshness gates run through Agentheim
 - the standalone AICtx CLI is optional rather than required
 - optional remote execution features are Agentheim capabilities, not a parallel platform
+
+> **Current state (May 2026):** AICtx is v1-complete. All roadmap phases (0–8) are green. ~95+ unit tests pass. 7 adversarial repo fixtures exist. Lockfile schema is v1.0. OCI infrastructure is fully built (snapshot, object storage, remote job, worker, cleanup). The only remaining production steps are live OCI credential injection in CI and cross-platform install-matrix proofing. This means the integration target is stable — AICtx is not under active development, it is ready for absorption.
+
+### Additional M3 Backlog Items
+
+- **Implement CLI namespace**: Add `agentheim ctx` Typer subcommand group in `interfaces/cli/cli.py`. Delegate to `ContextOps` implementation.
+- **Dependency management**: AICtx runtime deps (typer, rich, pydantic, pathspec) are already in Agentheim or compatible. Add `pathspec>=0.12.0` to Agentheim deps. OCI extra (`oci>=2.120.0`) becomes optional Agentheim extra `[oci]`.
+- **Preserve standalone CLI**: Keep `aictx` entry point as thin wrapper around `agentheim ctx` during M1-M9. Deprecate after M9.
+- **AGENTS.md generation integration**: AICtx `agents_md.py` generates `AGENTS.md`. Agentheim root `AGENTS.md` already exists. Decide: overwrite, merge, or append? Prefer merge — AICtx preserves unmanaged sections.
+
+### Additional M8 Backlog Items
+
+- **Adopt existing AICtx OCI modules directly**: AICtx has fully built (not stubbed):
+  - `oci/config.py` — OCI config loading + validation
+  - `oci/doctor.py` — Local readiness check (SDK, config, profile, compartment, model, region)
+  - `oci/snapshot.py` — deterministic snapshot creation, 10K-file/500MiB/12-level hard caps
+  - `oci/object_storage.py` — upload/download with multipart + retries + checksum
+  - `oci/bundle.py` — result bundle creation + verification + corruption detection
+  - `oci/remote_job.py` — Data Science Job submission, polling, cancellation
+  - `oci/runtime.py` — runtime budgeting + cost estimation
+  - `oci/cleanup.py` — safe local + OCI cleanup with dry-run gates
+  - `oci/worker.py` — remote worker entry point
+  - **Most are production-ready stubs** (structural code + error handling, but untested against live OCI). Import as-is; add integration tests when OCI credentials available.
+- **OCI readiness → Agentheim diagnostics**: `agentheim ctx oci doctor` maps to existing `OCIDoctorReport`. Expose through `agentheim doctor` command too.
+- **Snapshot artifacts → Agentheim ArtifactStore**: AICtx snapshot zip files map to Agentheim `ArtifactSpec` schema. Store in Agentheim runtime artifacts dir.

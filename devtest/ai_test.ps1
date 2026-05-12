@@ -13,7 +13,7 @@ import json
 import sys
 
 from config.config import load_team_config
-from core.model_registry import ModelRegistry
+from core.model_registry import build_model_registry
 from providers.base import ModelRequest
 
 
@@ -32,7 +32,7 @@ def main() -> int:
     allow_mismatch = "--allow-mismatch-purpose" in sys.argv
 
     config = load_team_config()
-    registry = ModelRegistry.from_team_config(config)
+    registry = build_model_registry(config)
     by_role = config.by_role()
 
     checks = [

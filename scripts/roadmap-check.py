@@ -182,6 +182,7 @@ RESERVED_SUBSYSTEMS = [
 # These are tool implementations that wrap system calls legitimately
 SUBPROCESS_EXEMPTIONS = [
     'scripts/roadmap-check.py',              # This checker script
+    'scripts/check-agent-instructions.py',   # Instruction linting script
     'tools/shell',                           # Shell tool (subprocess is its purpose)
     'tools/git',                             # Git tool (wraps git CLI)
     'core/repo/scanner.py',                  # Repo scanner uses git subprocess for snapshot
@@ -321,10 +322,16 @@ class ArchitectureChecker:
 
     def check_law7_policy_engine_for_tools(self):
         """Law 7: All tool calls go through policy engine."""
+        # Paths to skip entirely (e.g. gitignored reference repos)
+        EXCLUDED_DIRS = {'AICtx'}
         for py_file in self.root.rglob('*.py'):
             file_path = str(py_file)
             rel_path = str(py_file.relative_to(self.root))
 
+            # Skip excluded directories
+            parts = Path(rel_path).parts
+            if any(p in EXCLUDED_DIRS for p in parts):
+                continue
             # Skip third-party dependencies and cache directories
             if '/.venv/' in file_path.replace('\\', '/') or '\\.venv\\' in file_path:
                 continue
@@ -405,8 +412,14 @@ class ArchitectureChecker:
 
     def check_event_immutability(self):
         """Check that ledger events are not modified after creation."""
+        EXCLUDED_DIRS = {'AICtx'}
         for py_file in self.root.rglob('*.py'):
             file_path = str(py_file)
+            rel_path = str(py_file.relative_to(self.root))
+            # Skip excluded directories
+            parts = Path(rel_path).parts
+            if any(p in EXCLUDED_DIRS for p in parts):
+                continue
             # Skip third-party dependencies and cache directories
             if '/.venv/' in file_path.replace('\\', '/') or '\\.venv\\' in file_path:
                 continue

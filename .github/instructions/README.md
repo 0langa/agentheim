@@ -9,11 +9,11 @@ This directory contains binding instructions for agents working on Agentheim.
 | `00-instruction-priority.md` | always-read, always-enforced | Precedence, conflict handling, and required reads |
 | `01-doctrine.md` | always-read, always-enforced | Project identity and immutable architecture laws |
 | `02-forbidden-behaviors.md` | always-read, always-enforced | Rejection-level anti-patterns and stop conditions |
-| `02-forbidden-behaviours.md` | compatibility alias | Pointer for agents searching the British spelling |
 | `03-traceability.md` | always-read, always-enforced | Evidence, reporting, changelog, and artifact expectations |
 | `04-AICtx-integration.md` | always-read, contextual-enforced | AICtx integration rules and hard boundaries |
 | `05-documentation-integrity.md` | always-read, always-enforced | Documentation accuracy, link, example, and GitHub rendering rules |
 | `06-tooling-and-verification.md` | always-read, always-enforced | Canonical local validation, AI live-test limits, and legacy roadmap status |
+| `07-chat-output.md` | always-read, always-enforced | rules for how to interact with user in input/output interface talking with you |
 
 ## AICtx Rule
 
