@@ -1,32 +1,49 @@
-# PROJECT DOCTRINE — BINDING LAW
+# Project Doctrine — BINDING LAW
 
 ## Identity
-agentheim (formerly known as local-agent-orchestration) is a preset-driven, local-first AI automation platform. The core is a generic orchestration runtime. Coding is ONE workflow pack among many — not the product identity.
+
+`agentheim` (local checkout may be named `local-agent-orchestra`) is a preset-driven, local-first AI automation platform. The core product is a generic orchestration runtime with policy-gated tools, interchangeable model providers, workflow packs, ledgers, memory, and user-facing interfaces.
+
+Coding support is one workflow area. It is not the whole product.
 
 ## The 7 Immutable Laws
 
-These laws are ABSOLUTE. Violating any law is an architectural breach that blocks merge.
+Violating any law is an architectural breach and blocks merge.
 
-### Law 1: Core Ignorance
-The `core/` directory MUST NOT contain provider names (Grok, OpenAI, Ollama), workflow types (coding, research), agent roles (planner, executor), or tool implementations. Core knows only protocols and registries.
+### 1. Core Ignorance
 
-### Law 2: Workflow Pack Autonomy
-Workflow packs in `workflows/` define their own agents, steps, policies, and verification. They MUST NOT import provider implementations directly, mutate core state, or bypass the policy engine.
+`core/` must not contain concrete provider names, workflow names, agent roles, tool implementations, AICtx implementation details, or product-specific shortcuts. Core knows protocols, registries, events, policies, budgets, ledgers, and generic runtime contracts.
 
-### Law 3: Provider Interchangeability
-Provider adapters in `providers/` are lazy-loaded configuration objects. All providers are interchangeable. No provider shapes the architecture.
+### 2. Workflow Pack Autonomy
 
-### Law 4: Progressive Disclosure
-The same system serves beginners (preset picker), power-users (configurable settings), and developers (extensible APIs). Complexity is hidden until requested. Never dumb down; never force complexity.
+Workflow packs in `workflows/` define their own agents, steps, prompts, policies, and verification behavior. They must not import provider implementations directly, mutate core state, or bypass the policy engine.
 
-### Law 5: Event-Sourced Truth
-All run state derives from an append-only event log. No mutable run state exists outside the ledger. This enables replayability, auditability, and fault recovery.
+### 3. Provider Interchangeability
 
-### Law 6: Local-First Sovereignty
-Default operation requires zero external services beyond model APIs. Privacy modes (remote-allowed, local-preferred, local-only, strict-private) are enforced at the policy engine, not advisory.
+Provider adapters in `providers/` are interchangeable and lazy-loaded. A provider can add capability, but it must not shape the core architecture.
 
-### Law 7: Safety by Default
-All destructive operations require explicit approval. Policies are defined in code, not by models. Side effects are mediated through the tool protocol.
+### 4. Progressive Disclosure
 
+The same system must serve beginners through presets, power users through configuration, and developers through stable APIs. Do not force internal complexity into beginner flows, and do not remove power-user or developer control to simplify an implementation.
 
+### 5. Event-Sourced Truth
 
+Run state derives from append-only ledgers and recorded artifacts. Do not mutate ledger history. Do not invent side-channel run state that cannot be replayed, audited, or inspected.
+
+### 6. Local-First Sovereignty
+
+Agentheim is local-first. External services must be explicit, policy-gated, and compatible with privacy settings. Sensitive files, secrets, generated context artifacts, and local runtime state must not be sent to remote systems unless the relevant policy and task explicitly allow it.
+
+### 7. Safety By Default
+
+All side effects go through maintained safety paths: tool protocol, policy engine, approval workflow, path confinement, and redaction. Destructive, networked, credential-bearing, or production-affecting operations require explicit authorization and traceability.
+
+## Current Documentation Authority
+
+- `docs/README.md` is the documentation index.
+- `docs/ARCHITECTURE.md` describes current architecture.
+- `docs/SAFETY.md` describes current safety behavior.
+- `docs/AICTX_INTEGRATION_PLAN.md` governs AICtx integration planning.
+- `.github/instructions/*.md` files are binding agent instructions.
+
+If a file referenced by an instruction no longer exists, report and fix the drift rather than following stale guidance.

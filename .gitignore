@@ -68,5 +68,7 @@ cov_report.txt
 # Old/stale documentation
 old-docs/
 
+# Local reference / legacy subtrees
 AICtx/
-.kimi\rules
+Agent-Team/
+.kimi/

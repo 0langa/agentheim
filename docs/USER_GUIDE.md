@@ -53,7 +53,7 @@ agentheim doctor
 ### 1. Configure a Provider
 
 ```bash
-cp Agent-Team/.env.example .env
+cp .env.example .env
 ```
 
 Edit `.env` with your provider details:
@@ -154,10 +154,10 @@ AI_TEAM_MODEL_VERIFIER_NAME=gpt-4o
 | Coding | `planner`, `executor`, `verifier` |
 | Research | `gatherer`, `summarizer`, `reporter` |
 | Documents | `indexer`, `retriever`, `answerer` |
-| File Organization | `analyzer`, `proposer`, `applier` |
-| Docs Maintenance | `detector`, `updater`, `aligner` |
-| GitHub Maintenance | `summarizer`, `drafter` |
-| Command Assistant | `parser`, `generator` |
+| File Organization | `indexer`, `planner`, `executor` |
+| Docs Maintenance | `planner`, `executor`, `verifier` |
+| GitHub Maintenance | `planner`, `executor` |
+| Command Assistant | `planner`, `executor` |
 
 ### Full Environment Reference
 
@@ -218,6 +218,30 @@ agentheim presets             # List available presets
 | `agentheim report --repo <path> --run-id <id>` | Show full report for a run |
 | `agentheim resume --repo <path> --run-id <id>` | Resume a blocked or incomplete run |
 | `agentheim presets` | List all available presets |
+| `agentheim memory get --key <key>` | Read a value from global memory |
+| `agentheim memory set --key <key> --value <value>` | Store a value in global memory |
+| `agentheim mcp-list` | List tools provided by configured MCP servers |
+| `agentheim mcp-call <tool> --arg key=value` | Call an MCP tool directly |
+
+### What is MCP?
+
+[MCP](https://modelcontextprotocol.io/) (Model Context Protocol) lets Agentheim connect to external tools — databases, browsers, file servers, and more — without writing custom code. If you have an MCP server running, Agentheim discovers its tools automatically and routes them through the same policy engine as native tools.
+
+### Examples
+
+```bash
+# Run a preset with dirty-repo override
+agentheim run "Review code" --repo . --allow-dirty
+
+# Store a preference in global memory
+agentheim memory set --key theme --value dark
+
+# List available MCP tools
+agentheim mcp-list
+
+# Call an MCP tool (example: filesystem search)
+agentheim mcp-call filesystem_search --arg query="*.py"
+```
 
 ### Run Modes
 

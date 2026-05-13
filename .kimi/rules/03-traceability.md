@@ -1,47 +1,65 @@
-# TRACEABILITY — EVERY CHANGE LEAVES EVIDENCE
+# Traceability — EVERY CHANGE LEAVES EVIDENCE
 
-## Artifact Requirements
-Every implementation task MUST produce:
+Every meaningful change must leave enough evidence for a reviewer to understand what changed, why it changed, and how it was verified.
 
-1. **Code** — the implementation itself
-2. **Tests** — unit tests with >80% coverage
-3. **Documentation** — docstrings + relevant doc updates
-4. **CHANGELOG entry** — what changed and why
+## Required Change Evidence
 
-## Per-Run Artifact Requirements
-Every workflow execution MUST produce:
+For implementation work, include or update:
 
+- code changes
+- focused tests for changed behavior
+- docs for changed public behavior, commands, architecture, configuration, safety, or workflow expectations
+- `docs/CHANGELOG.md` before any commit
+- relevant `devtest/` guidance when test structure or recommended commands change
+
+For docs-only or instruction-only work, include:
+
+- local Markdown-link validation
+- command/example validation when examples were changed
+- explicit note if no code tests were needed
+
+## Canonical Artifact Paths
+
+Agentheim run artifacts live under `.ai-team/runs/<run-id>/` unless a specific integration plan says otherwise. Typical artifacts include:
+
+```text
+.ai-team/runs/<run-id>/
+    run.json
+    ledger.jsonl
+    ledger.hash
+    config.redacted.json
+    context_bundle.md
+    plan.md
+    tool_calls.jsonl
+    policy_decisions.jsonl
+    patch.diff
+    verification.json
+    final_report.md
 ```
-runs/<run-id>/
-    run.json                 # Run metadata
-    timeline.jsonl           # Complete event log
-    config.redacted.json     # Config with secrets removed
-    context_bundle.md        # Human-readable context
-    context_manifest.json    # Machine-readable context
-    plan.md                  # Execution plan (if applicable)
-    tool_calls.jsonl         # Every tool invocation
-    policy_decisions.jsonl   # Every policy evaluation
-    patch.diff               # File changes (if applicable)
-    verification.json        # Verification results
-    final_report.md          # Human-readable outcome
-```
 
-## What I Must Log
-- Every file modified (path, before/after hash)
-- Every subsystem touched
-- Every test added or modified
-- Every policy decision (if implementing policy-related code)
-- Every event type added (if implementing event-related code)
+AICtx may still use `.aictx/` internally while it is a reference repository or during compatibility migration. Do not present `.aictx/` as Agentheim's canonical runtime store unless the active AICtx integration phase explicitly requires it.
 
-## Traceability Test
-Can a reviewer answer these questions from my output alone?
-- [ ] What was changed?
-- [ ] Why was it changed?
-- [ ] Which subsystem was affected?
-- [ ] Does it preserve all 7 Laws?
-- [ ] Are there tests?
-- [ ] Is there documentation?
+## What To Report
 
-If any answer is "no" or "unclear," the task is not complete.
+Final responses and handoffs should identify:
 
+- files changed
+- subsystems affected
+- tests or smoke checks run
+- commands that failed and whether failures are project defects or local environment limits
+- docs updated or verified
+- remaining risks or unverified assumptions
 
+## Reviewer Questions
+
+Before completion, a reviewer should be able to answer:
+
+- What changed?
+- Why was it changed?
+- Which subsystem owns the behavior?
+- Does it preserve the 7 immutable laws?
+- What tests or smoke checks ran?
+- Which docs or instructions were updated?
+- Are any claims unverified?
+
+If any answer is unclear, the task is not complete.

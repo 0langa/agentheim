@@ -72,7 +72,7 @@ PYTHONPATH="." pytest tests/ -q
 
 Your `.env` file is either missing or the API key environment variable is not set.
 
-1. Copy the example: `cp Agent-Team/.env.example .env`
+1. Copy the example: `cp .env.example .env`
 2. Fill in your API key
 3. Verify: `agentheim doctor`
 
@@ -137,7 +137,7 @@ By default, Agentheim refuses to run on repositories with uncommitted changes:
 
 ```bash
 # Use --allow-dirty if you're sure
-agentheim start codebase-assistant --input repo=. --input task="Review code" --input allow-dirty=true
+agentheim run "Review code" --repo . --allow-dirty
 ```
 
 ### Run fails mid-execution
