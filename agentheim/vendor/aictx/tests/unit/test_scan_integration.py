@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import subprocess
 
-from aictx.scan.scanner import scan_repository
+from agentheim.vendor.aictx.scan.scanner import scan_repository
 from tests.fixtures.git_repos import create_git_repo
 
 

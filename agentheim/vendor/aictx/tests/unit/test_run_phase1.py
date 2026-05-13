@@ -6,9 +6,9 @@ import json
 
 from typer.testing import CliRunner
 
-from aictx.cli import app
-from aictx.config import load_config
-from aictx.context.lockfile import load_lockfile
+from agentheim.vendor.aictx.cli import app
+from agentheim.vendor.aictx.config import load_config
+from agentheim.vendor.aictx.context.lockfile import load_lockfile
 from tests.fixtures.git_repos import create_git_repo
 
 runner = CliRunner()

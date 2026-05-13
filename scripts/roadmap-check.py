@@ -192,6 +192,14 @@ SUBPROCESS_EXEMPTIONS = [
     'interfaces/cli/cli.py',                 # Doctor command checks git availability via subprocess
     'tools/mcp/client.py',                   # MCP client spawns MCP server subprocesses
     'tests/test_import_linting.py',          # Tests the checker itself; needs subprocess
+    # AICtx vendor imports (M1) — imported reference code; subprocess/git calls are
+    # legitimate internal AICtx operations and will be mediated through ContextOps
+    # or routed through the tool protocol in later milestones.
+    'agentheim/vendor/aictx/cli.py',
+    'agentheim/vendor/aictx/git/',
+    'agentheim/vendor/aictx/io/patches.py',
+    'agentheim/vendor/aictx/oci/worker.py',
+    'agentheim/vendor/aictx/tests/',
 ]
 
 

@@ -129,17 +129,21 @@ Run a preset with the provided inputs.
 
 #### Read Memory
 ```
-GET /api/memory/{scope}/{key}
+GET /api/memory/{backend}/{key}
 ```
 
-Scopes: `run`, `repository`, `global`
+Backends: `jsonl` (default), `sqlite`, `vector`
+
+The underlying `MemoryBus` supports scopes (`global`, `run`, `repository`), but the current API routes expose the backend name in the path. Run-scoped and repository-scoped reads are handled by the bus internally; direct scope selection via query parameter is planned.
 
 #### Write Memory
 ```
-POST /api/memory/{scope}/{key}
+POST /api/memory/{backend}/{key}
 ```
 
 Body: `{"value": <any JSON-serializable value>}`
+
+Requires `X-API-Key` header.
 
 ### Models & Providers
 

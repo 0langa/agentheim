@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-05-13
+
+### Public Docs Sync
+- Updated test counts across `README.md` and `docs/DEV_TESTING.md` → **695 passed, 3 skipped**.
+- Fixed mismatched email link in `CODE_OF_CONDUCT.md`.
+- Added `.github/instructions/07-chat-output.md` to `AGENTS.md` binding instructions list.
+- Fixed dirty-repo troubleshooting example in `docs/TROUBLESHOOTING.md` to use `agentheim run ... --allow-dirty`.
+- Added historical-note header to `REPOSITORY_AUDIT_REPORT.md` about moved documentation paths.
+- Added missing CLI commands (`memory`, `mcp-list`, `mcp-call`) to `docs/USER_GUIDE.md` with beginner-friendly explanations and copy-paste examples.
+- Fixed Workflow Model Roles table in `docs/USER_GUIDE.md` to list actual `ModelRole` enum values (`planner`, `executor`, `verifier`, `indexer`, etc.) rather than conceptual agent names.
+- Fixed `docs/API_REFERENCE.md` Memory endpoints to document actual `{backend}/{key}` path (`jsonl`, `sqlite`, `vector`) instead of incorrect `{scope}/{key}` (`run`, `repository`, `global`).
+
+### AICtx Integration — M1 Complete
+- Imported AICtx source via filtered-history subtree merge into `agentheim/vendor/aictx/`.
+- Renamed `agentheim/vendor/aictx/logging.py` → `_logging.py` to prevent stdlib `logging` shadowing.
+- Added `agentheim*` to `pyproject.toml` package discovery and `pathspec>=0.12.0` to dependencies.
+- Added AICtx vendor subprocess/git paths to `scripts/roadmap-check.py` `SUBPROCESS_EXEMPTIONS` so legacy architecture checks pass.
+- Defined `ContextOps` ABC in `agentheim/context_ops.py` as the boundary between Agentheim and AICtx.
+- Created `agentheim/vendor/MODULE_MAP.md` documenting preserved / adapted / replaced modules and provider interface delta.
+- Updated `docs/AICTX_INTEGRATION_PLAN.md` marking M1 complete.
+- Fixed all vendor internal imports (`from aictx.` → `from agentheim.vendor.aictx.`) so tests run without namespace collisions.
+- Hardened `agentheim/vendor/aictx/llm/oci_genai.py` `_require_oci_sdk()` to detect vendor-package namespace collisions and fail with `ConfigError`.
+- Vendor unit tests: **101 passed**.
+
 ## 2026-05-12
 
 ### Directive System Governance

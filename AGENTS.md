@@ -14,6 +14,7 @@ All agents must read and obey every file in `.github/instructions/` before plann
 - `.github/instructions/04-AICtx-integration.md`
 - `.github/instructions/05-documentation-integrity.md`
 - `.github/instructions/06-tooling-and-verification.md`
+- `.github/instructions/07-chat-output.md`
 
 Those files are binding project rules. They cannot be ignored, skipped, or treated as optional context.
 

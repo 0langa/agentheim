@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typer.testing import CliRunner
 
-from aictx.cli import app
+from agentheim.vendor.aictx.cli import app
 
 runner = CliRunner()
 

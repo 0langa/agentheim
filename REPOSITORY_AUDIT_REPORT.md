@@ -1,5 +1,7 @@
 # Repository Audit Report
 
+> **Historical note:** This audit was conducted against an earlier state of the repository. Some documentation paths referenced below (`docs/INSTALL.md`, `docs/CONFIGURATION.md`, `docs/API.md`, `docs/roadmap/`) have since been consolidated into the unified `docs/` structure. Current documentation lives in `docs/README.md` and the files indexed there.
+
 ## Executive Summary
 
 This repository is `agentheim` (`pyproject.toml:6`), a Python 3.12+ local-first AI orchestration platform with a Typer CLI, FastAPI API server, FastAPI web UI, workflow packs, tool adapters, and memory/ledger infrastructure. From source checkout, the codebase is in generally good shape: `pytest -q` passed with `692 passed, 3 skipped` and the architecture checker passed phase 7.

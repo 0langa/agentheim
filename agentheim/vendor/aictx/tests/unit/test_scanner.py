@@ -7,7 +7,7 @@ import random
 import string
 from pathlib import Path
 
-from aictx.scan.scanner import (
+from agentheim.vendor.aictx.scan.scanner import (
     _detect_language,
     _is_binary,
     _is_doc,
@@ -15,7 +15,7 @@ from aictx.scan.scanner import (
     _is_test,
     _sha256_file,
 )
-from aictx.scan.secrets import scan_for_secrets
+from agentheim.vendor.aictx.scan.secrets import scan_for_secrets
 
 
 def test_is_binary_text_file(tmp_path: Path) -> None:

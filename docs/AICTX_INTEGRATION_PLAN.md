@@ -102,7 +102,7 @@ All M0 items are decided. See `docs/adr/ADR-001-aictx-integration-contract.md`.
 
 ---
 
-## M1 Source Import And Boundary
+## M1 Source Import And Boundary ✅ COMPLETE
 
 ### Goal
 
@@ -110,32 +110,36 @@ Bring AICtx into Agentheim without losing history or collapsing boundaries.
 
 ### Backlog
 
-- Import AICtx into a bounded namespace with preserved history.
-- Separate AICtx domain modules from shell modules.
-- Define an internal `ContextOps` service interface for Agentheim.
-- Document which AICtx modules are preserved, adapted, or replaced.
+- ✅ Import AICtx into a bounded namespace with preserved history.
+- ✅ Separate AICtx domain modules from shell modules.
+- ✅ Define an internal `ContextOps` service interface for Agentheim.
+- ✅ Document which AICtx modules are preserved, adapted, or replaced.
 
 ### Additional M1 Backlog Items
 
-- **Analyze provider interface delta**: Compare AICtx `llm/base.py` vs Agentheim `providers/base.py`. Key differences:
+- ✅ **Analyze provider interface delta**: Compared AICtx `llm/base.py` vs Agentheim `providers/base.py`. Key differences documented in `agentheim/vendor/MODULE_MAP.md`.
   - AICtx `ChatRequest` has `system_prompt` + `messages` + `json_schema`; Agentheim `ModelRequest` has `system_prompt` + `user_prompt` + `temperature`
   - AICtx `ChatResponse` has `content` + `finish_reason` + `input_tokens` + `output_tokens`; Agentheim `ModelResponse` has similar fields
   - Both have `metadata()` and `count_tokens()` pattern
-  - **Decision needed**: write thin adapter or refactor AICtx calls to use Agentheim interface
-- **Import AICtx tests alongside source**: AICtx tests verify lockfile I/O, scanner determinism, secret detection, public-doc mapping, OCI snapshots, bundle integrity. These must survive import to avoid regression gaps.
-- **Fix subprocess calls in AICtx code**: AICtx uses `subprocess.run` for git operations (`git/diff.py`, `git/repo.py`, `git/status.py`, `io/patches.py`). These will trigger Agentheim's Law-7 architecture checker. Either add to `SUBPROCESS_EXEMPTIONS` or route through Agentheim tool protocol.
+  - **Decision**: write thin adapter in M7. Until then, AICtx keeps its own provider stack behind `ContextOps`.
+- ✅ **Import AICtx tests alongside source**: AICtx tests and fixtures imported under `agentheim/vendor/aictx/tests/`. They will be moved to `tests/vendor/aictx/` by M3.
+- ✅ **Fix subprocess calls in AICtx code**: Added vendor paths to `scripts/roadmap-check.py` `SUBPROCESS_EXEMPTIONS`. AICtx git/IO subprocess calls are legitimate internal operations for a reference import; they will be routed through Agentheim tool protocol in M2/M3 where policy gating is required.
 
 ### Deliverables
 
-- imported subtree or filtered-history merge
-- initial `ContextOps` API contract
-- dependency map of reused vs replaced AICtx modules
+- ✅ Filtered-history subtree merge into `agentheim/vendor/aictx/`
+- ✅ `agentheim/context_ops.py` — initial `ContextOps` API contract
+- ✅ `agentheim/vendor/MODULE_MAP.md` — dependency map of preserved / adapted / replaced modules
+- ✅ `pyproject.toml` — added `agentheim*` to package includes and `pathspec>=0.12.0` to dependencies
+- ✅ `agentheim/vendor/aictx/_logging.py` — renamed from `logging.py` to avoid stdlib shadowing
 
 ### Test Gates
 
-- repository still builds/imports cleanly
-- no namespace collisions
-- existing Agentheim tests still pass for untouched subsystems
+- ✅ repository builds/imports cleanly
+- ✅ no namespace collisions
+- ✅ existing Agentheim tests still pass for untouched subsystems
+- ✅ `scripts/roadmap-check.py --phase 7` passes (0 violations)
+- ✅ `pytest tests/test_import_linting.py` passes
 
 ---
 

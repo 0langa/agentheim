@@ -11,18 +11,18 @@ from typing import Any
 import pytest
 from typer.testing import CliRunner
 
-from aictx.cli import app
-from aictx.config import LLMConfig
-from aictx.errors import ConfigError, PatchApplyError
-from aictx.io.patches import apply_patch, make_unified_diff
-from aictx.llm.base import ChatRequest
-from aictx.llm.dry_run import DryRunProvider
-from aictx.llm.providers import create_model_provider
-from aictx.oci.bundle import create_result_bundle, verify_bundle
-from aictx.oci.doctor import run_oci_doctor
-from aictx.oci.snapshot import create_snapshot, verify_snapshot
-from aictx.scan.scanner import scan_repository
-from aictx.verify.verifier import verify_detailed
+from agentheim.vendor.aictx.cli import app
+from agentheim.vendor.aictx.config import LLMConfig
+from agentheim.vendor.aictx.errors import ConfigError, PatchApplyError
+from agentheim.vendor.aictx.io.patches import apply_patch, make_unified_diff
+from agentheim.vendor.aictx.llm.base import ChatRequest
+from agentheim.vendor.aictx.llm.dry_run import DryRunProvider
+from agentheim.vendor.aictx.llm.providers import create_model_provider
+from agentheim.vendor.aictx.oci.bundle import create_result_bundle, verify_bundle
+from agentheim.vendor.aictx.oci.doctor import run_oci_doctor
+from agentheim.vendor.aictx.oci.snapshot import create_snapshot, verify_snapshot
+from agentheim.vendor.aictx.scan.scanner import scan_repository
+from agentheim.vendor.aictx.verify.verifier import verify_detailed
 from tests.fixtures.git_repos import (
     create_binary_heavy_fixture,
     create_broken_docs_fixture,
@@ -56,7 +56,7 @@ def _mock_oci_sdk(monkeypatch: pytest.MonkeyPatch) -> Any:
     fake_oci.generative_ai_inference.models.AssistantMessage.return_value = MagicMock()
     fake_oci.exceptions.ServiceError = Exception
     fake_oci.exceptions.ClientError = Exception
-    monkeypatch.setattr("aictx.llm.oci_genai._require_oci_sdk", lambda: fake_oci)
+    monkeypatch.setattr("agentheim.vendor.aictx.llm.oci_genai._require_oci_sdk", lambda: fake_oci)
     return fake_oci
 
 
@@ -254,7 +254,7 @@ def test_clean_oci_dry_run_requires_yes(monkeypatch: pytest.MonkeyPatch) -> None
     )
 
     monkeypatch.setattr(
-        "aictx.cli._handle_oci_cleanup",
+        "agentheim.vendor.aictx.cli._handle_oci_cleanup",
         lambda project, run_id, yes, max_age_days: (
             (_ for _ in ()).throw(SystemExit(0)) if not yes else None
         ),
