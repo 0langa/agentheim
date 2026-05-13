@@ -13,66 +13,91 @@ M7 deliverable: provider calls routed through Agentheim `providers/base.py`.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 
 @dataclass
 class RepositoryInventory:
-    """Placeholder — forwarded from AICtx `models.inventory`."""
+    """Thin wrapper — forwards from AICtx `models.inventory`."""
 
-    pass
+    raw: Any = None
+
+    @property
+    def repo_root(self) -> str:
+        return self.raw.repo_root if self.raw else ""
+
+    @property
+    def head_commit(self) -> str:
+        return self.raw.head_commit if self.raw else ""
 
 
 @dataclass
 class ContextPlan:
-    """Placeholder — forwarded from AICtx planner output."""
+    """Thin wrapper — forwards from AICtx planner output."""
 
-    pass
+    raw: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def selected_files(self) -> list[str]:
+        return self.raw.get("selected_files", [])
 
 
 @dataclass
 class GeneratedContext:
-    """Placeholder — forwarded from AICtx writer output."""
+    """Container for generated context artifacts."""
 
-    pass
+    plan: ContextPlan = field(default_factory=ContextPlan)
+    fact_packs: list[dict[str, Any]] = field(default_factory=list)
+    inventory: RepositoryInventory = field(default_factory=RepositoryInventory)
+    repo_root: Path | None = None
 
 
 @dataclass
 class WriteReport:
-    """Placeholder — forwarded from AICtx write result."""
+    """Report from context write operation."""
 
-    pass
+    generated_files: list[str] = field(default_factory=list)
+    lockfile_path: str = ""
+    patch_text: str = ""
 
 
 @dataclass
 class VerificationResult:
-    """Placeholder — forwarded from AICtx verifier output."""
+    """Result from context verification."""
 
-    pass
+    result: str = ""
+    is_pass: bool = False
+    raw: Any = None
 
 
 @dataclass
 class ContextStatus:
-    """Placeholder — forwarded from AICtx status output."""
+    """Status from stale-context detection."""
 
-    pass
+    is_stale: bool = False
+    stale_sources: list[str] = field(default_factory=list)
+    missing_sources: list[str] = field(default_factory=list)
+    missing_generated: list[str] = field(default_factory=list)
+    generated_mismatches: list[str] = field(default_factory=list)
+    public_docs_impacts: dict[str, list[str]] = field(default_factory=dict)
+    next_command: str | None = None
 
 
 @dataclass
 class PublicDocsImpactReport:
-    """Placeholder — forwarded from AICtx public-docs mapper output."""
+    """Report from public-docs impact mapping."""
 
-    pass
+    entries: list[dict[str, Any]] = field(default_factory=list)
+    raw: Any = None
 
 
 class ContextOps(ABC):
     """Internal service interface for AICtx-derived context operations.
 
-    Implementations live outside `core/` (e.g. in a future
-    `agentheim/context_ops_impl.py`) and delegate to
-    `agentheim.vendor.aictx` domain modules.
+    Implementations live outside `core/` (e.g. in `agentheim/context_ops_impl.py`)
+    and delegate to `agentheim.vendor.aictx` domain modules.
     """
 
     @abstractmethod

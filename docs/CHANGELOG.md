@@ -2,6 +2,20 @@
 
 ## 2026-05-13
 
+### AICtx Integration — M2 Complete
+- Implemented `agentheim/context_ops_impl.py` — concrete `AictxContextOps` delegating all 7 ContextOps methods to AICtx internals:
+  - `scan` → `scan_repository`
+  - `plan` → `plan_context`
+  - `generate` → `extract_facts` (dry_run provider for tests)
+  - `write` → `write_context_scaffold` + `build_context_lock` + `write_lockfile`
+  - `verify` → `verify_detailed`
+  - `status` → derived from `verify_detailed`
+  - `public_docs_impact` → `build_public_docs_map`
+- Updated `agentheim/context_ops.py` placeholder dataclasses into proper containers with `raw` delegation fields.
+- Added `tests/test_context_ops_impl.py` with 10 tests covering scan, plan, generate, write, verify, status, public_docs_impact.
+- Added `tests/test_context_ops_impl.py` to `scripts/roadmap-check.py` `SUBPROCESS_EXEMPTIONS` (git init for synthetic repos).
+- Full suite: **705 passed, 3 skipped** (was 695; +10 new ContextOps tests).
+
 ### MCP Configuration
 - Added `@upstash/context7-mcp` to global `~/.kimi/mcp.json`.
 - Added personal MCP servers to global `~/.kimi/mcp.json` for use while working on the project:
