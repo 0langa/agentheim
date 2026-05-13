@@ -25,7 +25,7 @@ Check changed files for these invariants:
 - keep provider-specific logic under `providers/`
 - keep workflow behavior under `workflows/` and presets under `presets/`
 - keep policy enforcement explicit in policy/tool layers, not hidden in prompts
-- keep the local `AICtx/` reference checkout gitignored
+- keep AICtx sourced from the editable install at `../AICtx`
 
 ## Validate Runtime Safety Signals
 

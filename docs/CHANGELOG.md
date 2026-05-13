@@ -2,6 +2,18 @@
 
 ## 2026-05-13
 
+### AICtx Integration — M2.5 Complete
+- Expanded `ContextOps` ABC with 4 new methods: `init()`, `clean()`, `run_pipeline()`, `public_docs_update()` (`agentheim/context_ops.py`)
+- Implemented all 11 methods in `AictxContextOps` (`agentheim/context_ops_impl.py`)
+- Enriched `WriteReport` with AICtx telemetry: `run_report`, `timing`, `entropy`
+- Added `CleanResult` dataclass for `clean()` operation results
+- ContextOps tests: **18 passed** (was 10; +8 new tests for init, clean, run_pipeline, public_docs_update)
+- Removed old `AICtx/` local reference copy; updated all instructions/skills to reference `../AICtx` workspace project
+- Reverted runtime imports to `agentheim.vendor.aictx` so AICtx ships with Agentheim
+- Updated `docs/AICTX_INTEGRATION_PLAN.md` with M2.5 milestone and expanded API contract
+- Updated `scripts/check-agent-instructions.py` to verify `AICtx/` is absent rather than gitignored
+- Full suite: **676 passed**, 1 skipped (playwright env issue), 1 unrelated failure
+
 ### AICtx Integration — M2 Complete
 - Implemented `agentheim/context_ops_impl.py` — concrete `AictxContextOps` delegating all 7 ContextOps methods to AICtx internals:
   - `scan` → `scan_repository`

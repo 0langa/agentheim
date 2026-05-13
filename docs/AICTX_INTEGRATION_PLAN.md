@@ -163,31 +163,47 @@ Expose AICtx core behavior through Agentheim internals.
 ```python
 class ContextOps(ABC):
     """Internal service interface for AICtx-derived context operations."""
-    
+
+    @abstractmethod
+    def init(self, repo_root: Path) -> None: ...
+
+    @abstractmethod
+    def clean(self, repo_root: Path, *, run_id: str | None = None,
+              keep_runs: int | None = None) -> CleanResult: ...
+
     @abstractmethod
     def scan(self, repo_root: Path) -> RepositoryInventory: ...
-    
+
     @abstractmethod
     def plan(self, inventory: RepositoryInventory, scope: str = "full",
              existing_lock: ContextLock | None = None) -> ContextPlan: ...
-    
+
     @abstractmethod
     def generate(self, repo_root: Path, plan: ContextPlan,
                  provider: ModelProvider | None = None) -> GeneratedContext: ...
-    
+
     @abstractmethod
     def write(self, repo_root: Path, context: GeneratedContext,
               write_mode: str = "patch") -> WriteReport: ...
-    
+
+    @abstractmethod
+    def run_pipeline(self, repo_root: Path, run_id: str, scope: str = "full",
+                     write_mode: str = "patch", allow_ai: bool = False,
+                     allow_dirty: bool = False) -> WriteReport: ...
+
     @abstractmethod
     def verify(self, repo_root: Path, strict: bool = False) -> VerificationResult: ...
-    
+
     @abstractmethod
     def status(self, repo_root: Path, strict: bool = False) -> ContextStatus: ...
-    
+
     @abstractmethod
     def public_docs_impact(self, repo_root: Path,
                            scope: str = "full") -> PublicDocsImpactReport: ...
+
+    @abstractmethod
+    def public_docs_update(self, repo_root: Path, scope: str = "changed",
+                           write_mode: str = "patch") -> Path | None: ...
 ```
 
 - **Map AICtx CLI flags to ContextOps parameters**: AICtx CLI has `--scope full|changed`, `--write patch|apply`, `--allow-ai`, `--allow-dirty`, `--provider`. These map to ContextOps method kwargs.
@@ -206,6 +222,34 @@ class ContextOps(ABC):
 - golden tests for `context.lock.json`
 - deterministic output tests for generated context docs
 - parity tests against known AICtx sample repos
+
+---
+
+## M2.5 ABC Expansion And Vendor Alignment ✅ COMPLETE
+
+### Goal
+
+Close gaps identified in M2 gap analysis before M3 hardens the boundary.
+
+### Backlog
+
+- Expand `ContextOps` ABC with lifecycle and pipeline methods: `init()`, `clean()`, `run_pipeline()`, `public_docs_update()`.
+- Enrich `WriteReport` with AICtx telemetry (`RunReport`, `TimingMetrics`, `ContextEntropyMetrics`) so pipeline callers do not lose observability.
+- Remove old `AICtx/` local reference copy; source of truth is `agentheim/vendor/aictx/`.
+- Revert runtime imports to `agentheim.vendor.aictx` so AICtx ships with Agentheim and works without an external editable install.
+- Keep `../AICtx` workspace project as dev-only reference for co-development.
+
+### Deliverables
+
+- `agentheim/context_ops.py` — updated ABC with 11 methods + `CleanResult`
+- `agentheim/context_ops_impl.py` — full implementation delegating to vendor modules
+- `tests/test_context_ops_impl.py` — 18 tests covering all methods
+
+### Test Gates
+
+- all ContextOps tests pass
+- roadmap/architecture checks pass
+- no imports from `aictx` external package in runtime code
 
 ---
 
@@ -482,4 +526,4 @@ The integration is complete only when all of the following are true:
 - the standalone AICtx CLI is optional rather than required
 - optional remote execution features are Agentheim capabilities, not a parallel platform
 
-> **Current state (May 2026):** AICtx is v1-complete. All roadmap phases (0–8) are green. ~95+ unit tests pass. 7 adversarial repo fixtures exist. Lockfile schema is v1.0. OCI infrastructure is fully built (snapshot, object storage, remote job, worker, cleanup). The only remaining production steps are live OCI credential injection in CI and cross-platform install-matrix proofing. This means the integration target is stable — AICtx is not under active development, it is ready for absorption.
+> **Current state (May 2026):** AICtx is v1-complete. M0–M2.5 integration milestones are complete. `agentheim/vendor/aictx/` is the runtime source. ContextOps exposes 11 methods with full test coverage (18 tests). AICtx ships with Agentheim; no external package dependency required. Remaining work: M3 workflow/preset exposure, M4–M9 convergence.

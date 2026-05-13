@@ -26,7 +26,7 @@ Run this checklist before finalizing substantial changes.
 
 ## 4. AICtx Hard Boundaries
 
-- `AICtx/` remains gitignored
+- AICtx editable install from `../AICtx` is current
 - generated context compatibility is preserved or migrated deliberately
 - `docs/AIprojectcontext/**` and `context.lock.json` behavior is tested if touched
 

@@ -1,14 +1,14 @@
 # AICtx Integration Rules
 
-These rules govern all work involving the AICtx project, the local `AICtx/` reference checkout, and the planned integration of AICtx capabilities into Agentheim.
+These rules govern all work involving the AICtx project and the planned integration of AICtx capabilities into Agentheim.
 
 ## Source Of Truth
 
 - Agentheim is the host platform.
 - AICtx is the repository-context subsystem being absorbed.
 - `docs/AICTX_INTEGRATION_PLAN.md` is the current milestone plan.
-- The local `AICtx/` directory is a gitignored reference checkout. Use it for investigation and parity checks, but do not commit files from it accidentally.
-- When local AICtx files and public GitHub differ, prefer the local `AICtx/` checkout as the immediate implementation reference and note that it is local reference material.
+- AICtx is installed as an editable package from the workspace project at `../AICtx`.
+- When investigating AICtx internals, inspect the workspace project at `../AICtx/src/aictx/`.
 
 ## Integration Direction
 
@@ -63,7 +63,7 @@ If changing any of these contracts, include:
 For AICtx integration tasks:
 
 1. Read this file and `docs/AICTX_INTEGRATION_PLAN.md`.
-2. Inspect relevant local AICtx source under `AICtx/src/aictx/`.
+2. Inspect relevant AICtx source under `../AICtx/src/aictx/`.
 3. Map the AICtx concept to the Agentheim owner subsystem before editing.
 4. Build or adapt through a clear boundary, such as a future `ContextOps` service.
 5. Preserve deterministic verification as code-level logic.
@@ -74,10 +74,10 @@ For AICtx integration tasks:
 
 Run AICtx commands only when needed and only against explicit project paths. Prefer read-only or patch-producing modes during investigation.
 
-Reference commands from the local AICtx project:
+Reference commands from the AICtx workspace project:
 
 ```powershell
-cd AICtx
+cd ../AICtx
 uv run aictx scan --project .
 uv run aictx verify --project . --strict
 uv run aictx status --project . --strict --json
@@ -96,4 +96,4 @@ AICtx integration work is not complete unless:
 - generated context and lockfile compatibility is preserved or migrated deliberately.
 - docs describe actual behavior, not planned behavior.
 - safety, provider, policy, and ledger concerns flow through Agentheim systems.
-- the ignored local `AICtx/` reference checkout remains untracked.
+- AICtx editable install (`pip install -e ../AICtx`) is current and verified.

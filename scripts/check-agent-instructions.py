@@ -128,17 +128,10 @@ def check_changelog_policy() -> None:
         fail("root CHANGELOG.md must not exist; docs/CHANGELOG.md is canonical")
 
 
-def check_aictx_ignored() -> None:
-    try:
-        result = subprocess.run(
-            ["git", "check-ignore", "-q", "AICtx"],
-            cwd=ROOT,
-            check=False,
-        )
-    except FileNotFoundError:
-        fail("git is required to verify AICtx/ ignore status")
-    if result.returncode != 0:
-        fail("AICtx/ must remain gitignored")
+def check_aictx_state() -> None:
+    # Old local AICtx/ reference copy was removed; editable install from ../AICtx is now used.
+    if (ROOT / "AICtx").exists():
+        fail("AICtx/ local reference copy must be removed; use editable install from ../AICtx")
 
 
 def main() -> int:
@@ -148,7 +141,7 @@ def main() -> int:
     check_markdown_links()
     check_no_active_roadmap_links()
     check_changelog_policy()
-    check_aictx_ignored()
+    check_aictx_state()
     print("agent instruction checks ok")
     return 0
 

@@ -34,11 +34,11 @@ Documentation is part of the implementation. If behavior, commands, paths, confi
 
 Historical entries in `docs/CHANGELOG.md` are exempt from stale-link cleanup because they preserve repository history.
 
-## AICtx Reference Checkout
+## AICtx Workspace Project
 
-The local `AICtx/` directory is intentionally gitignored. It exists as reference material for the planned AICtx integration.
+AICtx lives in the co-developed workspace project at `../AICtx` and is installed as an editable package (`pip install -e ../AICtx`).
 
-Agents may inspect it for parity and implementation details, but must not commit it or copy its source into Agentheim without an explicit integration task and boundary plan.
+Agents may inspect `../AICtx/src/aictx/` for parity and implementation details, but must route all integration through the ContextOps boundary.
 
 ## Validation
 

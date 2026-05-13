@@ -36,6 +36,27 @@ Use relevant MCP servers without waiting for user prompt:
 | `semgrep` | When scanning code for security issues or pattern violations. |
 | `markitdown` | When converting documents to markdown for analysis or documentation. |
 
+## Subagent Parallelization
+
+Agents must aggressively parallelize work via the `Agent` tool. Default: use subagents for any multi-step or multi-file task. Launch multiple subagents concurrently when tasks are independent.
+
+Rules:
+- **Exploration**: Always delegate to `Agent(subagent_type="explore")` for codebase research, module understanding, or finding files/patterns. Do not explore manually when exploration exceeds 3 search queries.
+- **File reading**: When reading multiple unrelated files, launch concurrent `Agent` tasks or use `read_multiple_files` MCP tool. Never read files one-by-one serially if they have no dependencies between them.
+- **Research**: For independent questions (e.g., "how does auth work" + "how does the DB layer work"), launch multiple explore agents in parallel.
+- **Implementation**: Use `Agent(subagent_type="coder")` for self-contained coding tasks, especially when they span multiple files or require running commands.
+- **No waiting**: Do not wait for one subagent to finish before launching another if their outputs are not interdependent.
+- **Context passing**: When delegating, provide complete context in the prompt. New subagent instances do not see parent context automatically.
+
+### Quality Non-Negotiables
+
+Parallelization never excuses lower quality. Subagent output is treated exactly as directly authored code.
+
+- **Production-ready always**: All code written by subagents must meet the same standards as parent-agent code — type safety, error handling, edge cases, no TODOs or shortcuts.
+- **Verify before merge**: Subagent code must pass the same tests, lint, type-check, and review as any other change. Never commit subagent output without validating.
+- **Review the diff**: Read every line subagents modify. Do not trust "it works" claims. Run tests. Check for imports, naming conventions, and boundary violations.
+- **No split-brain architecture**: If two subagents touch related files, reconcile their changes before finishing. Parallelization is for independent work only.
+
 ## Memory Maintenance
 
 After every significant task — code changes, architectural decisions, milestone completions, or config updates — update the project memory knowledge graph stored at `.kimi/memory.jsonl` via the `memory` MCP server.

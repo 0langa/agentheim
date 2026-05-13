@@ -11,7 +11,7 @@ These behaviors are automatic rejection unless the user explicitly asks for a co
 - Mutating ledger events after append
 - Sending secrets, sensitive files, or strict-private data to remote services without explicit policy approval
 - Weakening authentication, authorization, redaction, path confinement, approval, or safety defaults without explicit user intent
-- Committing gitignored local reference repositories, including `AICtx/`
+- Committing gitignored local reference repositories
 
 ## Level 3: Architectural Breaches
 

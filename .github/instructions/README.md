@@ -19,7 +19,7 @@ This directory contains binding instructions for agents working on Agentheim.
 
 All agents must read `04-AICtx-integration.md`.
 
-Its integration workflow rules apply when work touches AICtx, repository context generation, `docs/AIprojectcontext/**`, `context.lock.json`, public-doc impact mapping, context verification, or migration from the local `AICtx/` reference checkout.
+Its integration workflow rules apply when work touches AICtx, repository context generation, `docs/AIprojectcontext/**`, `context.lock.json`, public-doc impact mapping, context verification, or migration from the AICtx workspace project at `../AICtx`.
 
-Its hard boundaries always apply, including keeping the local `AICtx/` reference checkout gitignored.
+Its hard boundaries always apply, including using the editable AICtx install from `../AICtx` rather than vendored or copied source.
 

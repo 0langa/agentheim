@@ -66,13 +66,13 @@ Do not rely on deleted or legacy docs if current docs have moved. If a reference
 
 ## AICtx Integration Awareness
 
-The original AICtx repository may exist in this checkout at `AICtx/`. It is intentionally gitignored and available as local reference material for integration work.
+AICtx is the repository-context subsystem being absorbed. It is installed as an editable package from the workspace project at `../AICtx`.
 
 When working on AICtx integration:
 
 - Read `.github/instructions/04-AICtx-integration.md` first.
 - Treat Agentheim as the host platform and AICtx as the repository-context subsystem being absorbed.
-- Use `AICtx/` as reference evidence, not as committed Agentheim source until an integration task explicitly imports or adapts code.
+- Inspect `../AICtx/src/aictx/` as reference evidence when needed.
 - Preserve AICtx's deterministic strengths: inventory, context planning, lockfile verification, stale-context detection, public-doc impact mapping, and patch-first behavior.
 - Route provider, policy, runtime, CLI/API/UI, and ledger concerns through Agentheim systems.
 - Keep compatibility promises for `AGENTS.md`, `docs/AIprojectcontext/**`, and `context.lock.json` unless the task explicitly changes them with migration support.

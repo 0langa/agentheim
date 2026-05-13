@@ -1,6 +1,8 @@
 """Concrete ContextOps implementation delegating to AICtx internals.
 
 M2 deliverable.
+M2.5 additions: init, clean, run_pipeline, public_docs_update;
+replace vendor imports with direct ``aictx`` package imports.
 """
 
 from __future__ import annotations
@@ -8,7 +10,30 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from agentheim.vendor.aictx.config import AictxConfig
+from agentheim.vendor.aictx.context.fact_extractor import extract_facts
+from agentheim.vendor.aictx.context.lockfile import build_lockfile_from_inventory, load_lockfile, write_lockfile
+from agentheim.vendor.aictx.context.pipeline import run_local_context_pipeline
+from agentheim.vendor.aictx.context.planner import plan_context
+from agentheim.vendor.aictx.context.writer import build_context_lock, write_context_scaffold
+from agentheim.vendor.aictx.llm.providers import create_model_provider
+from agentheim.vendor.aictx.public_docs.mapper import build_public_docs_map
+from agentheim.vendor.aictx.public_docs.updater import update_public_docs
+from agentheim.vendor.aictx.scan.scanner import scan_repository
+from agentheim.vendor.aictx.verify.verifier import verify_detailed
+
+def _rm_tree(root: Path) -> None:
+    """Recursively delete a directory tree using pathlib only."""
+    for child in root.iterdir():
+        if child.is_dir():
+            _rm_tree(child)
+        else:
+            child.unlink()
+    root.rmdir()
+
+
 from agentheim.context_ops import (
+    CleanResult,
     ContextOps,
     ContextPlan,
     ContextStatus,
@@ -18,17 +43,6 @@ from agentheim.context_ops import (
     VerificationResult,
     WriteReport,
 )
-from agentheim.vendor.aictx.config import AictxConfig
-from agentheim.vendor.aictx.context.fact_extractor import extract_facts
-from agentheim.vendor.aictx.context.lockfile import load_lockfile, write_lockfile
-from agentheim.vendor.aictx.context.planner import plan_context
-from agentheim.vendor.aictx.context.pipeline import _build_patch
-from agentheim.vendor.aictx.context.writer import build_context_lock, write_context_scaffold
-from agentheim.vendor.aictx.llm.providers import create_model_provider
-from agentheim.vendor.aictx.models.inventory import RepositoryInventory as AictxRepositoryInventory
-from agentheim.vendor.aictx.public_docs.mapper import build_public_docs_map
-from agentheim.vendor.aictx.scan.scanner import scan_repository
-from agentheim.vendor.aictx.verify.verifier import verify_detailed
 
 
 class AictxContextOps(ContextOps):
@@ -36,6 +50,83 @@ class AictxContextOps(ContextOps):
 
     def __init__(self, config: AictxConfig | None = None) -> None:
         self.config = config or AictxConfig()
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    def init(self, repo_root: Path) -> None:
+        """Initialize *repo_root* for context processing."""
+        ignore_path = repo_root / ".aictxignore"
+        if not ignore_path.exists():
+            ignore_path.write_text("# AICtx custom ignore patterns\n", encoding="utf-8")
+
+        inventory = scan_repository(repo_root)
+        context_dir = repo_root / self.config.project.context_dir
+        context_dir.mkdir(parents=True, exist_ok=True)
+        existing_lock = load_lockfile(context_dir)
+        lock = build_lockfile_from_inventory(inventory)
+        if existing_lock is not None and existing_lock.generated_files:
+            lock = existing_lock.model_copy(
+                update={
+                    "tool_version": lock.tool_version,
+                    "repo_head_commit": lock.repo_head_commit,
+                    "generated_at": lock.generated_at,
+                    "scanner_config_hash": lock.scanner_config_hash,
+                    "source_files": lock.source_files,
+                    "generated_files": existing_lock.generated_files,
+                    "sections": existing_lock.sections,
+                    "public_docs_map": existing_lock.public_docs_map,
+                    "change_impact_map": existing_lock.change_impact_map,
+                    "model_provider": existing_lock.model_provider,
+                    "model_name": existing_lock.model_name,
+                    "last_validation": existing_lock.last_validation,
+                }
+            )
+        write_lockfile(context_dir, lock)
+
+    def clean(
+        self,
+        repo_root: Path,
+        *,
+        run_id: str | None = None,
+        keep_runs: int | None = None,
+    ) -> CleanResult:
+        """Remove generated run artifacts."""
+        if run_id is None and keep_runs is None:
+            raise ValueError("clean requires run_id or keep_runs")
+        if keep_runs is not None and keep_runs < 0:
+            raise ValueError("keep_runs must be >= 0")
+
+        runs_dir = repo_root / ".aictx" / "runs"
+        if not runs_dir.exists():
+            return CleanResult()
+
+        targets: list[Path] = []
+        all_runs = sorted([p for p in runs_dir.iterdir() if p.is_dir()])
+
+        if run_id:
+            target = runs_dir / run_id
+            if target.exists() and target.is_dir():
+                targets = [target]
+        elif keep_runs is not None:
+            targets = all_runs[: max(0, len(all_runs) - keep_runs)]
+
+        removed: list[str] = []
+        for path in targets:
+            _rm_tree(path)
+            removed.append(path.name)
+
+        kept = [p.name for p in all_runs if p.name not in removed]
+        return CleanResult(
+            removed_count=len(removed),
+            kept_count=len(kept),
+            removed_paths=removed,
+        )
+
+    # ------------------------------------------------------------------
+    # Phase-1 context generation (granular)
+    # ------------------------------------------------------------------
 
     def scan(self, repo_root: Path) -> RepositoryInventory:
         raw = scan_repository(repo_root)
@@ -87,6 +178,7 @@ class AictxContextOps(ContextOps):
         context: GeneratedContext,
         write_mode: str = "patch",
     ) -> WriteReport:
+        from agentheim.vendor.aictx.context.pipeline import _build_patch
         from agentheim.vendor.aictx.io.files import safe_write
 
         # Re-scan to get fresh inventory for lockfile
@@ -126,6 +218,7 @@ class AictxContextOps(ContextOps):
 
         if write_mode == "apply":
             from agentheim.vendor.aictx.context.pipeline import _apply_out_dir
+
             _apply_out_dir(repo_root=repo_root, out_dir=out_dir)
 
         return WriteReport(
@@ -133,6 +226,42 @@ class AictxContextOps(ContextOps):
             lockfile_path=f"{self.config.project.context_dir}/context.lock.json",
             patch_text=patch_text,
         )
+
+    # ------------------------------------------------------------------
+    # End-to-end pipeline
+    # ------------------------------------------------------------------
+
+    def run_pipeline(
+        self,
+        repo_root: Path,
+        run_id: str,
+        scope: str = "full",
+        write_mode: str = "patch",
+        allow_ai: bool = False,
+        allow_dirty: bool = False,
+    ) -> WriteReport:
+        """Run the full local Phase-1 pipeline and return enriched report."""
+        report = run_local_context_pipeline(
+            repo_root=repo_root,
+            run_id=run_id,
+            config=self.config,
+            scope=scope,  # type: ignore[arg-type]
+            write_mode=write_mode,  # type: ignore[arg-type]
+            allow_ai=allow_ai,
+            allow_dirty=allow_dirty,
+        )
+        return WriteReport(
+            generated_files=report.generated_files,
+            lockfile_path=f"{self.config.project.context_dir}/context.lock.json",
+            patch_text=Path(report.patch_path).read_text(encoding="utf-8") if report.patch_path and Path(report.patch_path).exists() else "",
+            run_report=report,
+            timing=report.timing,
+            entropy=report.entropy,
+        )
+
+    # ------------------------------------------------------------------
+    # Verification & status
+    # ------------------------------------------------------------------
 
     def verify(self, repo_root: Path, strict: bool = False) -> VerificationResult:
         report = verify_detailed(repo_root, strict=strict)
@@ -154,6 +283,10 @@ class AictxContextOps(ContextOps):
             next_command=report.next_command,
         )
 
+    # ------------------------------------------------------------------
+    # Public docs
+    # ------------------------------------------------------------------
+
     def public_docs_impact(
         self,
         repo_root: Path,
@@ -163,4 +296,17 @@ class AictxContextOps(ContextOps):
         return PublicDocsImpactReport(
             entries=[entry.model_dump(mode="json") for entry in docs_map.entries],
             raw=docs_map,
+        )
+
+    def public_docs_update(
+        self,
+        repo_root: Path,
+        scope: str = "changed",
+        write_mode: str = "patch",
+    ) -> Path | None:
+        """Generate patches for impacted public docs."""
+        return update_public_docs(
+            repo_root=repo_root,
+            scope=scope,  # type: ignore[arg-type]
+            write_mode=write_mode,  # type: ignore[arg-type]
         )
