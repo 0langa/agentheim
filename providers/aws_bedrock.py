@@ -35,10 +35,15 @@ class AWSBedrockProvider(ModelProvider):
             config=BotoConfig(connect_timeout=10, read_timeout=self.config.timeout_seconds),
         )
 
-        messages: list[dict[str, Any]] = []
+        # Bedrock Converse API: system prompt goes in separate 'system' param,
+        # messages array only contains 'user' and 'assistant' roles.
+        system_prompts: list[dict[str, Any]] | None = None
         if request.system_prompt:
-            messages.append({"role": "system", "content": [{"text": request.system_prompt}]})
-        messages.append({"role": "user", "content": [{"text": request.user_prompt}]})
+            system_prompts = [{"text": request.system_prompt}]
+
+        messages: list[dict[str, Any]] = [
+            {"role": "user", "content": [{"text": request.user_prompt}]},
+        ]
 
         inference_config: dict[str, Any] = {}
         if request.temperature is not None:
@@ -47,11 +52,15 @@ class AWSBedrockProvider(ModelProvider):
             inference_config["maxTokens"] = request.max_output_tokens
 
         try:
-            response = client.converse(
-                modelId=self.config.model,
-                messages=messages,
-                inferenceConfig=inference_config or None,
-            )
+            kwargs: dict[str, Any] = {
+                "modelId": self.config.model,
+                "messages": messages,
+            }
+            if system_prompts:
+                kwargs["system"] = system_prompts
+            if inference_config:
+                kwargs["inferenceConfig"] = inference_config
+            response = client.converse(**kwargs)
         except Exception as exc:
             raise RuntimeError(f"Bedrock Converse API error: {exc}") from exc
 
