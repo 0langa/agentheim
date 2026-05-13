@@ -42,6 +42,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+oci = ["oci>=2.120.0"]
 dev = [
   "pytest>=8.2.0",
   "pytest-cov",

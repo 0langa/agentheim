@@ -34,7 +34,6 @@ from core.errors import ToolSafetyError as ToolSafetyError
 from core.errors import VerificationError as VerificationError
 
 # ─── Repo helpers ───────────────────────────────────────────────────
-from core.repo.context_pack import build_context_pack as build_context_pack
 from core.repo.scanner import inspect_repository as inspect_repository
 
 # ─── Resume ─────────────────────────────────────────────────────────
@@ -112,8 +111,6 @@ from core.agent_protocol import AgentResponse as AgentResponse
 # ─── Context & artifacts ────────────────────────────────────────────
 from core.artifact_store import ArtifactStore as ArtifactStore
 from core.artifact_store import ArtifactSpec as ArtifactSpec
-from core.context_packer import ContextManifest as ContextManifest
-from core.context_packer import ContextPacker as ContextPacker
 
 
 # Lazy imports for ContextOps to avoid circular dependencies at module load.
@@ -130,6 +127,10 @@ from agentheim.context_ops import (
 )
 
 
+def __dir__():
+    return list(__all__)
+
+
 def __getattr__(name: str):
     if name == "ContextOps":
         from agentheim.context_ops import ContextOps
@@ -137,6 +138,33 @@ def __getattr__(name: str):
     if name == "AictxContextOps":
         from agentheim.context_ops_impl import AictxContextOps
         return AictxContextOps
+    if name == "build_context_pack":
+        import warnings
+        warnings.warn(
+            "build_context_pack is deprecated. Use AICtx via ContextOps instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        from core.repo.context_pack import build_context_pack
+        return build_context_pack
+    if name == "ContextPacker":
+        import warnings
+        warnings.warn(
+            "ContextPacker is deprecated. Use AICtx via ContextOps instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        from core.context_packer import ContextPacker
+        return ContextPacker
+    if name == "ContextManifest":
+        import warnings
+        warnings.warn(
+            "ContextManifest is deprecated. Use AICtx via ContextOps instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        from core.context_packer import ContextManifest
+        return ContextManifest
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 # ─── Redaction ──────────────────────────────────────────────────────
@@ -189,8 +217,11 @@ __all__ = [
     "ToolSafetyError",
     "VerificationError",
     # Repo helpers
-    "build_context_pack",
     "inspect_repository",
+    # Deprecated — still exported for backward compatibility
+    "build_context_pack",
+    "ContextPacker",
+    "ContextManifest",
     # Resume
     "ReplayEngine",
     "ResumeOrchestrator",
@@ -257,8 +288,6 @@ __all__ = [
     # Context & artifacts
     "ArtifactStore",
     "ArtifactSpec",
-    "ContextManifest",
-    "ContextPacker",
     # Redaction
     "redact_dict",
     "redact_text",

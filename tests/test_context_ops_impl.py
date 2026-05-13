@@ -56,7 +56,7 @@ def test_init_creates_lockfile(ops: AictxContextOps, tmp_path: Path) -> None:
 def test_clean_by_run_id(ops: AictxContextOps, tmp_path: Path) -> None:
     repo = tmp_path / "clean_repo"
     repo.mkdir()
-    runs_dir = repo / ".aictx" / "runs"
+    runs_dir = repo / ".ai-team" / "runs"
     runs_dir.mkdir(parents=True)
     (runs_dir / "run-a").mkdir()
     (runs_dir / "run-b").mkdir()
@@ -72,7 +72,7 @@ def test_clean_by_run_id(ops: AictxContextOps, tmp_path: Path) -> None:
 def test_clean_keep_runs(ops: AictxContextOps, tmp_path: Path) -> None:
     repo = tmp_path / "clean_repo"
     repo.mkdir()
-    runs_dir = repo / ".aictx" / "runs"
+    runs_dir = repo / ".ai-team" / "runs"
     runs_dir.mkdir(parents=True)
     (runs_dir / "run-1").mkdir()
     (runs_dir / "run-2").mkdir()

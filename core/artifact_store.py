@@ -6,6 +6,7 @@ and produces generic artifacts that are not workflow-specific.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -22,6 +23,12 @@ class ArtifactSpec:
     name: str
     required: bool = True
     validator: Callable[[Path], tuple[bool, str]] | None = None
+
+
+def _sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    h.update(path.read_bytes())
+    return h.hexdigest()
 
 
 def _is_valid_json(path: Path) -> tuple[bool, str]:
@@ -240,6 +247,23 @@ class ArtifactStore:
             dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
         else:
             dst.write_text("{}", encoding="utf-8")
+        return dst
+
+    def produce_snapshot(self, snapshot_path: Path) -> Path:
+        """Copy an AICtx snapshot zip into the artifact store.
+
+        Returns the artifact-relative path.
+        """
+        dst = self.run_dir / "snapshot.zip"
+        dst.write_bytes(snapshot_path.read_bytes())
+        meta = {
+            "original_path": str(snapshot_path),
+            "size_bytes": dst.stat().st_size,
+            "sha256": _sha256_file(dst),
+        }
+        (self.run_dir / "snapshot.json").write_text(
+            json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8"
+        )
         return dst
 
     def produce_public_docs_impact(self, report: dict[str, Any] | Any) -> Path:

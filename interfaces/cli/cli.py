@@ -27,7 +27,6 @@ from core.public_api import (
     ResumeOrchestrator,
     ToolRegistry,
     WorkflowRunner,
-    build_context_pack,
     get_workflow,
     inspect_repository,
     list_resume_runs as list_runs,
@@ -106,7 +105,44 @@ def inspect(
     """Inspect repo and produce compact context summary."""
     repo_root = Path(repo).resolve()
     scan = inspect_repository(repo_root)
-    context_pack = build_context_pack(scan)
+    _context_lines = [
+        f"# Context Pack: {scan.repo_name}",
+        "",
+        "## Repo Summary",
+        f"- Repo: `{scan.repo_name}`",
+        f"- Languages: {', '.join(scan.languages) if scan.languages else 'none detected'}",
+        f"- Git dirty: {'yes' if scan.git.dirty else 'no'}",
+        f"- Docs: {len(scan.docs)}",
+        f"- Instruction files: {len(scan.instruction_files)}",
+        "",
+        "## Detected Commands",
+    ]
+    if scan.commands:
+        for command in scan.commands:
+            _context_lines.append(f"- `{ ' '.join(command.command) }` [{command.risk_level}] — {command.reason}")
+    else:
+        _context_lines.append("- none")
+    _context_lines.append("")
+    _context_lines.append("## Key Docs")
+    if scan.docs:
+        for doc in scan.docs:
+            _context_lines.append(f"### `{doc.path}`")
+            _context_lines.append("")
+            _context_lines.append(doc.excerpt)
+            _context_lines.append("")
+    else:
+        _context_lines.append("- none")
+    _context_lines.append("## Instruction Files")
+    if scan.instruction_files:
+        for path in scan.instruction_files:
+            _context_lines.append(f"- `{path}`")
+    else:
+        _context_lines.append("- none")
+    _context_lines.append("")
+    _context_lines.append("## Warnings")
+    for warning in scan.warnings or ["none"]:
+        _context_lines.append(f"- {warning}")
+    context_pack = "\n".join(_context_lines) + "\n"
     ledger_path: Path | None = None
 
     if write_ledger:
@@ -423,6 +459,7 @@ def memory_cmd(
 @app.command("doctor")
 def doctor_cmd(
     skip_connectivity: bool = typer.Option(False, "--skip-connectivity", help="Skip live model connectivity check."),
+    oci: bool = typer.Option(False, "--oci", help="Include OCI readiness check."),
 ) -> None:
     """Diagnose common configuration and environment issues."""
     import platform
@@ -504,6 +541,23 @@ def doctor_cmd(
         checks.append(("Model connectivity", "PASS" if conn_ok else "FAIL", conn_detail))
     else:
         checks.append(("Model connectivity", "SKIP", "--skip-connectivity or missing config"))
+
+    # OCI readiness (optional)
+    if oci:
+        try:
+            from agentheim.vendor.aictx.oci.doctor import run_oci_doctor
+
+            report = run_oci_doctor()
+            if not report.sdk_available:
+                console.print("OCI check skipped — install agentheim[oci]")
+                checks.append(("OCI readiness", "SKIP", "OCI SDK not installed"))
+            else:
+                oci_status = "PASS" if report.ready else "FAIL"
+                oci_detail = "OCI ready" if report.ready else f"missing: {', '.join(report.missing)}"
+                checks.append(("OCI readiness", oci_status, oci_detail))
+        except Exception as exc:
+            console.print("OCI check skipped — install agentheim[oci]")
+            checks.append(("OCI readiness", "SKIP", str(exc)))
 
     for check, status, detail in checks:
         color = {"PASS": "[green]", "FAIL": "[red]", "WARN": "[yellow]", "SKIP": "[dim]"}.get(status, "")

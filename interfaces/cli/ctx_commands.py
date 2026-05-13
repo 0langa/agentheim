@@ -18,6 +18,9 @@ ctx_app = typer.Typer(help="AICtx context operations.")
 public_docs_app = typer.Typer(help="Public docs impact and update commands.")
 ctx_app.add_typer(public_docs_app, name="public-docs")
 
+from interfaces.cli.oci_commands import oci_app
+ctx_app.add_typer(oci_app, name="oci")
+
 console = Console()
 
 

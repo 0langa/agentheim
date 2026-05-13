@@ -8,13 +8,10 @@ from agentheim.context_run_ledger import ContextRunLedger
 from config.config import load_team_config
 from core.public_api import (
     AIteamError,
-    EventType,
     ModelRegistry,
     PolicyEngine,
     RunLedger,
     ToolRegistry,
-    build_context_pack,
-    inspect_repository,
 )
 from workflows.coding.provider_map import DEFAULT_PROVIDER_MAP
 from workflows.research.reports.final_report import ResearchReport, Section
@@ -50,12 +47,6 @@ def _load_context_shards(repo_root: Path) -> dict[str, str]:
     return shards
 
 
-def _build_legacy_context(repo_root: Path) -> dict[str, str]:
-    """Fallback legacy context using ad-hoc repo scanning."""
-    scan = inspect_repository(repo_root)
-    return {"legacy_context.md": build_context_pack(scan)}
-
-
 def _preflight_context(
     repo_root: Path,
     ledger: RunLedger,
@@ -67,7 +58,6 @@ def _preflight_context(
     status = ops.status(repo_root, strict=False)
     ctx_ledger.emit_status(status)
 
-    shards: dict[str, str] = {}
     warning: str | None = None
 
     if status.is_stale:
@@ -75,34 +65,16 @@ def _preflight_context(
             "Project context was stale at the start of this research run. "
             "AICtx pipeline was triggered automatically."
         )
-        try:
-            ops.run_pipeline(
-                repo_root,
-                run_id="research-ctx",
-                scope="changed",
-                write_mode="apply",
-            )
-        except Exception as exc:
-            warning = (
-                f"Project context was stale and AICtx pipeline failed ({exc}). "
-                "Falling back to legacy context scanning."
-            )
-            shards = _build_legacy_context(repo_root)
-            ledger.append_event(
-                EventType.CONTEXT_STALE_DETECTED,
-                payload={"warning": warning, "fallback": "legacy"},
-            )
-            return shards, warning
+        ops.run_pipeline(
+            repo_root,
+            run_id="research-ctx",
+            scope="changed",
+            write_mode="apply",
+        )
 
-    # Read shards regardless of whether we just generated them or they already existed.
     shards = _load_context_shards(repo_root)
     if not shards:
-        warning = warning or "No AICtx shards found; using legacy context."
-        shards = _build_legacy_context(repo_root)
-        ledger.append_event(
-            EventType.CONTEXT_STALE_DETECTED,
-            payload={"warning": warning, "fallback": "legacy"},
-        )
+        raise RuntimeError("No AICtx shards found.")
 
     return shards, warning
 

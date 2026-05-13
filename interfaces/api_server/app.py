@@ -324,6 +324,24 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
             }
         )
 
+    @app.get("/api/health/oci", tags=["system"])
+    def health_oci() -> dict[str, Any]:
+        try:
+            from agentheim.vendor.aictx.oci.doctor import run_oci_doctor
+
+            report = run_oci_doctor()
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="OCI support not installed",
+            )
+        if not report.sdk_available:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="OCI support not installed",
+            )
+        return report.model_dump()
+
     @app.get("/api/tools", response_model=list[ToolSchemaItem], tags=["tools"])
     def list_tools() -> list[ToolSchemaItem]:
         """List all available tools with their schemas."""

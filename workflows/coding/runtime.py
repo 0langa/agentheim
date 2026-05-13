@@ -10,7 +10,6 @@ from agentheim.vendor.aictx.config import AictxConfig
 from agentheim.context_run_ledger import ContextRunLedger
 from core.public_api import (
     AIteamError,
-    EventType,
     ExecutionError,
     ImplementationPlan,
     ModelRegistry,
@@ -27,7 +26,6 @@ from core.public_api import (
     VerificationReport,
     VerificationResult,
     WorkOrder,
-    build_context_pack,
     inspect_repository,
 )
 from tools.git.github_cli import GitHubCliAdapter
@@ -127,45 +125,37 @@ def _resolve_context_pack(
     scan: RepoScanResult,
     ledger: RunLedger | None = None,
 ) -> tuple[str, bool]:
-    """Optionally use AICtx-derived context; fall back to legacy build_context_pack."""
+    """Resolve context pack from AICtx-derived shards."""
     ctx_ledger = ContextRunLedger(ledger) if ledger else None
-    try:
-        ops = AictxContextOps()
-        inventory = ops.scan(repo_root)
+    ops = AictxContextOps()
+    inventory = ops.scan(repo_root)
+    if ctx_ledger:
+        ctx_ledger.emit_scanned(inventory)
+
+    status = ops.status(repo_root)
+    was_stale = status.is_stale
+
+    if was_stale or not (repo_root / "docs" / "AIprojectcontext" / "context.lock.json").exists():
         if ctx_ledger:
-            ctx_ledger.emit_scanned(inventory)
-
-        status = ops.status(repo_root)
-        was_stale = status.is_stale
-
-        if was_stale or not (repo_root / "docs" / "AIprojectcontext" / "context.lock.json").exists():
-            if ctx_ledger:
-                ctx_ledger.emit_status(status)
-            ops.run_pipeline(
-                repo_root,
-                run_id="coding-ctx",
-                scope="changed",
-                write_mode="apply",
-            )
-            if ctx_ledger:
-                ctx_ledger.emit_generated(repo_root, fact_pack_count=0)
-
-        context_string = _read_context_shards(repo_root)
-        if not context_string:
-            raise RuntimeError("No AICtx context shards found.")
-
+            ctx_ledger.emit_status(status)
+        ops.run_pipeline(
+            repo_root,
+            run_id="coding-ctx",
+            scope="changed",
+            write_mode="apply",
+        )
         if ctx_ledger:
-            ctx_ledger.emit_verified(
-                VerificationResult(result="PASS", is_pass=True)
-            )
-        return context_string, was_stale
-    except Exception:
-        if ledger:
-            ledger.append_event(
-                EventType.FALLBACK_USED,
-                payload={"message": "AICtx context generation failed, falling back to legacy context pack"},
-            )
-        return build_context_pack(scan), False
+            ctx_ledger.emit_generated(repo_root, fact_pack_count=0)
+
+    context_string = _read_context_shards(repo_root)
+    if not context_string:
+        raise RuntimeError("No AICtx context shards found.")
+
+    if ctx_ledger:
+        ctx_ledger.emit_verified(
+            VerificationResult(result="PASS", is_pass=True)
+        )
+    return context_string, was_stale
 
 
 def plan_task(task_text: str, repo_path: str | Path, write_ledger: bool = False) -> tuple[RepoScanResult, str, ImplementationPlan, Path | None]:

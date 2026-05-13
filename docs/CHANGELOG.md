@@ -2,6 +2,12 @@
 
 ## 2026-05-13
 
+### AICtx Integration — M6-M9 Complete
+- M6 Runtime/storage convergence: canonical transient store moved to `.ai-team/runs/`; `LegacyAictxReader` provides backward compatibility for `.aictx/runs/`
+- M7 Provider unification: `AgentheimToAictxAdapter` bridges Agentheim `providers/base.py` to AICtx `llm/base.py`; OCI GenAI provider routed through unified adapter
+- M8 OCI/remote backend adoption: `agentheim ctx oci` CLI commands (doctor, snapshot, bundle) expose OCI operations; OCI is an optional extra (`pip install agentheim[oci]`)
+- M9 Compatibility/decommissioning: legacy `build_context_pack` deprecated via `DeprecationWarning` in `core.public_api` but retained as fallback; standalone `aictx` CLI deprecated; final docs sweep complete
+
 ### AICtx Integration — M3-M5 Complete
 - Added `agentheim ctx` CLI namespace with 8 commands: init, scan, run, verify, status, clean, public-docs impact, public-docs update (`interfaces/cli/ctx_commands.py`)
 - Added API server routes under `/api/ctx/*` for all context operations (`interfaces/api_server/app.py`)

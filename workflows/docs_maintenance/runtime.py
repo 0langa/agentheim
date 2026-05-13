@@ -8,7 +8,7 @@ from agentheim.context_ops_impl import AictxContextOps
 from agentheim.context_run_ledger import ContextRunLedger
 from agentheim.vendor.aictx.config import AictxConfig
 from config.config import load_team_config
-from core.public_api import ArtifactStore, EventType, ModelRegistry, RunLedger, build_context_pack, inspect_repository
+from core.public_api import ArtifactStore, ModelRegistry, RunLedger, inspect_repository
 from workflows.coding.provider_map import DEFAULT_PROVIDER_MAP
 from workflows.docs_maintenance.reports.final_report import DocUpdateRecord, FinalReport
 from workflows.docs_maintenance.reports.markdown import render_final_report_markdown
@@ -20,46 +20,40 @@ def _build_context_pack(
     scan: Any,
     ledger: RunLedger | None,
 ) -> tuple[str, list[str]]:
-    """Build context pack from AICtx shards, falling back to legacy scan on failure."""
+    """Build context pack from AICtx shards."""
     warnings: list[str] = []
-    try:
-        ops = AictxContextOps(config=AictxConfig())
-        status = ops.status(repo_root)
-        if ledger is not None:
-            ContextRunLedger(ledger).emit_status(status)
-        if status.is_stale:
-            warnings.append("AICtx context is stale; regenerating via run_pipeline.")
-            ops.run_pipeline(
-                repo_root,
-                run_id="docs-ctx",
-                scope="changed",
-                write_mode="apply",
-            )
+    ops = AictxContextOps(config=AictxConfig())
+    status = ops.status(repo_root)
+    if ledger is not None:
+        ContextRunLedger(ledger).emit_status(status)
+    if status.is_stale:
+        warnings.append("AICtx context is stale; regenerating via run_pipeline.")
+        ops.run_pipeline(
+            repo_root,
+            run_id="docs-ctx",
+            scope="changed",
+            write_mode="apply",
+        )
 
-        context_dir = repo_root / ops.config.project.context_dir
-        shards: list[str] = []
-        if context_dir.exists():
-            relevant: list[Path] = []
-            other: list[Path] = []
-            for md in sorted(context_dir.rglob("*.md")):
-                stem = md.stem.lower()
-                if "docs" in stem or "architecture" in stem:
-                    relevant.append(md)
-                else:
-                    other.append(md)
-            for p in relevant + other:
-                shards.append(f"<!-- shard: {p.relative_to(repo_root).as_posix()} -->\n")
-                shards.append(p.read_text(encoding="utf-8"))
+    context_dir = repo_root / ops.config.project.context_dir
+    shards: list[str] = []
+    if context_dir.exists():
+        relevant: list[Path] = []
+        other: list[Path] = []
+        for md in sorted(context_dir.rglob("*.md")):
+            stem = md.stem.lower()
+            if "docs" in stem or "architecture" in stem:
+                relevant.append(md)
+            else:
+                other.append(md)
+        for p in relevant + other:
+            shards.append(f"<!-- shard: {p.relative_to(repo_root).as_posix()} -->\n")
+            shards.append(p.read_text(encoding="utf-8"))
 
-        if shards:
-            context_pack = "\n".join(shards)
-        else:
-            warnings.append("No AICtx shards found; falling back to legacy context pack.")
-            context_pack = build_context_pack(scan)
-    except Exception as exc:
-        warnings.append(f"AICtx context build failed ({exc}); falling back to legacy context pack.")
-        context_pack = build_context_pack(scan)
-    return context_pack, warnings
+    if not shards:
+        raise RuntimeError("No AICtx shards found.")
+
+    return "\n".join(shards), warnings
 
 
 def plan_task(repo_path: str | Path, write_ledger: bool = False) -> tuple[str, Any, Path | None, list[str]]:

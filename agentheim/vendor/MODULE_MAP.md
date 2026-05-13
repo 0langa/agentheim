@@ -7,15 +7,15 @@
 | Milestone | Scope | Status |
 |-----------|-------|--------|
 | M0 | Architecture freeze, ADR-001 | ✅ Done |
-| M1 | Source import, boundary definition, ContextOps API | ✅ In progress |
-| M2 | Context domain integration behind ContextOps | Planned |
-| M3 | Workflow/preset/CLI exposure | Planned |
-| M4 | Context-aware workflow adoption | Planned |
-| M5 | Public-docs impact integration | Planned |
-| M6 | Runtime/storage convergence | Planned |
-| M7 | Provider unification | Planned |
-| M8 | OCI/remote backend adoption | Planned |
-| M9 | Decommissioning duplicates | Planned |
+| M1 | Source import, boundary definition, ContextOps API | ✅ Done |
+| M2 | Context domain integration behind ContextOps | ✅ Done |
+| M3 | Workflow/preset/CLI exposure | ✅ Done |
+| M4 | Context-aware workflow adoption | ✅ Done |
+| M5 | Public-docs impact integration | ✅ Done |
+| M6 | Runtime/storage convergence | ✅ Done |
+| M7 | Provider unification | ✅ Done |
+| M8 | OCI/remote backend adoption | ✅ Done |
+| M9 | Decommissioning duplicates | ✅ Done |
 
 ---
 
@@ -62,7 +62,7 @@
 ### `llm/` — Provider abstraction
 | File | Role | Disposition |
 |------|------|-------------|
-| `base.py` | `ModelProvider` ABC + `ChatRequest`/`ChatResponse` | **Preserved until M7**, then unified with Agentheim `providers/base.py` |
+| `base.py` | `ModelProvider` ABC + `ChatRequest`/`ChatResponse` | Preserved; unified with Agentheim `providers/base.py` via `AgentheimToAictxAdapter` in M7 |
 | `dry_run.py` | Dry-run provider | Preserved |
 | `oci_genai.py` | OCI GenAI provider | Preserved |
 | `providers.py` | Provider factory | Preserved |
@@ -79,7 +79,7 @@
 | Provider methods | `chat()`, `count_tokens()`, `metadata()` | `invoke()` |
 | Config injection | None (provider constructs itself) | `AgentModelConfig` passed to `__init__` |
 
-**Decision:** Write a thin adapter in M7. Until then, AICtx keeps its own provider stack behind `ContextOps`.
+**Decision:** `AgentheimToAictxAdapter` (in `agentheim/provider_adapter.py`) written in M7. Bridges Agentheim `ModelRequest`/`ModelResponse` to AICtx `ChatRequest`/`ChatResponse`.
 
 ### `models/` — Data models
 | File | Role | Disposition |
@@ -95,7 +95,7 @@
 | `bundle.py` | Snapshot bundling | Preserved; adopted in M8 |
 | `cleanup.py` | Remote cleanup | Preserved |
 | `config.py` | OCI config models | Preserved |
-| `doctor.py` | OCI readiness checks | Preserved; surfaced via `agentheim doctor` in M8 |
+| `doctor.py` | OCI readiness checks | Preserved; surfaced via `agentheim ctx oci doctor` and `agentheim doctor` in M8 |
 | `object_storage.py` | OCI Object Storage | Preserved |
 | `remote_job.py` | Remote job submission | Preserved |
 | `runtime.py` | Remote runtime wrapper | Preserved |
@@ -121,7 +121,7 @@
 
 ### `tests/` — AICtx test suite
 - **M1:** Preserved in vendor directory.
-- **M3:** Moved / adapted to `tests/vendor/aictx/` per ADR-001.
+- **M3:** Agentheim integration tests live in `tests/` (e.g., `test_context_ops_impl.py`). Vendor unit tests remain in `agentheim/vendor/aictx/tests/`.
 
 ---
 
@@ -129,5 +129,5 @@
 
 1. `core/` must **never** import from `agentheim.vendor.aictx` directly.
 2. All AICtx access from Agentheim code must go through `ContextOps` (or its public façade).
-3. AICtx provider internals (`llm/`) remain opaque to Agentheim until M7.
-4. AICtx transient artifacts (`.aictx/runs/`) are tolerated during M1-M5; M6 migrates them to `.ai-team/runs/`.
+3. AICtx provider internals (`llm/`) are accessed through `AgentheimToAictxAdapter` (M7 complete).
+4. AICtx transient artifacts (`.aictx/runs/`) are readable via `LegacyAictxReader`; canonical store is `.ai-team/runs/` (M6 complete).

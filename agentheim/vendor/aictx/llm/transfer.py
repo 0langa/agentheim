@@ -14,6 +14,7 @@ RUNTIME_BLOCKED_PREFIXES = (
     ".aictx/runs/",
     ".aictx/cache/",
     ".aictx/tmp/",
+    ".ai-team/runs/",
     "build/",
     "dist/",
     "node_modules/",

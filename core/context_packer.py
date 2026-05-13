@@ -7,6 +7,14 @@ Respects a configurable token budget using a simple char-to-token heuristic.
 
 from __future__ import annotations
 
+import warnings
+
+warnings.warn(
+    "ContextPacker is deprecated. Use AICtx via ContextOps instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 import json
 from dataclasses import dataclass, field
 from pathlib import Path

@@ -253,7 +253,7 @@ Close gaps identified in M2 gap analysis before M3 hardens the boundary.
 
 ---
 
-## M3 Workflow And Preset Exposure
+## M3 Workflow And Preset Exposure ✅ COMPLETE
 
 ### Goal
 
@@ -287,7 +287,7 @@ Make the integrated context system usable from Agentheim surfaces.
 
 ---
 
-## M4 Context-Aware Workflow Adoption
+## M4 Context-Aware Workflow Adoption ✅ COMPLETE
 
 ### Goal
 
@@ -315,7 +315,7 @@ Make existing Agentheim workflows consume AICtx-derived context instead of relyi
 
 ---
 
-## M5 Public Docs And Change Impact Integration
+## M5 Public Docs And Change Impact Integration ✅ COMPLETE
 
 ### Goal
 
@@ -342,7 +342,7 @@ Unify deterministic public-doc impact mapping with Agentheim docs maintenance.
 
 ---
 
-## M6 Runtime And Storage Convergence
+## M6 Runtime And Storage Convergence ✅ COMPLETE
 
 ### Goal
 
@@ -366,9 +366,13 @@ Move from split runtime state to one canonical Agentheim run model.
 - old AICtx-generated repos remain readable
 - resume/report flows work with migrated context runs
 
+### Notes
+- `.ai-team/runs/` is the canonical transient runtime store.
+- `.aictx/runs/` legacy runs remain readable via `LegacyAictxReader` for backward compatibility.
+
 ---
 
-## M7 Provider And Execution Unification
+## M7 Provider And Execution Unification ✅ COMPLETE
 
 ### Goal
 
@@ -393,9 +397,13 @@ Remove duplicate provider/model governance.
 - live-provider path requires explicit opt-in
 - policy tests cover transfer-preflight and sensitive-file exclusions
 
+### Notes
+- `AgentheimToAictxAdapter` bridges Agentheim `providers/base.py` to AICtx `llm/base.py`.
+- OCI GenAI provider is routed through the unified adapter.
+
 ---
 
-## M8 OCI And Remote Backend Adoption
+## M8 OCI And Remote Backend Adoption ✅ COMPLETE
 
 ### Goal
 
@@ -424,9 +432,13 @@ Adopt AICtx remote execution as an optional Agentheim backend, not as a separate
 - snapshot integrity verified
 - remote results rehydrate into local report/ledger structure
 
+### Notes
+- `agentheim ctx oci <doctor|snapshot|bundle>` commands expose OCI operations through the CLI.
+- OCI support is an optional extra (`pip install agentheim[oci]`).
+
 ---
 
-## M9 Compatibility And Decommissioning
+## M9 Compatibility And Decommissioning ✅ COMPLETE
 
 ### Goal
 
@@ -452,6 +464,10 @@ Finish migration and retire duplicated systems safely.
 - compatibility suite green on legacy fixtures
 - packaging/install smoke tests green
 - docs match actual command surface and artifact layout
+
+### Notes
+- Legacy `build_context_pack` emits a `DeprecationWarning` via `core.public_api` but is not removed; workflows retain fallback path.
+- Standalone `aictx` CLI is deprecated after M9.
 
 ---
 
@@ -526,4 +542,4 @@ The integration is complete only when all of the following are true:
 - the standalone AICtx CLI is optional rather than required
 - optional remote execution features are Agentheim capabilities, not a parallel platform
 
-> **Current state (May 2026):** AICtx is v1-complete. M0–M2.5 integration milestones are complete. `agentheim/vendor/aictx/` is the runtime source. ContextOps exposes 11 methods with full test coverage (18 tests). AICtx ships with Agentheim; no external package dependency required. Remaining work: M3 workflow/preset exposure, M4–M9 convergence.
+> **Current state (May 2026):** AICtx is fully integrated. M0–M9 integration milestones are complete. `agentheim/vendor/aictx/` is the runtime source. ContextOps exposes 11 methods with full test coverage (18 tests). AICtx ships with Agentheim; no external package dependency required. All backlog items through M9 are resolved.

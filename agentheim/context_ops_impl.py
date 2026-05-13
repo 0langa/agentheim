@@ -16,11 +16,11 @@ from agentheim.vendor.aictx.context.lockfile import build_lockfile_from_inventor
 from agentheim.vendor.aictx.context.pipeline import run_local_context_pipeline
 from agentheim.vendor.aictx.context.planner import plan_context
 from agentheim.vendor.aictx.context.writer import build_context_lock, write_context_scaffold
-from agentheim.vendor.aictx.llm.providers import create_model_provider
 from agentheim.vendor.aictx.public_docs.mapper import build_public_docs_map
 from agentheim.vendor.aictx.public_docs.updater import update_public_docs
 from agentheim.vendor.aictx.scan.scanner import scan_repository
 from agentheim.vendor.aictx.verify.verifier import verify_detailed
+from providers.base import ModelProvider as AgentheimModelProvider
 
 def _rm_tree(root: Path) -> None:
     """Recursively delete a directory tree using pathlib only."""
@@ -98,7 +98,7 @@ class AictxContextOps(ContextOps):
         if keep_runs is not None and keep_runs < 0:
             raise ValueError("keep_runs must be >= 0")
 
-        runs_dir = repo_root / ".aictx" / "runs"
+        runs_dir = repo_root / ".ai-team" / "runs"
         if not runs_dir.exists():
             return CleanResult()
 
@@ -159,7 +159,16 @@ class AictxContextOps(ContextOps):
         provider: Any | None = None,
     ) -> GeneratedContext:
         if provider is None:
-            provider = create_model_provider(self.config.llm, allow_ai=False)
+            from agentheim.vendor.aictx.llm.dry_run import DryRunProvider
+            provider = DryRunProvider()
+        elif hasattr(provider, "chat"):
+            # Already an AICtx provider (e.g. DryRunProvider from tests)
+            pass
+        else:
+            # Wrap Agentheim provider with Aictx adapter
+            from agentheim.provider_adapter import AgentheimToAictxAdapter
+            provider = AgentheimToAictxAdapter(provider)
+
         fact_packs = extract_facts(
             repo_root=repo_root,
             plan=plan.raw,
@@ -183,7 +192,7 @@ class AictxContextOps(ContextOps):
 
         # Re-scan to get fresh inventory for lockfile
         inventory_raw = scan_repository(repo_root)
-        out_dir = repo_root / ".aictx" / "runs" / "agentheim-ctx" / "out"
+        out_dir = repo_root / ".ai-team" / "runs" / "agentheim-ctx" / "out"
         out_dir.mkdir(parents=True, exist_ok=True)
 
         generated_paths = write_context_scaffold(
@@ -213,7 +222,7 @@ class AictxContextOps(ContextOps):
         generated_paths.append(staged_context_dir / "context.lock.json")
 
         patch_text = _build_patch(repo_root=repo_root, out_dir=out_dir)
-        patch_path = repo_root / ".aictx" / "runs" / "agentheim-ctx" / "aictx.patch"
+        patch_path = repo_root / ".ai-team" / "runs" / "agentheim-ctx" / "aictx.patch"
         safe_write(patch_path, patch_text)
 
         if write_mode == "apply":
@@ -239,8 +248,15 @@ class AictxContextOps(ContextOps):
         write_mode: str = "patch",
         allow_ai: bool = False,
         allow_dirty: bool = False,
+        provider: Any | None = None,
     ) -> WriteReport:
-        """Run the full local Phase-1 pipeline and return enriched report."""
+        """Run the full local Phase-1 pipeline and return enriched report.
+
+        .. note::
+            The *provider* parameter is accepted for API consistency with
+            :meth:`generate`, but the vendor pipeline currently uses its own
+            default provider factory and cannot inject a custom provider.
+        """
         report = run_local_context_pipeline(
             repo_root=repo_root,
             run_id=run_id,

@@ -198,6 +198,7 @@ class ContextOps(ABC):
         write_mode: str = "patch",
         allow_ai: bool = False,
         allow_dirty: bool = False,
+        provider: Any | None = None,
     ) -> WriteReport:
         """Run the full local Phase-1 context generation pipeline.
 

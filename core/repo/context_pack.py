@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+import warnings
+
+warnings.warn(
+    "build_context_pack is deprecated. Use AICtx via ContextOps instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 from pathlib import Path
 
 from core.redaction import redact_text
