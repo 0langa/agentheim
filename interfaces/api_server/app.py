@@ -337,10 +337,11 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
             )
         except NotImplementedError as exc:
             return True, False, False, f"not implemented: {exc}"
-        except Exception:
-            # Other errors are expected with dummy config (network/auth/etc).
-            # They prove the provider is implemented enough to try.
-            pass
+        except Exception as exc:
+            # Dummy config is intentionally invalid. Any exception here
+            # means the adapter exists but cannot be instantiated/invoked
+            # with valid-looking config → mark as not healthy.
+            return True, False, False, f"adapter error: {exc}"
 
         # Best-effort configured check
         configured = False

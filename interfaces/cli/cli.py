@@ -571,8 +571,12 @@ def doctor_cmd(
     console.print(table)
 
     fail_count = sum(1 for _, s, _ in checks if s == "FAIL")
+    warn_count = sum(1 for _, s, _ in checks if s == "WARN")
     if fail_count:
         console.print(f"[red]{fail_count} check(s) failed.[/red]")
+        raise typer.Exit(code=1)
+    if warn_count:
+        console.print(f"[yellow]{warn_count} check(s) warned. Review above.[/yellow]")
         raise typer.Exit(code=1)
     console.print("[green]All checks passed.[/green]")
 
@@ -666,7 +670,7 @@ def main() -> None:
         app()
     except (ConfigError, AIteamError) as exc:
         console.print(f"[red]Error:[/red] {exc}")
-        raise typer.Exit(code=1)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
