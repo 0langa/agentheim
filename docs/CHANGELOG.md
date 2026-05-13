@@ -2,6 +2,24 @@
 
 ## 2026-05-13
 
+### MCP Configuration
+- Added `@upstash/context7-mcp` to global `~/.kimi/mcp.json`.
+- Added personal MCP servers to global `~/.kimi/mcp.json` for use while working on the project:
+  - `chrome-devtools-mcp`
+  - `mcp-server-semgrep`
+  - `markitdown-mcp-npx`
+  - `@modelcontextprotocol/inspector`
+
+### Playwright E2E Tests
+- Created `tests/test_browser_e2e.py` with 10 real-browser end-to-end tests covering:
+  - `navigate`, `get_text` (with/without selector), `get_links`
+  - `screenshot` (base64 and file save)
+  - `click`, `evaluate`
+  - Session lifecycle (`create_session` → `navigate` → `get_text` → `close_session`)
+  - Network policy denial
+- All E2E tests use `ThreadPoolExecutor` worker threads to avoid Playwright sync API / pytest-anyio asyncio loop conflict.
+- Added `e2e` marker to `[tool.pytest.ini_options]` in `pyproject.toml`.
+
 ### Public Docs Sync
 - Updated test counts across `README.md` and `docs/DEV_TESTING.md` → **695 passed, 3 skipped**.
 - Fixed mismatched email link in `CODE_OF_CONDUCT.md`.

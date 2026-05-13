@@ -85,3 +85,6 @@ exclude = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "e2e: marks tests as end-to-end (real browser / network calls)",
+]
