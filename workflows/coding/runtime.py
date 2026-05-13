@@ -221,7 +221,7 @@ def _basic_verify(
     results: list[VerificationRecord] = []
     commands_run: list[list[str]] = []
 
-    git_diff = tool_invoke("git.diff_patch", repo_root=repo_root)
+    git_diff = tool_invoke("git", operation="diff_patch", repo_root=repo_root)
     ledger.write_text("post_task_git_diff.patch", git_diff)
     results.append(VerificationRecord(name="git-diff-sanity", status="passed" if git_diff.strip() else "skipped", details="working tree diff captured"))
 
@@ -283,7 +283,7 @@ def _run_verifier(
     command_outputs: list[str],
     file_excerpts: list[str],
 ) -> VerificationReport:
-    git_diff = tool_invoke("git.diff_patch", repo_root=repo_root)
+    git_diff = tool_invoke("git", operation="diff_patch", repo_root=repo_root)
     verifier_result = verifier.run_verification(task_text, plan, work_order, git_diff, command_outputs, file_excerpts)
     ledger.write_text(f"verify_{work_order.id}_raw.txt", verifier_result.raw_output)
     if not verifier_result.success or verifier_result.parsed_output is None:
@@ -331,7 +331,7 @@ def run_task(
         team_config = load_team_config()
 
         state_machine.transition(RuntimeState.PREPARE_WORKSPACE)
-        pre_status = tool_invoke("git.status", repo_root=repo_root)
+        pre_status = tool_invoke("git", operation="status", repo_root=repo_root)
         ledger.write_text("pre_task_git_status.txt", pre_status)
         if pre_status.strip() and not allow_dirty:
             state_machine.transition(RuntimeState.BLOCKED, {"reason": "dirty_repo"})
