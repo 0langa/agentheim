@@ -41,7 +41,7 @@ This matrix records what Agentheim currently promises. A surface is not stable u
 | `local-document-chat` | `documents` | Stable candidate | CLI, API, Web route | Smoke/unit coverage; historical live pass | Binary/excluded-dir and empty-repo behavior covered by smoke tests |
 | `codebase-assistant` | `coding` | Stable candidate | CLI, API, Web route | Broad tests and historical capable-model live pass | Smaller models can fail coding quality |
 | `context-maintainer` | `context_maintainer` | Stable candidate | CLI, API/Web context routes | ContextOps tests and historical dry-run evidence | Apply/write paths remain review-first |
-| `file-organizer` | `file_organization` | Beta | CLI, API, Web route | Historical dry-run/apply evidence | Unsafe/missing move reporting needs stronger coverage |
+| `file-organizer` | `file_organization` | Beta | CLI, API, Web route | Historical dry-run/apply evidence; missing-source, overwrite-block, and dry-run smoke tests |
 | `docs-maintainer` | `docs_maintenance` | Beta | CLI, API, Web route | Plan-mode evidence | Apply and aligner paths need live proof |
 | `research-report` | `research` | Beta | CLI, API, Web route | Unit/deep path evidence and mixed historical live notes | Needs clean CLI/API/Web live rerun |
 | `github-maintainer` | `github_maintenance` | Beta | CLI, API, Web route | Historical issue-summary evidence | GitHub credential/live path needs fresh proof |

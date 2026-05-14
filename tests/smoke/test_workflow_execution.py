@@ -249,3 +249,55 @@ class TestDocumentsCollectTextFiles:
         from workflows.documents.workflows.documents import _collect_text_files
         files = _collect_text_files(tmp_path)
         assert files == []
+
+
+class TestFileOrganizationNegativePaths:
+    def test_missing_source_file_reported(self, mock_deps, tmp_path: Path) -> None:
+        from workflows.file_organization import FileOrganizationWorkflow
+        from workflows.file_organization.agents.base import BaseAgent
+        registry, tools, policy, ledger = mock_deps
+        # Do not create source file; fake proposer still suggests moving old.txt -> new.txt
+        with patch.object(BaseAgent, "_invoke", _fake_invoke):
+            wf = FileOrganizationWorkflow(registry, tools, policy, ledger)
+            results = wf.run(tmp_path, metadata={"dry_run": False, "task": "organize"})
+
+        apply_result = results[-1]
+        moves = apply_result.metadata.get("moves_executed", [])
+        assert any(
+            not m["success"] and "does not exist" in m.get("error", "")
+            for m in moves
+        )
+
+    def test_destination_exists_reported(self, mock_deps, tmp_path: Path) -> None:
+        from workflows.file_organization import FileOrganizationWorkflow
+        from workflows.file_organization.agents.base import BaseAgent
+        registry, tools, policy, ledger = mock_deps
+        (tmp_path / "old.txt").write_text("source", encoding="utf-8")
+        (tmp_path / "new.txt").write_text("dest", encoding="utf-8")
+        with patch.object(BaseAgent, "_invoke", _fake_invoke):
+            wf = FileOrganizationWorkflow(registry, tools, policy, ledger)
+            results = wf.run(tmp_path, metadata={"dry_run": False, "task": "organize"})
+
+        apply_result = results[-1]
+        moves = apply_result.metadata.get("moves_executed", [])
+        assert any(
+            not m["success"] and "already exists" in m.get("error", "")
+            for m in moves
+        )
+        # Source should still be there because move was blocked
+        assert (tmp_path / "old.txt").exists()
+
+    def test_dry_run_does_not_move_files(self, mock_deps, tmp_path: Path) -> None:
+        from workflows.file_organization import FileOrganizationWorkflow
+        from workflows.file_organization.agents.base import BaseAgent
+        registry, tools, policy, ledger = mock_deps
+        (tmp_path / "old.txt").write_text("content", encoding="utf-8")
+        with patch.object(BaseAgent, "_invoke", _fake_invoke):
+            wf = FileOrganizationWorkflow(registry, tools, policy, ledger)
+            results = wf.run(tmp_path, metadata={"dry_run": True, "task": "organize"})
+
+        apply_result = results[-1]
+        moves = apply_result.metadata.get("moves_executed", [])
+        assert any(m.get("source") == "old.txt" for m in moves)
+        # File should remain untouched
+        assert (tmp_path / "old.txt").exists()

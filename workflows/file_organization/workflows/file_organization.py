@@ -180,6 +180,11 @@ class FileOrganizationWorkflow(Workflow):
                             {**move.model_dump(), "success": False, "error": "Source file does not exist"}
                         )
                         continue
+                    if dst.exists():
+                        moves_executed.append(
+                            {**move.model_dump(), "success": False, "error": "Destination already exists"}
+                        )
+                        continue
                     if self.ledger:
                         self.ledger.append_jsonl(
                             "file_changes.jsonl",

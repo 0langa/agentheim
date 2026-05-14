@@ -2,6 +2,15 @@
 
 ## 2026-05-15
 
+### Phase 4 Slice — File Organization Negative-Path Coverage
+- Added explicit overwrite guard in `workflows/file_organization/workflows/file_organization.py` `_execute_apply`: destination existence checked before `src.rename(dst)` with clear error `"Destination already exists"`.
+- Added `TestFileOrganizationNegativePaths` with 3 tests:
+  1. `test_missing_source_file_reported` — missing source yields `success=False` with `"does not exist"` error.
+  2. `test_destination_exists_reported` — existing destination blocked, source preserved.
+  3. `test_dry_run_does_not_move_files` — `dry_run=True` records moves without touching filesystem.
+- Updated `docs/SUPPORT_MATRIX.md` `file-organizer` known limits to reflect stronger coverage.
+- Validation: `tests/smoke/test_workflow_execution.py` 13 passed.
+
 ### Phase 4 Slice — Documents Workflow Edge-Case Readiness
 - Added `TestDocumentsWorkflowExecution` with end-to-end and empty-repo fallback tests.
 - Added `TestDocumentsCollectTextFiles` proving binary suffixes (`.png`, `.exe`) and excluded directories (`.git`, `node_modules`) are skipped by `_collect_text_files`.
