@@ -1,7 +1,11 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+import json
 
+from pydantic import BaseModel, Field
+from pydantic import ValidationError
+
+from core.json_repair import repair_json_text
 from workflows.documents.agents.base import BaseAgent
 from core.schemas_runtime import AgentResult
 
@@ -35,3 +39,33 @@ class RetrieverAgent(BaseAgent[RetrieverOutput]):
     def run_retrieve(self, query: str, file_contents: dict[str, str]) -> AgentResult:
         prompt = self.build_prompt(query, file_contents)
         return self.run_structured(prompt, max_output_tokens=2500)
+
+    def _parse(self, raw_output: str) -> RetrieverOutput:
+        data = json.loads(repair_json_text(raw_output))
+        chunks = data.get("chunks")
+        if isinstance(chunks, list) and chunks:
+            return RetrieverOutput.model_validate({"chunks": chunks})
+        alias_chunks = data.get("results")
+        if isinstance(alias_chunks, list):
+            normalized = []
+            for item in alias_chunks:
+                if not isinstance(item, dict):
+                    continue
+                normalized.append(
+                    {
+                        "path": item.get("path") or item.get("file") or item.get("document") or item.get("source") or "",
+                        "excerpt": item.get("excerpt") or item.get("quote") or item.get("text") or "",
+                        "relevance_score": max(
+                            0.0,
+                            min(
+                                1.0,
+                                float(item.get("relevance_score") or item.get("score") or 0.0),
+                            ),
+                        ),
+                    }
+                )
+            return RetrieverOutput.model_validate({"chunks": normalized})
+        try:
+            return self.output_schema.model_validate(data)
+        except (ValueError, ValidationError):
+            raise

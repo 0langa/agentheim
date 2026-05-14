@@ -34,6 +34,7 @@ from core.errors import ToolSafetyError as ToolSafetyError
 from core.errors import VerificationError as VerificationError
 
 # ─── Repo helpers ───────────────────────────────────────────────────
+from core.repo.redaction import safe_text_excerpt as safe_text_excerpt
 from core.repo.scanner import inspect_repository as inspect_repository
 
 # ─── Resume ─────────────────────────────────────────────────────────

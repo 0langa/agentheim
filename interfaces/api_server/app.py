@@ -310,10 +310,7 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
     # ------------------------------------------------------------------
 
     def _find_tool(tool_id: str):
-        for attr_name in dir(tool_registry):
-            if attr_name.startswith("_"):
-                continue
-            candidate = getattr(tool_registry, attr_name)
+        for candidate in tool_registry.tool_objects():
             if getattr(candidate, "tool_id", None) == tool_id:
                 return candidate
         return None
@@ -425,10 +422,7 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
     def list_tools() -> list[ToolSchemaItem]:
         """List all available tools with their schemas."""
         items = []
-        for attr_name in dir(tool_registry):
-            if attr_name.startswith("_"):
-                continue
-            tool = getattr(tool_registry, attr_name)
+        for tool in tool_registry.tool_objects():
             if hasattr(tool, "tool_id") and hasattr(tool, "schema"):
                 items.append(
                     ToolSchemaItem(

@@ -37,7 +37,7 @@ class RuntimeStateMachine:
         RuntimeState.EXECUTE_TASK: {RuntimeState.BASIC_VERIFY, RuntimeState.VERIFY_TASK, RuntimeState.BLOCKED, RuntimeState.FAILED_AND_ROLLED_BACK},
         RuntimeState.BASIC_VERIFY: {RuntimeState.VERIFY_TASK, RuntimeState.EXECUTE_TASK, RuntimeState.FINAL_VERIFY, RuntimeState.BLOCKED, RuntimeState.FAILED_AND_ROLLED_BACK},
         RuntimeState.VERIFY_TASK: {RuntimeState.FIX_LOOP, RuntimeState.EXECUTE_TASK, RuntimeState.FINAL_VERIFY, RuntimeState.BLOCKED, RuntimeState.FAILED_AND_ROLLED_BACK},
-        RuntimeState.FIX_LOOP: {RuntimeState.EXECUTE_TASK, RuntimeState.BLOCKED, RuntimeState.FAILED_AND_ROLLED_BACK},
+        RuntimeState.FIX_LOOP: {RuntimeState.EXECUTE_TASK, RuntimeState.BASIC_VERIFY, RuntimeState.BLOCKED, RuntimeState.FAILED_AND_ROLLED_BACK},
         RuntimeState.FINAL_VERIFY: {RuntimeState.FINAL_REPORT, RuntimeState.BLOCKED, RuntimeState.FAILED_AND_ROLLED_BACK},
         RuntimeState.FINAL_REPORT: {RuntimeState.RESUME_AVAILABLE, RuntimeState.DONE, RuntimeState.BLOCKED, RuntimeState.FAILED_AND_ROLLED_BACK},
         RuntimeState.RESUME_AVAILABLE: {RuntimeState.DONE, RuntimeState.BLOCKED, RuntimeState.FAILED_AND_ROLLED_BACK},

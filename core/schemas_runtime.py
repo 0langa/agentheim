@@ -107,10 +107,10 @@ class AgentResult(BaseModel):
 class FileChange(BaseModel):
     model_config = ConfigDict(frozen=True, populate_by_name=True)
 
-    path: str = Field(min_length=1, validation_alias=AliasChoices("path", "filePath"))
-    change_type: str = Field(default="modify", validation_alias=AliasChoices("change_type", "changeType"))
+    path: str = Field(min_length=1, validation_alias=AliasChoices("path", "filePath", "FilePath", "file_path", "file", "filename"))
+    change_type: str = Field(default="modify", validation_alias=AliasChoices("change_type", "changeType", "ChangeType", "PatchType"))
     summary: str = Field(default="Apply bounded file update")
-    patch: str = Field(default="")
+    patch: str = Field(default="", validation_alias=AliasChoices("patch", "Patch"))
     after_text: str = Field(default="", validation_alias=AliasChoices("after_text", "afterText"))
 
 
@@ -126,7 +126,7 @@ class PatchPlan(BaseModel):
     model_config = ConfigDict(frozen=True, populate_by_name=True)
 
     summary: str = Field(default="Apply bounded work order changes")
-    file_changes: list[FileChange] = Field(default_factory=list, validation_alias=AliasChoices("file_changes", "fileChanges"))
+    file_changes: list[FileChange] = Field(default_factory=list, validation_alias=AliasChoices("file_changes", "fileChanges", "FileChanges", "patchPlan", "patches", "changes"))
     test_suggestions: list[TestSuggestion] = Field(default_factory=list, validation_alias=AliasChoices("test_suggestions", "testSuggestions"))
     notes: list[str] = Field(default_factory=list)
 

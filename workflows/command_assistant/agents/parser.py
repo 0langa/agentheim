@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from core.schemas_runtime import AgentResult
@@ -9,7 +11,7 @@ from workflows.command_assistant.agents.base import BaseAgent
 class ParsedIntent(BaseModel):
     action: str
     target: str = ""
-    parameters: dict[str, str] = Field(default_factory=dict)
+    parameters: dict[str, Any] = Field(default_factory=dict)
 
 
 class ParserAgent(BaseAgent[ParsedIntent]):

@@ -45,7 +45,10 @@ class ContextMaintainerPreset(Preset):
         from core.ledger import RunLedger
         from workflows.context_maintainer.runtime import run_context_maintainer
 
-        repo_path = inputs.get("project_path", ".")
+        repo_path = inputs.get("project_path")
+        if (repo_path is None or str(repo_path).strip() in {"", "."}) and inputs.get("repo"):
+            repo_path = inputs["repo"]
+        repo_path = repo_path or "."
         scope = inputs.get("scope", "full")
         write_mode = inputs.get("write_mode", "patch")
         repo_root = Path(repo_path).resolve()

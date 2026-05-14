@@ -1,7 +1,11 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+import json
 
+from pydantic import BaseModel, Field
+from pydantic import ValidationError
+
+from core.json_repair import repair_json_text
 from workflows.research.agents.base import BaseAgent
 
 
@@ -53,3 +57,44 @@ class SummarizerAgent(BaseAgent[SummaryResult]):
     def run_summarize(self, topic: str, gather_result: dict, context_shards: dict[str, str] | None = None):
         prompt = self.build_prompt(topic, gather_result, context_shards=context_shards)
         return self.run_structured(prompt, max_output_tokens=2500)
+
+    def _parse(self, raw_output: str) -> SummaryResult:
+        data = json.loads(repair_json_text(raw_output))
+
+        if "summaries" not in data and isinstance(data.get("summary"), dict):
+            summaries = []
+            for key, value in data["summary"].items():
+                if isinstance(value, dict):
+                    points = [f"{subkey}: {subvalue}" for subkey, subvalue in value.items()]
+                else:
+                    points = [str(value)]
+                summaries.append({"url": str(key), "key_points": points, "credibility": "unknown"})
+            data["summaries"] = summaries
+
+        if "comparisons" not in data and isinstance(data.get("comparison"), dict):
+            comparisons = []
+            for key, value in data["comparison"].items():
+                if isinstance(value, dict):
+                    findings = [f"{subkey}: {subvalue}" for subkey, subvalue in value.items()]
+                elif isinstance(value, list):
+                    findings = [str(item) for item in value]
+                else:
+                    findings = [str(value)]
+                comparisons.append({"dimension": str(key), "findings": findings})
+            data["comparisons"] = comparisons
+
+        if isinstance(data.get("conflicts"), dict):
+            data["conflicts"] = [
+                f"{key}: " + "; ".join(f"{subkey}={subvalue}" for subkey, subvalue in value.items())
+                if isinstance(value, dict)
+                else f"{key}: {value}"
+                for key, value in data["conflicts"].items()
+            ]
+
+        if isinstance(data.get("gaps"), dict):
+            data["gaps"] = [f"{key}: {value}" for key, value in data["gaps"].items()]
+
+        try:
+            return self.output_schema.model_validate(data)
+        except (ValueError, ValidationError):
+            raise

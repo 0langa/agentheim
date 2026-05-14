@@ -81,7 +81,7 @@ class TestBuiltinWorkflowRegistry:
             reg._entries.pop(f"workflow:{entry.id}", None)
         register_builtin_workflows()
         all_ids = {w.id for w in list_workflows()}
-        expected = {"command_assistant", "coding", "docs_maintenance", "documents", "file_organization", "github_maintenance", "research"}
+        expected = {"command_assistant", "coding", "context_maintainer", "docs_maintenance", "documents", "file_organization", "github_maintenance", "research"}
         missing = expected - all_ids
         assert not missing, f"Expected workflows: {missing}"
 
@@ -104,6 +104,10 @@ class TestBuiltinWorkflowRegistry:
         from workflows.command_assistant import CommandAssistantWorkflow
         assert CommandAssistantWorkflow.workflow_id == "command_assistant"
         assert len(CommandAssistantWorkflow.required_agents) > 0
+
+    def test_context_maintainer_workflow_imports(self) -> None:
+        from workflows.context_maintainer import ContextMaintainerWorkflow
+        assert ContextMaintainerWorkflow.workflow_id == "context_maintainer"
 
 
 class TestWorkflowRuntimeImports:
@@ -141,6 +145,10 @@ class TestWorkflowRuntimeImports:
         from workflows.command_assistant.runtime import plan_task, run_task
         assert callable(plan_task)
         assert callable(run_task)
+
+    def test_context_maintainer_runtime_imports(self) -> None:
+        from workflows.context_maintainer.runtime import run_context_maintainer
+        assert callable(run_context_maintainer)
 
 
 
@@ -199,6 +207,13 @@ class TestWorkflowInstantiation:
         with patch.object(ModelRegistry, "create_provider", return_value=MagicMock()):
             wf = CommandAssistantWorkflow(registry, tools, policy, ledger)
         assert wf.workflow_id == "command_assistant"
+        assert wf.dag is not None
+
+    def test_context_maintainer_workflow_instantiates(self, mock_deps) -> None:
+        from workflows.context_maintainer import ContextMaintainerWorkflow
+        registry, tools, policy, ledger = mock_deps
+        wf = ContextMaintainerWorkflow(registry, tools, policy, ledger)
+        assert wf.workflow_id == "context_maintainer"
         assert wf.dag is not None
 
     def test_file_organization_no_crash_on_default_config(self, mock_deps) -> None:

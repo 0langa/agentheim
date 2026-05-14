@@ -2,6 +2,20 @@
 
 ## 2026-05-14
 
+### Coding Workflow Happy Path
+- Fixed `PatchPlan`/`FileChange` schema aliases to accept PascalCase and snake_case variants: `FileChanges`, `fileChanges`, `patchPlan`, `patches`, `changes`, `FilePath`, `filePath`, `file_path`, `file`, `filename`, `Patch`, `ChangeType`, `PatchType` (`core/schemas_runtime.py`)
+- Added empty `file_changes` guard in coding runtime: valid JSON with no file changes now triggers retry instead of silent no-op (`workflows/coding/runtime.py`)
+- Added work order scope widening: runtime auto-adds files mentioned in title/objective to `relevant_files` if they exist in repo snapshot (`workflows/coding/runtime.py`)
+- Fixed state machine: added `FIX_LOOP → BASIC_VERIFY` transition (`core/state_machine.py`)
+- Fixed CLI `run --max-fix-attempts` default from `0` to `3` to match `run_task()` default (`interfaces/cli/cli.py`)
+- Improved planner prompt: explicit rule to create dedicated test tasks when user mentions tests, and require `relevant_files` to cover all intended edits (`workflows/coding/runtime.py`)
+- Verified coding happy path end-to-end with Azure Foundry `gpt-4.1` and `gpt-5.4` on division-by-zero task; `gpt-4.1-mini` insufficient for this task
+
+### Resume / Report Fixes
+- Fixed `command-assistant` and `context-maintainer` runtimes to emit `RUN_INITIATED` event, enabling resume/report for fresh runs (`workflows/command_assistant/runtime.py`, `workflows/context_maintainer/runtime.py`)
+- Fixed `context-maintainer` to write `final_report.json` (`workflows/context_maintainer/runtime.py`)
+- Fixed generic CLI `report` command to handle dict-shaped final reports from context-maintainer (`interfaces/cli/cli.py`)
+
 ### Provider Profiles
 - Replaced AI provider `.env` runtime loading with provider profiles and vault-backed `secret://provider/<id>/<name>` refs.
 - Added provider CLI namespace for templates, add, list, use, assign, test, import-env, rotate-secret, and remove.

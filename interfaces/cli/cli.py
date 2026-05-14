@@ -247,7 +247,7 @@ def run(
     repo: str = typer.Option(..., "--repo", help="Target repository path."),
     mode: str = typer.Option("apply", "--mode", help="Execution mode."),
     allow_dirty: bool = typer.Option(False, "--allow-dirty", help="Allow execution on dirty repo."),
-    max_fix_attempts: int = typer.Option(0, "--max-fix-attempts", help="Additional coder retry attempts after first failure."),
+    max_fix_attempts: int = typer.Option(3, "--max-fix-attempts", help="Additional coder retry attempts after first failure."),
     max_diff_lines: int = typer.Option(1200, "--max-diff-lines", help="Maximum allowed diff lines per patch."),
     command_timeout: int = typer.Option(120, "--command-timeout", help="Timeout for safe verification commands in seconds."),
     no_tests: bool = typer.Option(False, "--no-tests", help="Skip verification commands."),
@@ -315,13 +315,31 @@ def report(
                     console.print(f"  - {wo.get('id', '?')}: {wo.get('title', 'N/A')}")
             return
         raise
-    console.print(f"[bold]Status:[/bold] {final_report.status}")
-    console.print(f"[bold]Task summary:[/bold] {final_report.task_summary}")
-    console.print(f"[bold]Changed files:[/bold] {', '.join(final_report.changed_files) if final_report.changed_files else 'none'}")
-    console.print(f"[bold]Run id:[/bold] {final_report.run_id}")
-    if final_report.next_command_suggestions:
+    status = final_report.get("status", "unknown")
+    if status == "unknown" and "scope" in final_report and "write_mode" in final_report:
+        status = "done"
+    summary = (
+        final_report.get("task_summary")
+        or final_report.get("query")
+        or final_report.get("topic")
+        or final_report.get("summary")
+        or (
+            f"Context run ({final_report.get('scope', 'unknown')} / {final_report.get('write_mode', 'unknown')})"
+            if "scope" in final_report and "write_mode" in final_report
+            else None
+        )
+        or "N/A"
+    )
+    changed_files = final_report.get("changed_files", [])
+    report_run_id = final_report.get("run_id", run_id)
+    console.print(f"[bold]Status:[/bold] {status}")
+    console.print(f"[bold]Summary:[/bold] {summary}")
+    console.print(f"[bold]Changed files:[/bold] {', '.join(changed_files) if changed_files else 'none'}")
+    console.print(f"[bold]Run id:[/bold] {report_run_id}")
+    next_commands = final_report.get("next_command_suggestions", [])
+    if next_commands:
         console.print("[bold]Next commands:[/bold]")
-        for item in final_report.next_command_suggestions:
+        for item in next_commands:
             console.print(f"- {item}")
 
 
@@ -614,7 +632,8 @@ def mcp_list_cmd(
     config_path = Path(config)
     if not config_path.exists():
         console.print(f"[yellow]MCP config not found:[/yellow] {config_path}")
-        raise typer.Exit(code=1)
+        console.print("No MCP servers configured.")
+        return
 
     try:
         servers = load_mcp_config(config_path)

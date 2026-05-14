@@ -36,6 +36,7 @@ from workflows.coding.reports.markdown import render_final_report_markdown
 from workflows.coding.provider_map import DEFAULT_PROVIDER_MAP
 from workflows.coding.adapters import ledger_append, model_resolve, policy_evaluate, tool_invoke
 from workflows.coding.workflows.coding import create_orchestrator_agent, create_coder_agent, create_verifier_agent
+from core.public_api import safe_text_excerpt
 
 
 class PlanningError(AIteamError):
@@ -94,6 +95,12 @@ def build_plan_prompt(user_task: UserTask, scan: RepoScanResult, context_pack: s
         f"- warnings: {', '.join(scan.warnings) if scan.warnings else 'none'}\n\n"
         "Context pack:\n"
         f"{compact_context}\n\n"
+        "Planning rules:\n"
+        "- Prefer actionable edit/test/docs/cleanup tasks.\n"
+        "- Use inspect tasks only for evidence capture; do not rely on hidden intermediate notes.\n"
+        "- Keep work orders bounded to the relevant files.\n"
+        "- If the user request mentions adding or adjusting tests, create a dedicated test task with relevant_files that includes the test files. Do not fold test work into a source-edit task.\n"
+        "- Every work order's relevant_files must include ALL files it intends to edit.\n\n"
         "Return only valid JSON matching this exact ImplementationPlan shape. "
         "Do not invent a different schema. Do not wrap in markdown.\n"
         f"Schema example:\n{json.dumps(schema_hint, indent=2)}"
@@ -143,6 +150,7 @@ def _resolve_context_pack(
             run_id="coding-ctx",
             scope="changed",
             write_mode="apply",
+            allow_dirty=True,
         )
         if ctx_ledger:
             ctx_ledger.emit_generated(repo_root, fact_pack_count=0)
@@ -201,14 +209,64 @@ def _write_run_command_output(ledger: RunLedger, index: int, command: list[str],
     ledger_append(ledger, "tool_calls.jsonl", {"tool": "shell.run", "command": command, "stdout_file": f"command_{index:02d}_stdout.txt", "stderr_file": f"command_{index:02d}_stderr.txt"})
 
 
-def _collect_work_order_context(work_order: WorkOrder, scan: RepoScanResult) -> list[str]:
+def _read_relevant_file_excerpt(repo_root: Path, relative_path: str, *, limit: int = 2500) -> str | None:
+    target = (repo_root / relative_path).resolve()
+    try:
+        target.relative_to(repo_root)
+    except ValueError:
+        return None
+    if not target.exists() or not target.is_file():
+        return None
+    try:
+        text = target.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return None
+    return f"File: {relative_path}\n{safe_text_excerpt(text, limit=limit)}"
+
+
+def _collect_work_order_context(work_order: WorkOrder, scan: RepoScanResult, repo_root: Path) -> list[str]:
     excerpts: list[str] = []
     doc_map = {doc.path: doc.excerpt for doc in scan.docs}
     for path in work_order.relevant_files:
+        file_excerpt = _read_relevant_file_excerpt(repo_root, path)
+        if file_excerpt:
+            excerpts.append(file_excerpt)
+            continue
         if path in doc_map:
             excerpts.append(f"File: {path}\n{doc_map[path]}")
     excerpts.extend(work_order.required_context_excerpts)
     return excerpts[:6]
+
+
+def _record_inspect_task(
+    *,
+    task_id: str,
+    work_order: WorkOrder,
+    repo_root: Path,
+    scan: RepoScanResult,
+    ledger: RunLedger,
+) -> list[VerificationRecord]:
+    excerpts = _collect_work_order_context(work_order, scan, repo_root)
+    ledger.write_text(
+        f"inspect_{task_id}.md",
+        "\n\n".join(
+            [
+                f"# Inspect Task {task_id}",
+                f"Title: {work_order.title}",
+                f"Objective: {work_order.objective}",
+                "## Context",
+                *(excerpts or ["No additional context collected."]),
+            ]
+        ),
+    )
+    return [
+        VerificationRecord(
+            name=f"inspect:{work_order.id}",
+            status="passed",
+            details="Inspection task recorded without patch application.",
+            command=[],
+        )
+    ]
 
 
 def _basic_verify(
@@ -255,6 +313,21 @@ def _ledger_integrity_check(ledger: RunLedger) -> list[str]:
     required = ["run.json", "repo_snapshot.json", "context_pack.md", "state_transitions.jsonl", "tool_calls.jsonl"]
     missing = [name for name in required if not (ledger.run_dir / name).exists()]
     return missing
+
+
+def _widen_work_order_scope(work_order: WorkOrder, scan: RepoScanResult) -> WorkOrder:
+    """Ensure relevant_files covers files mentioned in title/objective that exist in repo."""
+    repo_files = {f.path for f in scan.files}
+    text = f"{work_order.title} {work_order.objective}"
+    mentioned = set()
+    for path in repo_files:
+        if path in text and path not in work_order.relevant_files:
+            mentioned.add(path)
+    if not mentioned:
+        return work_order
+    return work_order.model_copy(
+        update={"relevant_files": [*work_order.relevant_files, *sorted(mentioned)]}
+    )
 
 
 def _build_fix_work_order(work_order: WorkOrder, verification: VerificationReport, attempt: int) -> WorkOrder:
@@ -370,7 +443,20 @@ def run_task(
                 state_machine.transition(RuntimeState.BLOCKED, {"reason": "max_total_tasks_exceeded"})
                 raise ExecutionError("Maximum total task limit reached.")
             state_machine.transition(RuntimeState.EXECUTE_TASK, {"task_id": task.id})
-            work_order = task.work_order.model_copy(update={"required_context_excerpts": _collect_work_order_context(task.work_order, scan)})
+            work_order = _widen_work_order_scope(task.work_order, scan)
+            work_order = work_order.model_copy(update={"required_context_excerpts": _collect_work_order_context(work_order, scan, repo_root)})
+            if task.type.value == "inspect":
+                verification_records.extend(
+                    _record_inspect_task(
+                        task_id=task.id,
+                        work_order=work_order,
+                        repo_root=repo_root,
+                        scan=scan,
+                        ledger=ledger,
+                    )
+                )
+                state_machine.transition(RuntimeState.BASIC_VERIFY, {"task_id": task.id, "inspect_only": True})
+                continue
             attempts_remaining = max(1, min(max_fix_attempts + 1, 4))
             applied = False
             applied_change_objects = []
@@ -406,6 +492,29 @@ def run_task(
                     continue
 
                 patch_plan = PatchPlan.model_validate(coder_result.parsed_output)
+                if not patch_plan.file_changes:
+                    last_error = "Coder returned valid PatchPlan but file_changes is empty."
+                    ledger_append(
+                        ledger,
+                        "patch_attempts.jsonl",
+                        {
+                            "task_id": task.id,
+                            "attempt": patch_attempt_index,
+                            "apply_errors": [last_error],
+                        },
+                    )
+                    attempts_remaining -= 1
+                    if attempts_remaining <= 0:
+                        break
+                    work_order = work_order.model_copy(
+                        update={
+                            "required_context_excerpts": [
+                                *work_order.required_context_excerpts,
+                                f"Previous patch attempt failed: {last_error}",
+                            ]
+                        }
+                    )
+                    continue
                 applier = PatchApplier(
                     repo_root,
                     forbidden_paths=[".git", ".ai-team/run.lock"],
@@ -464,7 +573,7 @@ def run_task(
                 repo_root,
                 ledger,
                 [item.details for item in task_verifications],
-                _collect_work_order_context(work_order, scan),
+                _collect_work_order_context(work_order, scan, repo_root),
             )
             verification_records.append(
                 VerificationRecord(
@@ -531,6 +640,10 @@ def run_task(
                         attempts_remaining -= 1
                         continue
                     patch_plan = PatchPlan.model_validate(coder_result.parsed_output)
+                    if not patch_plan.file_changes:
+                        last_error = "Coder returned valid PatchPlan but file_changes is empty (fix loop)."
+                        attempts_remaining -= 1
+                        continue
                     applier = PatchApplier(repo_root, forbidden_paths=[".git", ".ai-team/run.lock"], max_diff_lines=max_diff_lines, scope_override=False)
                     apply_result = applier.apply_changes([item.model_dump() for item in patch_plan.file_changes], allowed_files=work_order.relevant_files)
                     if not apply_result.applied:
@@ -571,7 +684,7 @@ def run_task(
                     repo_root,
                     ledger,
                     [item.details for item in task_verifications],
-                    _collect_work_order_context(work_order, scan),
+                    _collect_work_order_context(work_order, scan, repo_root),
                 )
                 verification_records.append(VerificationRecord(name=f"verifier:{work_order.id}", status=verify_report.status, details=verify_report.final_summary, command=[]))
 

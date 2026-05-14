@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from config.config import load_team_config
-from core.public_api import ModelRegistry, RunLedger
+from core.public_api import EventType, ModelRegistry, RunLedger
 from workflows.coding.provider_map import DEFAULT_PROVIDER_MAP
 from workflows.command_assistant.reports.final_report import CommandRecord, FinalReport
 from workflows.command_assistant.reports.markdown import render_final_report_markdown
@@ -38,6 +38,14 @@ def run_task(
     if write_ledger:
         ledger = RunLedger.create(Path(".").resolve(), "command_assistant_run")
         ledger_dir = ledger.run_dir
+        ledger.emit_event(
+            EventType.RUN_INITIATED,
+            payload={
+                "workflow_id": "command_assistant",
+                "repo_root": str(Path(".").resolve()),
+                "metadata": {"user_input": user_input},
+            },
+        )
 
     parsed, _ = plan_task(user_input)
     team_config = load_team_config()

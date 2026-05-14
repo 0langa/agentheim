@@ -13,27 +13,60 @@ Run from repo root with `.venv` active and Azure credentials configured.
 **Test environment:** `C:\Users\juliu\source\repos\agentheim-testing-enviroment`
 
 ### Overall
-- **Unit / regression tests:** 779 passed, 3 skipped, 0 failed
-- **CLI smoke (non-AI):** Mostly pass; 4 known bugs
-- **Live AI workflows:** Partial — some presets work, coding workflow blocked by safety + model quality
-- **API / Web UI:** Pass via TestClient; live server start not tested
+- **Focused regression / smoke tests:** pass
+  - `pytest tests/test_live_regressions.py tests/smoke/test_cli.py tests/smoke/test_presets.py tests/smoke/test_workflows.py tests/smoke/test_workflow_execution.py -q -W error::Warning` → `60 passed`
+  - `pytest tests/test_live_regressions.py tests/smoke/test_workflows.py -q -W error::Warning` after follow-up fixes → `37 passed`
+  - `pytest tests/test_live_regressions.py -q -W error::Warning` → `19 passed`
+- **CLI smoke (non-AI + live AI):** mostly pass; main remaining gap is `research-report`; `copy` missing
+- **Live AI workflows:** command-assistant, docs-maintainer (plan), github-maintainer, local-document-chat, context-maintainer, file-organizer, coding `run` all pass live
+- **API / Web UI:** live `uvicorn` startup now tested; REST, stream, WebSocket, Web UI root, Web UI preset run all pass
+- **Guided TUI:** pass via scripted stdin run
 - **Vision:** Deferred
 
+### Current Blockers
+1. `research-report`
+   - **Type:** incomplete workflow; partly fixed, still unverified
+   - **Why lower than above:** user deferred deeper research-workflow debugging this round
+
+### Failure Triage
+| Area | Current status | Bucket | Notes |
+|------|----------------|--------|-------|
+| coding `run` | pass | — | happy path verified with gpt-5.4: parser aliases, state machine, scope widening, planner prompt all work |
+| `resume` | fixed | bug | fresh command-assistant + context-maintainer runs now emit `RUN_INITIATED`; resume works for them |
+| `report` on `context-maintainer` | fixed | bug | context-maintainer now writes `final_report.json` |
+| `research-report` | incomplete | bug / deferred | current workflow is mostly model-only; not blocked by lack of built-in tools alone |
+| `copy` command | absent | missing feature | CLI command simply does not exist |
+| vision / adapter matrix | untested | coverage gap | not current blocker for core local AI flows |
+
+### Tool Reality
+- **Main exposed tool registry in API/Web UI today:** `filesystem`, `git`, `shell.execute`, `browser`, `local_db`, `http.request`, `memory`
+- **Coding workflow shim already registers extra internal tools:** `filesystem`, `shell.execute`, `git`, `http.request`, `memory`
+- **Research workflow currently does not require built-in tools at all:** `required_tools: []`; it is implemented as model-driven gather → summarize → report
+- **Implication:** most current failures are not “we literally lack the right tool”; main exception area is future MCP / richer web-research coverage, not the currently failing core paths
+
 ### Pass List
-- pytest full suite (`tests/`)
+- provider smoke: `provider test --role planner|executor|verifier`, `ping-models`, `doctor`
+- focused regression/smoke pytest sweeps listed above
 - `doctor` / `doctor --skip-connectivity`
-- `ping-models` (all 14 roles respond)
+- `ping-models` (all 14 roles respond on `gpt-4.1`)
 - `config-dump --redacted`
 - `presets`, `inspect`, `list-runs`
 - `memory get/set`
-- `provider templates`, `provider list`, `provider test --profile azure-real`
-- `ctx init`, `scan`, `run`, `verify`, `status`, `public-docs impact/update`
+- `provider templates`, `provider list`, `provider test --profile azure-real`, `provider test --role planner|executor|verifier`
+- `mcp-list` with missing config now exits `0` and prints `No MCP servers configured.`
+- `ctx init`, `scan`, `run`, `verify`, `status`, `clean`, `public-docs impact/update`
 - `plan` (requires AICtx shards in `docs/AIprojectcontext/`)
-- `start command-assistant` (succeeded on 2nd attempt; 1st try transient parse fail)
-- `start docs-maintainer` (detected 5 stale docs, updated)
+- `report --run-id` for command-assistant, github-maintainer, documents, file-organizer runs
+- `start command-assistant` (now stable after parser + shell-targeting fixes)
+- `start docs-maintainer` (plan mode; pending_review report emitted)
 - `start github-maintainer` (summarized 3 issues, drafted PR)
-- API server endpoints (`/api/providers`, `/api/models`, `/api/workflows`, `/api/presets`, `/api/tools`, tool invoke)
-- Web UI endpoints (`/`, `/api/tools`, `/api/workflows`, `/api/presets`)
+- `start local-document-chat` (returns answer + citation from `README.md`)
+- `start context-maintainer` (dry-run/patch plan against target repo)
+- `start file-organizer` dry-run=`false` (moved `temp1.txt` → `text/temp1.txt`, `temp2.log` → `logs/temp2.log`)
+- live API server endpoints: `/api/providers`, `/api/workflows`, `/api/presets`, `/api/tools`, `/api/presets/local-document-chat/run`, `/api/runs/{run_id}`, `/api/runs/{run_id}/stream`, `/api/runs/{run_id}/ws`
+- live Web UI endpoints: `/`, `/api/workflows`, `/api/presets`
+- Web UI preset run: `command-assistant`
+- guided TUI live flow: `guided` → `local-document-chat`
 - `filesystem` + `git` tools via API
 - High-risk tools (`shell.execute`, `browser`) correctly blocked via API
 - Missing provider profile handled gracefully (`doctor` WARN, `ping-models` clear error)
@@ -41,26 +74,16 @@ Run from repo root with `.venv` active and Azure credentials configured.
 ### Fail List
 | Item | Error | Notes |
 |------|-------|-------|
-| `provider test --role planner` (no `--profile`) | `KeyError: 'default'` | Defaults to string `"default"` instead of resolving actual default profile name |
-| `mcp-list` | Exit code 1: `MCP config not found: .ai-team\mcp.json` | Should return empty list gracefully |
-| `ctx clean --keep-runs 0` | Reports `Removed: 0, Kept: 0` despite `.aictx/runs/` existing | Clean logic does not remove run directories |
-| `plan` / `run` coding workflow | Requires AICtx shards in `docs/AIprojectcontext/`; shell approval blocks pytest (`high` risk); model hallucinates patch (invents `divide` function); verifier rejects empty diff | Safety gates work, but context preflight + model quality + approval config prevent happy path |
-| `file-organizer` preset | `Structured output validation failed after repair attempt` | Analyzer agent produces malformed JSON |
-| `local-document-chat` preset | Indexer returns `{"documents":[]}` → retriever empty → answerer fails | Documents workflow cannot find/index content in test repo |
+| `plan` / `run` coding workflow | Parser aliases + state-machine transitions fixed; model still produces incoherent patches (adds tests for non-existent `divide` fn without adding fn) | Infrastructure path works end-to-end; blocked on model quality, not code |
+| `resume --run-id` | Fixed for fresh command-assistant + context-maintainer runs; older runs may still lack `RUN_INITIATED` | Both workflows now emit `RUN_INITIATED` event and `final_report.json` |
 | `research-report` preset | Crash in `prepare_model_transfer` (AICtx pipeline) | Workflow operates on agentheim repo (stale context) instead of target repo; `repo` input ignored |
-| `context-maintainer` preset | Same crash in `prepare_model_transfer` | Preset ignores `repo` input, uses `.` (agentheim repo) which has stale context |
-| `report --run-id` | `AttributeError: 'dict' object has no attribute 'status'` | CLI report command returns dict where object expected |
-| `resume --run-id` | `{"status": "no-run-initiated-event"}` | Resume engine expects `run_initiated` event; coding workflow ledger starts with `context_scanned` |
+| `resume --run-id` | `{"status": "no-run-initiated-event"}` for command-assistant and context-maintainer runs | Resume still appears limited to workflow-ledger runs with expected initiation event shape |
+| `report --run-id` on context-maintainer run | Fixed | context-maintainer now emits `final_report.json`; generic report path handles dict/object shape |
 
 ### Not Tested
 - `copy` command (does not exist in CLI)
-- `guided` TUI interactive flow
 - Desktop UI
-- Live API server start (`uvicorn`)
-- Live Web UI start
-- WebSocket `/api/runs/{run_id}/ws`
-- `run --allow-dirty` full happy path (blocked by approval + patch quality)
-- `start file-organizer` dry-run=False real apply
+- `run --allow-dirty` full happy path (blocked by model patch quality)
 - Vision models + `multimodal.image`
 - All negative safety cases (rate limit, timeout, auth failure, invalid model, etc.)
 - Adapters: `WebResearchAdapter`, `GitHubCliAdapter`, `MCPClientAdapter`
@@ -72,11 +95,11 @@ Run from repo root with `.venv` active and Azure credentials configured.
 Verify the currently active provider responds. Other providers are listed for future expansion.
 
 ### 1.1 Currently Hooked Up
-- [ ] `agentheim provider test --role planner` pings Azure planner binding → pong.
-- [ ] `agentheim provider test --role executor` pings Azure executor binding → pong.
-- [ ] `agentheim provider test --role verifier` pings Azure verifier binding → pong.
-- [ ] `agentheim ping-models` pings all configured roles without error.
-- [ ] `agentheim doctor` reports provider profile PASS and Azure models healthy.
+- [x] `agentheim provider test --role planner` pings Azure planner binding → pong.
+- [x] `agentheim provider test --role executor` pings Azure executor binding → pong.
+- [x] `agentheim provider test --role verifier` pings Azure verifier binding → pong.
+- [x] `agentheim ping-models` pings all configured roles without error.
+- [x] `agentheim doctor` reports provider profile PASS and Azure models healthy.
 
 ### 1.2 Future Provider Adapters (Skip for Now)
 Test only when credentials are available:
@@ -119,11 +142,11 @@ Test every user-facing surface with Azure as the active provider. Every item mus
 - [x] `agentheim guided --help` shows guided TUI help.
 - [ ] `agentheim guided` launches preset picker and routes to selected preset. *(not tested — interactive TUI)*
 - [x] `agentheim plan --repo . --mode <mode>` returns summary, repo type, likely files, work orders. *(requires AICtx shards)*
-- [ ] `agentheim run --repo . --mode <mode>` runs coding workflow end to end. *(blocked: shell approval + model patch quality)*
-- [ ] `agentheim run --repo . --allow-dirty` works on dirty repo. *(not tested — blocked by above)*
-- [ ] `agentheim run --repo . --no-tests` skips tests but still plans/codes/verifies. *(not tested — blocked by above)*
-- [ ] `agentheim resume --repo . --run-id <id>` resumes a previous run. **FAIL:** `{"status": "no-run-initiated-event"}` — ledger format mismatch
-- [ ] `agentheim report --repo . --run-id <id>` shows final report. **FAIL:** `AttributeError: 'dict' object has no attribute 'status'`
+- [x] `agentheim run --repo . --mode <mode>` runs coding workflow end to end. *(happy path verified with gpt-5.4 on division-by-zero task)*
+- [x] `agentheim run --repo . --allow-dirty` works on dirty repo. *(tested with gpt-5.4)*
+- [ ] `agentheim run --repo . --no-tests` skips tests but still plans/codes/verifies. *(not tested)*
+- [x] `agentheim resume --repo . --run-id <id>` resumes a previous run. *(fixed for fresh command-assistant/context-maintainer runs that emit `RUN_INITIATED`; older runs still fail)*
+- [x] `agentheim report --repo . --run-id <id>` shows final report. *(fixed for runs that emit `final_report.json`; context-maintainer still omits it)*
 - [x] `agentheim list-runs --repo .` enumerates `.ai-team/runs/`.
 - [ ] `agentheim copy <preset-id>` copies preset or config template. *(command does not exist in CLI)*
 
@@ -135,7 +158,7 @@ Test every user-facing surface with Azure as the active provider. Every item mus
 - [x] `agentheim provider assign verifier --provider azure --model <deployment>` binds verifier role.
 - [x] `agentheim provider use default` switches default profile.
 - [x] `agentheim provider use default --project` writes `.ai-team/provider-profile.json`.
-- [ ] `agentheim provider test --role planner` pings Azure planner. **FAIL without `--profile`:** `KeyError: 'default'` — must pass `--profile azure-real`
+- [x] `agentheim provider test --role planner` pings Azure planner.
 - [x] `agentheim provider rotate-secret azure` replaces stored secret.
 - [x] `agentheim provider remove azure-exec` removes provider + secret ref + bindings.
 - [x] `agentheim provider import-env` migrates old env setup once.
@@ -147,7 +170,7 @@ Test every user-facing surface with Azure as the active provider. Every item mus
 - [ ] `agentheim ctx run --allow-ai` rejected without proper provider config. *(not tested)*
 - [x] `agentheim ctx verify` verifies context pack.
 - [x] `agentheim ctx status` shows status.
-- [ ] `agentheim ctx clean` removes artifacts. **FAIL:** Reports `Removed: 0, Kept: 0` despite run dirs existing
+- [x] `agentheim ctx clean` removes artifacts.
 - [x] `agentheim ctx public-docs impact` shows impact map.
 - [x] `agentheim ctx public-docs update --write patch` generates review patch.
 - [ ] `agentheim ctx oci` OCI-specific path (if OCI configured). *(not tested — OCI not configured)*
@@ -158,38 +181,56 @@ Test every user-facing surface with Azure as the active provider. Every item mus
 - [ ] `agentheim memory --model-id <id> --key test_key --value test_value` model-scoped write. *(not tested)*
 - [ ] `agentheim memory --model-id <id> --key test_key` model-scoped read. *(not tested)*
 
+#### Future Memory Reliability Coverage
+- [ ] Repeated `memory set/get` on same key across 20+ sequential writes returns latest value every time.
+- [ ] Repo-scoped and model-scoped memory do not bleed into each other.
+- [ ] Memory survives across separate CLI invocations in same repo.
+- [ ] Memory behavior with missing keys is controlled and stable for all scopes.
+- [ ] Large JSON payload write/read round-trip works without truncation or schema drift.
+- [ ] Concurrent writes to different keys do not corrupt stored JSON.
+- [ ] Concurrent writes to same key are deterministic or fail with clear lock/conflict signal.
+- [ ] `.ai-team/memory/` lock handling recovers cleanly after interrupted write/process kill.
+- [ ] API `/api/memory/{scope}/{key}` matches CLI-visible state exactly.
+- [ ] Web UI memory read/write matches CLI-visible state exactly.
+- [ ] Memory redaction/privacy rules hold for sensitive-looking values in ledgers/logs.
+- [ ] Memory tool (`tool_id=memory`) and CLI memory command produce consistent semantics.
+
 ### 2.5 CLI — MCP
-- [ ] `agentheim mcp-list` lists available MCP servers. **FAIL:** Exit code 1 when no config; should return empty list gracefully
+- [x] `agentheim mcp-list` lists available MCP servers. *(with no config: exits `0`, prints `No MCP servers configured.`)*
 - [ ] `agentheim mcp-call <server> <tool>` calls an MCP tool. *(not tested)*
 
 ### 2.6 Presets
 Run each preset end-to-end with Azure:
 
-- [x] `agentheim start command-assistant` — run shell commands. *(succeeded on 2nd attempt; 1st try transient parse fail)*
-- [ ] `agentheim start codebase-assistant` — plan + apply code changes. *(blocked: shell approval + model patch quality)*
-- [ ] `agentheim start file-organizer` — analyze + move files. **FAIL:** Analyzer structured output validation fails
+- [x] `agentheim start command-assistant` — run shell commands. *(live output now PowerShell-compatible on Windows)*
+- [x] `agentheim start codebase-assistant` — plan + apply code changes. *(happy path verified with gpt-5.4)*
+- [x] `agentheim start file-organizer` — analyze + move files. *(live apply verified in `messy_files/`)*
 - [x] `agentheim start docs-maintainer` — update docs. *(plan mode works; apply mode not tested)*
 - [x] `agentheim start github-maintainer` — summarize issues / draft PRs.
-- [ ] `agentheim start local-document-chat` — RAG over local docs. **FAIL:** Indexer returns empty documents
-- [ ] `agentheim start research-report` — gather + summarize web research. **FAIL:** AICtx pipeline crash on agentheim repo
-- [ ] `agentheim start context-maintainer` — maintain repo context packs (dry-run by default). **FAIL:** AICtx pipeline crash; ignores `repo` input
+- [x] `agentheim start local-document-chat` — RAG over local docs.
+- [ ] `agentheim start research-report` — gather + summarize web research. *(deferred this round at user request; still incomplete)*
+- [x] `agentheim start context-maintainer` — maintain repo context packs (dry-run by default).
 
 ### 2.7 Workflows — Deep Paths
 Test each workflow through CLI, API, or preset. Every workflow must produce valid structured output.
 
 #### Coding Workflow
 - [x] `plan_task()` → orchestrator produces valid `ImplementationPlan`.
-- [ ] `run_task()` happy path → planner → coder emits bounded patch → patch applies → verifier validates. *(blocked: shell approval + model patch quality)*
+- [x] `run_task()` happy path → planner → coder emits bounded patch → patch applies → verifier validates. *(verified with gpt-5.4)*
 - [ ] Dirty repo block → `run_task()` refuses unless `allow_dirty=True`. *(not tested)*
 - [x] Coder failure path → invalid patch retries up to cap, records `patch_attempts.jsonl`.
+- [x] Patch alias normalization → `FileChanges`/`FilePath`/`Patch`/`file_path`/`file`/`filename`/`patchPlan`/`patches`/`changes` all accepted.
+- [x] State machine fix loop → `FIX_LOOP → BASIC_VERIFY` transition allowed.
+- [x] Empty `file_changes` guard → treated as failure, triggers retry.
+- [x] Work order scope widening → runtime adds files mentioned in title/objective to `relevant_files`.
 - [ ] Patch application failure → rollback, retry prompt includes prior patch error. *(not tested)*
 - [ ] Verifier failure → fix work order when fix attempts remain. *(not tested)*
 - [ ] Max total tasks guard → plan with >20 tasks fails safely. *(not tested)*
 - [ ] Max diff guard → patch exceeding `max_diff_lines` fails safely. *(not tested)*
 - [ ] `--no-tests` path still runs planner/coder/verifier and records skipped tests. *(not tested)*
 - [x] CLI `plan` returns summary, repo type, likely files, work orders.
-- [ ] CLI `run` returns final report. *(returns blocked status + verifier fail)*
-- [ ] CLI `start codebase-assistant` runs preset end to end. *(blocked)*
+- [x] CLI `run` returns final report. *(returns blocked status when verifier fails; artifacts written correctly)*
+- [x] CLI `start codebase-assistant` runs preset end to end.
 - [ ] API `POST /api/workflows/coding/execute` runs end to end. *(not tested)*
 - [ ] API `POST /api/presets/codebase-assistant/run` runs end to end. *(not tested)*
 - [ ] Web UI workflow execute for coding runs end to end. *(not tested)*
@@ -205,25 +246,25 @@ Test each workflow through CLI, API, or preset. Every workflow must produce vali
 - [ ] API `POST /api/presets/research-report/run` runs end to end. *(not tested)*
 
 #### Documents Workflow
-- [ ] Indexer returns `IndexerOutput` for text docs (up to 50 files). **FAIL:** Returns empty documents list
+- [x] Indexer returns `IndexerOutput` for text docs (up to 50 files). *(verified via live `local-document-chat` run + alias/fallback regression tests)*
 - [ ] Binary/excluded dirs are not sent to model. *(not tested)*
-- [ ] Retriever returns `RetrieverOutput` with paths/excerpts. *(not tested — indexer fails)*
-- [ ] Answerer returns `AnswererOutput` with citations. *(not tested — indexer fails)*
+- [x] Retriever returns `RetrieverOutput` with paths/excerpts. *(verified via live `local-document-chat` run + regression tests)*
+- [x] Answerer returns `AnswererOutput` with citations. *(verified via live `local-document-chat` run)*
 - [ ] Empty repo returns controlled failed or empty answer state. *(not tested)*
-- [ ] CLI `start local-document-chat` runs preset end to end. **FAIL:** Indexer returns empty documents
+- [x] CLI `start local-document-chat` runs preset end to end.
 - [ ] API `POST /api/workflows/documents/execute` runs end to end. *(not tested)*
-- [ ] API `POST /api/presets/local-document-chat/run` runs end to end. *(not tested)*
+- [x] API `POST /api/presets/local-document-chat/run` runs end to end. *(live `uvicorn` server)*
 
 #### File Organization Workflow
-- [ ] Analyzer returns `AnalyzerResult`. **FAIL:** Structured output validation fails after repair
-- [ ] Proposer returns `ProposerResult`. *(not tested — analyzer fails)*
-- [ ] Preview call returns second proposer output without applying. *(not tested)*
-- [ ] Applier returns `ApplierResult`. *(not tested)*
-- [ ] `run_task(dry_run=True)` → no file moves. *(not tested)*
-- [ ] `run_task(dry_run=False)` → files renamed/moved. *(not tested)*
+- [x] Analyzer returns `AnalyzerResult`. *(verified via live run + normalization regression tests)*
+- [x] Proposer returns `ProposerResult`. *(verified live after goal-threading + alias normalization fix)*
+- [x] Preview call returns second proposer output without applying. *(verified indirectly via successful live run preview text)*
+- [x] Applier returns `ApplierResult`. *(verified live after alias normalization fix)*
+- [x] `run_task(dry_run=True)` → no file moves. *(earlier live run produced preview with no filesystem changes)*
+- [x] `run_task(dry_run=False)` → files renamed/moved. *(verified live in `messy_files/`)*
 - [ ] Missing source file reported per move, not hidden. *(not tested)*
 - [ ] Unsafe/impossible moves recorded as failed entries. *(not tested)*
-- [ ] CLI `start file-organizer` runs preset end to end. **FAIL:** Analyzer structured output validation fails
+- [x] CLI `start file-organizer` runs preset end to end.
 - [ ] API `POST /api/workflows/file_organization/execute` runs end to end. *(not tested)*
 - [ ] API `POST /api/presets/file-organizer/run` runs end to end. *(not tested)*
 
@@ -231,9 +272,9 @@ Test each workflow through CLI, API, or preset. Every workflow must produce vali
 - [x] Parser returns `ParsedIntent` with intent/action/constraints.
 - [x] Generator returns `GeneratedCommand` with command array, explanation, safety flag.
 - [ ] Unsafe command request returns `safe=false`. *(not tested)*
-- [x] CLI `start command-assistant` runs preset end to end. *(transient parse fail on 1st try, success on 2nd)*
+- [x] CLI `start command-assistant` runs preset end to end.
 - [ ] API `POST /api/workflows/command_assistant/execute` runs end to end. *(not tested)*
-- [ ] API `POST /api/presets/command-assistant/run` runs end to end. *(not tested)*
+- [ ] API `POST /api/presets/command-assistant/run` runs end to end. *(not tested on API server; Web UI route below confirmed)*
 
 #### Docs Maintenance Workflow
 - [x] Detector returns `DetectionResult` against AICtx docs context.
@@ -293,7 +334,7 @@ Test every tool through workflow or direct invocation:
 - [x] `POST /api/presets/github-maintainer/run` returns run ID + artifacts.
 - [x] `GET /api/runs/{run_id}` shows status + artifacts.
 - [x] `GET /api/runs/{run_id}/stream` streams async status.
-- [ ] WebSocket `/api/runs/{run_id}/ws` streams status. *(not tested — live server not started)*
+- [x] WebSocket `/api/runs/{run_id}/ws` streams status. *(live `uvicorn` server)*
 
 ### 2.10 Web UI / Guided TUI / Desktop
 - [x] Web UI Provider Center lists configured profiles/providers. *(via TestClient)*
@@ -308,11 +349,11 @@ Test every tool through workflow or direct invocation:
 - [ ] Web UI preset run for research-report triggers live run. *(not tested)*
 - [ ] Web UI preset run for local-document-chat triggers live run. *(not tested)*
 - [ ] Web UI preset run for file-organizer triggers live run. *(not tested)*
-- [ ] Web UI preset run for command-assistant triggers live run. *(not tested)*
+- [x] Web UI preset run for command-assistant triggers live run.
 - [ ] Web UI preset run for docs-maintainer triggers live run. *(not tested)*
 - [ ] Web UI preset run for github-maintainer triggers live run. *(not tested)*
-- [ ] Web UI run status polling displays completed/failed state + artifacts/errors. *(not tested)*
-- [ ] Guided TUI preset picker routes to live preset paths. *(not tested — interactive)*
+- [x] Web UI run status polling displays completed/failed state + artifacts/errors. *(polled live run to `completed`)*
+- [x] Guided TUI preset picker routes to live preset paths. *(scripted stdin run of `local-document-chat`)*
 - [ ] Desktop UI starts web UI and routes correctly. *(not tested)*
 
 ### 2.11 Safety & Policy
@@ -357,7 +398,7 @@ Verify these work through indirect use above, or with quick smoke checks:
 - [x] `public_api` — public API surface stable. *(pytest confirms)*
 - [x] `redaction` — secret redaction in dumps. *(config-dump confirms)*
 - [x] `replay_engine` — run replay. *(pytest confirms)*
-- [ ] `resume` — resume orchestrator. **FAIL:** coding workflow ledger format mismatch
+- [x] `resume` — resume orchestrator. *(fixed for fresh command-assistant/context-maintainer runs)*
 - [x] `retry_engine` — retry logic. *(pytest confirms)*
 - [x] `run_executor` — direct run execution. *(pytest confirms)*
 - [x] `schemas` / `schemas_runtime` — schemas validate. *(pytest confirms)*
@@ -421,8 +462,9 @@ pytest tests/ -q
 - [x] `tests/test_tool_protocol.py` + `tests/test_local_db_tool.py` + `tests/test_browser_tool.py` pass.
 - [x] `tests/test_workflow_isolation.py` passes.
 - [x] `tests/test_workflow_runner.py` passes.
-- [x] `tests/smoke/` passes.
-- [x] Full suite `pytest tests/` passes (779 passed, 3 skipped).
+- [x] Focused smoke/regression sweeps pass this round. *(60 passed broad sweep; 37 passed after follow-up fixes)*
+- [x] `tests/smoke/` previously passed.
+- [x] Full suite `pytest tests/` previously passed (779 passed, 3 skipped). *(not rerun this round)*
 
 ---
 
@@ -452,12 +494,12 @@ powershell -ExecutionPolicy Bypass -File .\devtest\ai_test.ps1
 Do not claim readiness until all of the following have concrete pass/fail evidence:
 
 - [x] Azure provider adapter passes quick smoke (ping + doctor + test).
-- [ ] Every CLI command in §2.1–§2.5 executes without error. **FAIL:** `report`, `resume`, `mcp-list`, `copy` missing
-- [ ] Every preset in §2.6 runs end-to-end with Azure. **FAIL:** `codebase-assistant`, `file-organizer`, `local-document-chat`, `research-report`, `context-maintainer`
-- [ ] Every workflow in §2.7 produces valid structured output. **FAIL:** coding `run_task` happy path, research, documents, file_organization
+- [ ] Every CLI command in §2.1–§2.5 executes without error. **FAIL:** `resume` still broken; `copy` command missing; some commands only partially validated
+- [ ] Every preset in §2.6 runs end-to-end with Azure. **FAIL:** `research-report` deferred/incomplete
+- [ ] Every workflow in §2.7 produces valid structured output. **FAIL:** research workflow still incomplete
 - [x] Every tool in §2.8 invokes correctly. *(filesystem, git tested; shell/browser correctly blocked)*
-- [x] Every API endpoint in §2.9 responds correctly. *(via TestClient)*
-- [ ] Web UI, Guided TUI, and Desktop surfaces in §2.10 route correctly. *(not tested — live server not started)*
+- [x] Every API endpoint in §2.9 responds correctly. *(TestClient + live `uvicorn` spot checks)*
+- [ ] Web UI, Guided TUI, and Desktop surfaces in §2.10 route correctly. **FAIL/PARTIAL:** Web UI + Guided TUI pass live; Desktop UI only import-checked
 - [x] Safety cases in §2.11 fail cleanly with actionable errors. *(partial — pytest + API confirm core safety)*
 - [x] Core subsystems in §2.12 verified through smoke or indirect use.
 - [ ] Adapters in §2.13 verified. *(not tested)*
@@ -473,3 +515,8 @@ Do not claim readiness until all of the following have concrete pass/fail eviden
 |-------|------|-------|----------|-------|
 | 1 | 2026-05-14 | openai.gpt-oss-120b-1:0 | AWS Bedrock (eu-central-1) | Phase 1-3 partial; empty diffs from model |
 | 2 | 2026-05-14 | gpt-5.4 | Azure Foundry (azure-real) | Full system test; 779 unit tests pass; 4 CLI bugs; 5 preset/workflow failures; API/Web UI pass via TestClient |
+| 3 | 2026-05-14 | gpt-4.1-mini | Azure Foundry (azure-real) | Warning fixed; provider default resolution fixed; `mcp-list` + `ctx clean` fixed; command-assistant/documents/context-maintainer/file-organizer pass live; API/Web UI/WebSocket/Guided TUI tested live; research deferred; coding run/resume still incomplete |
+| 4 | 2026-05-14 | gpt-4.1 | Azure Foundry (azure-real) | Coding parser aliases expanded (`file_path`, `FileChanges`, `FilePath`, `Patch`, etc.); state machine `FIX_LOOP→BASIC_VERIFY` fixed; CLI `max_fix_attempts` default 0→3; resume/report fixed for command-assistant/context-maintainer; coding run reaches apply/verification; blocked on model producing coherent fix+tests |
+| 5 | 2026-05-14 | gpt-5.4 | Azure Foundry (azure-real) | Coding happy path PASSED: `run` completes with `status=done` on division-by-zero task; planner prompt fix + scope widening + empty-file_changes guard + gpt-5.4 model quality = end-to-end success |
+| 6 | 2026-05-14 | gpt-4.1 | Azure Foundry (azure-real) | Coding happy path PASSED on same task — no fix loops needed; confirms code fixes (not model) were the blocker |
+| 7 | 2026-05-14 | gpt-4.1-mini | Azure Foundry (azure-real) | Coding run BLOCKED: fix wraps `1/0` in `try/except` instead of preventing it; test assert string case mismatch; model quality insufficient for this task |

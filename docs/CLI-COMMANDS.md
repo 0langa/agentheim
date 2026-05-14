@@ -16,7 +16,7 @@ The Agentheim CLI is built with [Typer](https://typer.tiangolo.com/). All comman
 | `ping-models` | Ping every configured model with a tiny deterministic request. | — |
 | `inspect` | Inspect a repo and produce a compact context summary. | `--repo` *(required)*, `--json`, `--write-ledger` |
 | `plan` | Build a structured implementation plan **without** editing files. | `TASK_TEXT`, `--repo` *(required)*, `--write-ledger`, `--out <file>` |
-| `run` | Plan and apply bounded work orders (no auto-commit). | `TASK_TEXT`, `--repo` *(required)*, `--mode` (default: `apply`), `--allow-dirty`, `--max-fix-attempts` (default: `0`), `--max-diff-lines` (default: `1200`), `--command-timeout` (default: `120`), `--no-tests` |
+| `run` | Plan and apply bounded work orders (no auto-commit). | `TASK_TEXT`, `--repo` *(required)*, `--mode` (default: `apply`), `--allow-dirty`, `--max-fix-attempts` (default: `3`), `--max-diff-lines` (default: `1200`), `--command-timeout` (default: `120`), `--no-tests` |
 | `list-runs` | List all runs stored in a repository. | `--repo` *(required)* |
 | `report` | Show the full report for a completed run. | `--repo` *(required)*, `--run-id` *(required)* |
 | `resume` | Resume a blocked or incomplete run from its ledger. | `--repo` *(required)*, `--run-id` *(required)* |
@@ -165,7 +165,7 @@ agentheim provider list
 agentheim provider test --role executor
 
 # Run a preset
-agentheim start codebase_assistant --input repo=./my-project
+agentheim start codebase-assistant --input repo=./my-project --input task="Review code"
 
 # Check environment health
 agentheim doctor --oci

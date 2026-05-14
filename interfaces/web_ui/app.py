@@ -191,10 +191,7 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
     def list_tools() -> list[ToolListItem]:
         """List all available tools with their risk levels."""
         items = []
-        for attr_name in dir(tool_registry):
-            if attr_name.startswith("_"):
-                continue
-            tool = getattr(tool_registry, attr_name)
+        for tool in tool_registry.tool_objects():
             if hasattr(tool, "tool_id") and hasattr(tool, "schema"):
                 items.append(
                     ToolListItem(
@@ -209,10 +206,7 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
     def invoke_tool(body: ToolInvokeRequest) -> ToolInvokeResponse:
         """Invoke a tool with the given parameters."""
         tool = None
-        for attr_name in dir(tool_registry):
-            if attr_name.startswith("_"):
-                continue
-            candidate = getattr(tool_registry, attr_name)
+        for candidate in tool_registry.tool_objects():
             if getattr(candidate, "tool_id", None) == body.tool_id:
                 tool = candidate
                 break

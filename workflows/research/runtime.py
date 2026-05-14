@@ -70,6 +70,7 @@ def _preflight_context(
             run_id="research-ctx",
             scope="changed",
             write_mode="apply",
+            allow_dirty=True,
         )
 
     shards = _load_context_shards(repo_root)
@@ -79,19 +80,19 @@ def _preflight_context(
     return shards, warning
 
 
-def plan_task(topic: str, write_ledger: bool = False) -> tuple[str, Path | None]:
+def plan_task(topic: str, repo_path: str | Path = ".", write_ledger: bool = False) -> tuple[str, Path | None]:
     """Plan a research task. Returns the topic and optional ledger directory."""
     ledger_dir: Path | None = None
     if write_ledger:
-        ledger = RunLedger.create(Path(".").resolve(), "research_plan")
+        ledger = RunLedger.create(Path(repo_path).resolve(), "research_plan")
         ledger.write_json("run.json", {"action": "plan", "topic": topic})
         ledger_dir = ledger.run_dir
     return topic, ledger_dir
 
 
-def run_task(topic: str) -> tuple[ResearchReport, Path]:
+def run_task(topic: str, repo_path: str | Path = ".") -> tuple[ResearchReport, Path]:
     """Run the full research workflow and return the report and ledger path."""
-    repo_root = Path(".").resolve()
+    repo_root = Path(repo_path).resolve()
     ledger = RunLedger.create(repo_root, "research")
     ledger.write_json("run.json", {"action": "run", "topic": topic})
 
@@ -114,6 +115,15 @@ def run_task(topic: str) -> tuple[ResearchReport, Path]:
         raise ResearchPlanningError("Report generation failed with invalid output.")
 
     report = ResearchReport.model_validate(report_step.metadata["parsed"])
+    if report.topic != topic:
+        report = ResearchReport(
+            topic=topic,
+            executive_summary=report.executive_summary,
+            sections=report.sections,
+            sources=report.sources,
+            confidence=report.confidence,
+            recommendations=report.recommendations,
+        )
 
     if warning:
         warning_section = Section(heading="Context Warning", content=warning)

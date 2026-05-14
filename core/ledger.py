@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 import re
 import threading
+from _thread import LockType
 from typing import Any, Optional
 
 from core.events import Event, EventType
@@ -37,7 +38,7 @@ class RunLedger:
 
     # Internal mutable state (not part of the public dataclass interface)
     _sequence: int = field(default=0, repr=False)
-    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    _lock: LockType = field(default_factory=threading.Lock, repr=False)
     _index: dict[str, dict[str, list[int]]] = field(
         default_factory=lambda: {
             "event_type": {},

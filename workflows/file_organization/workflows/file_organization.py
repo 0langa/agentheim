@@ -28,10 +28,10 @@ class FileOrganizationWorkflow(Workflow):
     ) -> None:
         super().__init__(model_registry, tool_registry, policy_engine, ledger)
         self.dag = ExecutionDAG([
-            Step(id="analyze", agent="analyzer", type="analyze"),
-            Step(id="propose", agent="proposer", type="propose", depends_on=["analyze"]),
-            Step(id="preview", agent="proposer", type="preview", depends_on=["propose"]),
-            Step(id="apply", agent="applier", type="apply", depends_on=["preview"]),
+            Step(id="analyze", agent="analyzer", type="analyze", workspace_isolation=False),
+            Step(id="propose", agent="proposer", type="propose", depends_on=["analyze"], workspace_isolation=False),
+            Step(id="preview", agent="proposer", type="preview", depends_on=["propose"], workspace_isolation=False),
+            Step(id="apply", agent="applier", type="apply", depends_on=["preview"], workspace_isolation=False),
         ])
 
         prompt_dir = Path(__file__).resolve().parent.parent / "prompts"
@@ -121,7 +121,7 @@ class FileOrganizationWorkflow(Workflow):
             return StepResult(step_id="propose", success=False, output="No parsed analyze output")
 
         analysis = AnalyzerResult.model_validate(parsed)
-        prompt = self._proposer.build_propose_prompt(analysis)
+        prompt = self._proposer.build_propose_prompt(analysis, str(context.metadata.get("task", "")))
         result = self._proposer.run_structured(prompt, max_output_tokens=2000)
         return StepResult(
             step_id="propose",
@@ -140,7 +140,7 @@ class FileOrganizationWorkflow(Workflow):
             return StepResult(step_id="preview", success=False, output="No parsed propose output")
 
         proposal = ProposerResult.model_validate(parsed)
-        prompt = self._proposer.build_preview_prompt(proposal)
+        prompt = self._proposer.build_preview_prompt(proposal, str(context.metadata.get("task", "")))
         result = self._proposer.run_structured(prompt, max_output_tokens=2000)
         return StepResult(
             step_id="preview",
@@ -159,7 +159,7 @@ class FileOrganizationWorkflow(Workflow):
             return StepResult(step_id="apply", success=False, output="No parsed propose output")
 
         proposal = ProposerResult.model_validate(parsed_propose)
-        prompt = self._applier.build_apply_prompt(proposal, context.repo_root)
+        prompt = self._applier.build_apply_prompt(proposal, context.repo_root, str(context.metadata.get("task", "")))
         result = self._applier.run_structured(prompt, max_output_tokens=2000)
 
         moves_executed: list[dict[str, Any]] = []

@@ -61,6 +61,8 @@ class TestTools:
         tool_ids = {t["tool_id"] for t in data}
         assert "filesystem" in tool_ids
         assert "local_db" in tool_ids
+        assert "http.request" in tool_ids
+        assert "memory" in tool_ids
 
     def test_tool_schema_has_parameters(self, client: TestClient) -> None:
         response = client.get("/api/tools")

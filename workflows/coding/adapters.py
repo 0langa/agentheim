@@ -17,10 +17,10 @@ from core.public_api import (
     PolicyEngine,
     RunLedger,
     ToolContext,
-    ToolRegistry as CoreToolRegistry,
     ToolResult,
     classify_command,
 )
+from tools.registry import create_core_tool_registry
 
 
 def model_resolve(registry: ModelRegistry, role: str, required_capability: str) -> ModelDescriptor:
@@ -34,29 +34,20 @@ def ledger_append(ledger: RunLedger, name: str, payload: dict[str, Any]) -> None
 
 
 # Cache tool registries and policy engines per repo root
-_tool_registries: dict[Path, CoreToolRegistry] = {}
+_tool_registries: dict[Path, Any] = {}
 _policy_engines: dict[Path, PolicyEngine] = {}
 
 
-def _get_tool_registry(repo_root: Path) -> CoreToolRegistry:
+def _get_tool_registry(repo_root: Path):
     """Lazy-load a ToolRegistry with all standard tools."""
     repo_root = repo_root.resolve()
     if repo_root not in _tool_registries:
-        registry = CoreToolRegistry()
-
-        from tools.filesystem import FilesystemTool
-        from tools.git import GitTool
-        from tools.http import HttpTool
-        from tools.memory import MemoryTool
-        from tools.shell import ShellTool
-
-        registry.register(FilesystemTool(repo_root))
-        registry.register(ShellTool(repo_root))
-        registry.register(GitTool(repo_root))
-        registry.register(HttpTool())
-        registry.register(MemoryTool())
-
-        _tool_registries[repo_root] = registry
+        _tool_registries[repo_root] = create_core_tool_registry(
+            repo_root,
+            include_http=True,
+            include_memory=True,
+            include_mcp=False,
+        )
     return _tool_registries[repo_root]
 
 
@@ -108,8 +99,11 @@ def tool_invoke(
     if decision.decision == "deny":
         raise RuntimeError(f"Tool '{tool_name}' denied by policy: {decision.reason}")
     if decision.decision == "ask":
-        # In non-interactive mode, deny asks for HIGH/CRITICAL, allow MEDIUM
-        if decision.risk_level.value in {"high", "critical"}:
+        command = kwargs.get("command", [])
+        # Allow repo-local safe verification commands through the coding shim.
+        if tool_name == "shell.execute" and classify_command(command) == CommandPolicy.SAFE:
+            decision = decision
+        elif decision.risk_level.value in {"high", "critical"}:
             raise RuntimeError(f"Tool '{tool_name}' requires approval: {decision.reason}")
 
     result = tool.invoke(kwargs, context)

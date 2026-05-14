@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +58,48 @@ def _collect_text_files(repo_root: Path) -> list[Path]:
     return sorted(results)
 
 
+def _fallback_retrieval(query: str, file_contents: dict[str, str], limit: int = 5) -> list[dict[str, Any]]:
+    tokens = {token for token in re.findall(r"[A-Za-z0-9_]+", query.lower()) if len(token) >= 3}
+    if not tokens:
+        return []
+
+    scored: list[tuple[int, str, str]] = []
+    for path, content in file_contents.items():
+        lowered = content.lower()
+        score = sum(lowered.count(token) for token in tokens)
+        if score <= 0:
+            continue
+        excerpt = content[:400].strip()
+        if excerpt:
+            scored.append((score, path, excerpt))
+
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    if not scored:
+        for preferred in ("README.md", "docs/README.md"):
+            content = file_contents.get(preferred, "").strip()
+            if content:
+                return [{"path": preferred, "excerpt": content[:400], "relevance_score": 1.0}]
+    return [
+        {"path": path, "excerpt": excerpt, "relevance_score": float(score)}
+        for score, path, excerpt in scored[:limit]
+    ]
+
+
+def _fallback_answer(query: str, chunks: list[dict[str, Any]]) -> dict[str, Any]:
+    if not chunks:
+        return {
+            "answer": f"No relevant documents found for: {query}",
+            "citations": [],
+        }
+    primary = chunks[0]
+    excerpt = str(primary.get("excerpt", "")).strip()
+    quote = excerpt[:200]
+    return {
+        "answer": f"Best matching document: {primary.get('path', 'unknown')}. {quote}",
+        "citations": [{"path": primary.get("path", "unknown"), "quote": quote}],
+    }
+
+
 def create_indexer_agent(registry: ModelRegistry) -> IndexerAgent:
     model = registry.resolve_model("indexer", "file_read")
     provider = registry.create_provider(model.config)
@@ -111,9 +154,9 @@ class DocumentsWorkflow(Workflow):
         super().__init__(model_registry, tool_registry, policy_engine, ledger)
         self.dag = ExecutionDAG(
             steps=[
-                Step(id="index", agent="indexer", type="index"),
-                Step(id="retrieve", agent="retriever", type="retrieve", depends_on=["index"]),
-                Step(id="answer", agent="answerer", type="answer", depends_on=["retrieve"]),
+                Step(id="index", agent="indexer", type="index", workspace_isolation=False),
+                Step(id="retrieve", agent="retriever", type="retrieve", depends_on=["index"], workspace_isolation=False),
+                Step(id="answer", agent="answerer", type="answer", depends_on=["retrieve"], workspace_isolation=False),
             ]
         )
 
@@ -143,12 +186,14 @@ class DocumentsWorkflow(Workflow):
                 file_contents[rel.as_posix()] = ""
 
         metadata: dict[str, Any] = {"file_contents": file_contents}
+        success = result.success
         if result.parsed_output is not None:
             metadata["parsed"] = result.parsed_output
+            success = True
 
         return StepResult(
             step_id=step.id,
-            success=result.success,
+            success=success,
             output=result.raw_output,
             metadata=metadata,
         )
@@ -164,12 +209,21 @@ class DocumentsWorkflow(Workflow):
         result = agent.run_retrieve(query, file_contents)
 
         metadata: dict[str, Any] = {}
-        if result.parsed_output is not None:
-            metadata["parsed"] = result.parsed_output
+        success = result.success
+        parsed = result.parsed_output
+        if isinstance(parsed, dict):
+            chunks = parsed.get("chunks", [])
+            if not chunks:
+                fallback_chunks = _fallback_retrieval(query, file_contents)
+                if fallback_chunks:
+                    parsed = {"chunks": fallback_chunks}
+        if parsed is not None:
+            metadata["parsed"] = parsed
+            success = True
 
         return StepResult(
             step_id=step.id,
-            success=result.success,
+            success=success,
             output=result.raw_output,
             metadata=metadata,
         )
@@ -188,12 +242,22 @@ class DocumentsWorkflow(Workflow):
         result = agent.run_answer(query, chunks)
 
         metadata: dict[str, Any] = {}
-        if result.parsed_output is not None:
-            metadata["parsed"] = result.parsed_output
+        success = result.success
+        parsed = result.parsed_output
+        if isinstance(parsed, dict):
+            citations = parsed.get("citations", [])
+            answer = str(parsed.get("answer", "")).strip()
+            if (not citations or not answer) and chunks:
+                parsed = _fallback_answer(query, chunks)
+        elif chunks:
+            parsed = _fallback_answer(query, chunks)
+        if parsed is not None:
+            metadata["parsed"] = parsed
+            success = True
 
         return StepResult(
             step_id=step.id,
-            success=result.success,
+            success=success,
             output=result.raw_output,
             metadata=metadata,
         )

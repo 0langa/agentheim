@@ -20,6 +20,7 @@ from config.config import (
     load_profiles_document,
     make_secret_ref,
     provider_account_from_template,
+    resolve_profile_name,
     save_profiles_document,
     write_project_profile_pointer,
 )
@@ -217,12 +218,17 @@ def test_provider(
     role: ModelRole = typer.Option(ModelRole.PLANNER, "--role", help="Role binding to test."),
     profile: str = typer.Option("default", "--profile", help="Profile name."),
 ) -> None:
-    config = load_profiles_document().profiles[profile].to_team_config()
+    resolved_profile = resolve_profile_name(None if profile == "default" else profile)
+    document = load_profiles_document()
+    profile_obj = document.profiles.get(resolved_profile)
+    if profile_obj is None:
+        raise typer.BadParameter(f"Unknown profile: {resolved_profile}")
+    config = profile_obj.to_team_config()
     registry = build_model_registry(config)
     model_config = config.resolve_role(role)
     provider = registry.create_provider(model_config)
     response = provider.invoke(ModelRequest(role=role, system_prompt="Reply with exactly: pong", user_prompt="ping"))
-    console.print_json(json.dumps({"role": role.value, "provider": model_config.provider, "model": model_config.model, "ok": bool(response.content.strip())}))
+    console.print_json(json.dumps({"role": role.value, "profile": resolved_profile, "provider": model_config.provider, "model": model_config.model, "ok": bool(response.content.strip())}))
 
 
 @provider_app.command("import-env")

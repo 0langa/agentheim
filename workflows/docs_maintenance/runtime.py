@@ -33,6 +33,7 @@ def _build_context_pack(
             run_id="docs-ctx",
             scope="changed",
             write_mode="apply",
+            allow_dirty=True,
         )
 
     context_dir = repo_root / ops.config.project.context_dir

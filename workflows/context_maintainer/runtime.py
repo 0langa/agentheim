@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +35,14 @@ def run_context_maintainer(
 
     if ledger is not None:
         ledger.emit_event(
+            EventType.RUN_INITIATED,
+            payload={
+                "workflow_id": "context_maintainer",
+                "repo_root": str(repo_root),
+                "metadata": {"scope": scope, "write_mode": write_mode},
+            },
+        )
+        ledger.emit_event(
             EventType.CONTEXT_SCANNED,
             payload={"scope": scope, "repo_root": str(repo_root)},
         )
@@ -43,6 +52,7 @@ def run_context_maintainer(
         run_id=run_id,
         scope=scope,
         write_mode=write_mode,
+        allow_dirty=True,
     )
 
     if ledger is not None:
@@ -81,6 +91,10 @@ def run_context_maintainer(
             warning=getattr(entropy, "warning", None) if entropy is not None else None,
         ),
     )
+
+    if ledger is not None:
+        ledger.write_json("final_report.json", asdict(context_report))
+        ledger.write_text("final_report.md", render_context_run_report_md(context_report))
 
     if artifact_store is not None:
         report_path = artifact_store.run_dir / "context_run_report.md"
