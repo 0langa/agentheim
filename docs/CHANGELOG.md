@@ -2,6 +2,11 @@
 
 ## 2026-05-14
 
+### Phase 1 Slice 4 — State Machine Event Truth
+- `RuntimeStateMachine._record()` now emits `EventType.STATE_TRANSITION` via `ledger.emit_event()` instead of only writing legacy `state_transitions.jsonl` (`core/state_machine.py`).
+- Legacy `state_transitions.jsonl` mirror still written for backward compatibility.
+- Added tests verifying canonical ledger events and legacy JSONL are both produced (`tests/test_negative_paths.py`).
+
 ### Phase 1 Slice 3 — Core Side Dependencies Moved Outward
 - Removed `agents.self_improving` and `monitoring.metrics` lazy imports from `core/run_executor.py` — replaced with generic `RunHook` protocol and `add_hook()` registration.
 - Added `interfaces/run_hooks.py` with `_DefaultRunHook` adapter and `register_default_run_hooks()` to inject concrete hooks from outside `core/`.

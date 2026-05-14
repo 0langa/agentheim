@@ -24,6 +24,36 @@ class TestStateMachineNegative:
         assert RuntimeState.INIT in sm.history
         assert RuntimeState.LOAD_CONFIG in sm.history
 
+    def test_transition_emits_state_transition_event(self, tmp_path: Path) -> None:
+        from core.state_machine import RuntimeState, RuntimeStateMachine
+        from core.ledger import RunLedger
+        from core.events import EventType
+
+        ledger = RunLedger.create(tmp_path, "sm-test")
+        sm = RuntimeStateMachine(ledger=ledger)
+        sm.transition(RuntimeState.LOAD_CONFIG, {"reason": "test"})
+
+        events = ledger.read_ledger()
+        state_events = [e for e in events if e.event_type == EventType.STATE_TRANSITION]
+        assert len(state_events) == 2  # INIT + LOAD_CONFIG
+        assert state_events[1].payload["state"] == "LOAD_CONFIG"
+        assert state_events[1].payload["reason"] == "test"
+
+    def test_legacy_state_transitions_jsonl_still_written(self, tmp_path: Path) -> None:
+        from core.state_machine import RuntimeState, RuntimeStateMachine
+        from core.ledger import RunLedger
+
+        ledger = RunLedger.create(tmp_path, "sm-legacy-test")
+        sm = RuntimeStateMachine(ledger=ledger)
+        sm.transition(RuntimeState.LOAD_CONFIG)
+
+        legacy_path = ledger.run_dir / "state_transitions.jsonl"
+        assert legacy_path.exists()
+        lines = [line.strip() for line in legacy_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        assert len(lines) == 2
+        import json
+        assert json.loads(lines[1])["state"] == "LOAD_CONFIG"
+
 
 class TestCodingRuntimeNegative:
     def test_plan_task_raises_on_invalid_output(self, tmp_path: Path) -> None:

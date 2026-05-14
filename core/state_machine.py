@@ -4,6 +4,7 @@ from enum import StrEnum
 from typing import Any
 
 from core.errors import ExecutionError
+from core.events import EventType
 from core.ledger import RunLedger
 
 
@@ -66,4 +67,7 @@ class RuntimeStateMachine:
         payload: dict[str, Any] = {"state": state.value}
         if details:
             payload.update(details)
+        # Canonical event truth
+        self.ledger.emit_event(EventType.STATE_TRANSITION, payload=payload)
+        # Legacy mirror for compatibility
         self.ledger.append_jsonl("state_transitions.jsonl", payload)
