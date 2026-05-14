@@ -17,7 +17,7 @@ This matrix records what Agentheim currently promises. A surface is not stable u
 | --- | --- | --- | --- | --- | --- |
 | OpenAI-compatible, including Azure OpenAI/Foundry-compatible endpoints | Beta | Providers | CLI provider commands, API provider routes | Provider templates load; Azure `azure-real` historical live evidence; provider tests exist | Needs fresh OpenAI-compatible live lane gate before stable |
 | Google AI services: Gemini API and Vertex AI | Beta | Providers | CLI provider commands, API provider routes | Templates and adapters load; provider unit coverage exists | Needs fresh Gemini API and Vertex ADC live evidence |
-| Self-hosted OSS through OpenAI-compatible endpoints | Beta | Providers | CLI provider commands | Ollama, LM Studio, and generic compatible templates exist | Needs fresh local endpoint smoke and model-quality guidance validation |
+| Self-hosted OSS through OpenAI-compatible endpoints | Beta | Providers | CLI provider commands | Ollama, LM Studio, vLLM, TGI, llama.cpp server, and generic compatible templates exist | Needs fresh local endpoint smoke and model-quality guidance validation |
 | Other integrated providers | Experimental | Providers | CLI provider commands | Templates/adapters exist for current registry | Functional in theory; not polished/proven like top 3 lanes |
 
 ## Provider Adapters
@@ -29,7 +29,7 @@ This matrix records what Agentheim currently promises. A surface is not stable u
 | `azure_foundry` | Beta | Template, adapter, historical live evidence | Main dev lane; needs current baseline live rerun |
 | `gemini` | Beta | Template, adapter, provider tests | Needs current Gemini API live rerun |
 | `vertex_ai` | Beta | Template, adapter, provider tests | Needs ADC/project/location live rerun |
-| `ollama`, `lm_studio` | Beta | Templates via compatible path | Needs local live endpoint evidence |
+| `ollama`, `lm_studio`, `vllm`, `tgi`, `llama_cpp` | Beta | Templates via compatible path | Needs local live endpoint evidence |
 | `anthropic`, `aws_bedrock`, `oci_genai`, `cohere`, `perplexity`, `ollama_cloud` | Experimental | Templates/adapters/tests vary by provider | Keep available; do not present as first-run path |
 | `groq`, `openrouter`, `together`, `mistral`, `deepseek`, `kimi_moonshot`, `xai_grok` | Experimental | OpenAI-compatible templates | Advanced compatible endpoints until live scorecards exist |
 

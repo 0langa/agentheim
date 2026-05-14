@@ -11,7 +11,9 @@
   - `auth_mode="none"` correctly omits `api-key` header.
   - Inherits structured retry/error classification from `OpenAIV1Provider`.
 - Added provider unit tests for both adapters (`tests/test_providers_individual.py`).
-- All 41 provider tests pass; baseline gate passes.
+- Added local/self-hosted OpenAI-compatible provider templates: `vllm`, `tgi`, `llama_cpp` (`config/config.py`).
+- Updated `docs/SUPPORT_MATRIX.md` to include new self-hosted templates.
+- All 80 config+provider tests pass; baseline gate passes.
 
 ### Phase 1 Complete — Safety And Runtime Spine
 - Unified tool invocation path across API, Web UI, and CLI (`core/tool_invocation.py`, `interfaces/api_server/app.py`, `interfaces/web_ui/app.py`, `interfaces/cli/cli.py`).

@@ -312,6 +312,9 @@ PROVIDER_TEMPLATES: dict[str, ProviderTemplate] = {
     "ollama": ProviderTemplate(kind="ollama", display_name="Ollama Local", endpoint="http://localhost:11434/v1", auth_mode="none", provider_type="openai_compatible", capabilities=["text", "json", "vision"], docs_url="https://docs.ollama.com/api/authentication"),
     "ollama_cloud": ProviderTemplate(kind="ollama_cloud", display_name="Ollama Cloud", endpoint="https://ollama.com/api", auth_mode="bearer", provider_type="ollama_cloud", capabilities=["text", "json"], docs_url="https://docs.ollama.com/api/authentication"),
     "lm_studio": ProviderTemplate(kind="lm_studio", display_name="LM Studio", endpoint="http://localhost:1234/v1", auth_mode="none", provider_type="openai_compatible", capabilities=["text", "json", "vision"], docs_url="https://lmstudio.ai/docs/local-server"),
+    "vllm": ProviderTemplate(kind="vllm", display_name="vLLM", endpoint="http://localhost:8000/v1", auth_mode="none", provider_type="openai_compatible", capabilities=["text", "json", "vision"], docs_url="https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html"),
+    "tgi": ProviderTemplate(kind="tgi", display_name="HuggingFace TGI", endpoint="http://localhost:8080/v1", auth_mode="none", provider_type="openai_compatible", capabilities=["text", "json"], docs_url="https://huggingface.co/docs/text-generation-inference/basic_tutorials/consuming_tgi"),
+    "llama_cpp": ProviderTemplate(kind="llama_cpp", display_name="llama.cpp Server", endpoint="http://localhost:8080/v1", auth_mode="none", provider_type="openai_compatible", capabilities=["text", "json", "vision"], docs_url="https://github.com/ggerganov/llama.cpp/blob/master/examples/server/README.md"),
 }
 
 
