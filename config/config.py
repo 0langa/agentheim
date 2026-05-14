@@ -109,10 +109,12 @@ class TeamConfig(BaseModel):
         if provider is None:
             raise ConfigError(f"Model '{model.id}' references unknown provider '{model.provider}'.")
         api_key = os.getenv(provider.api_key_env, "").strip()
-        if not api_key:
+        if not api_key and provider.provider_type != "aws_bedrock":
             raise ConfigError(
                 f"Missing API key env var '{provider.api_key_env}' for provider '{provider.id}' (model '{model.id}')."
             )
+        if not api_key and provider.provider_type == "aws_bedrock":
+            api_key = "-"
         return AgentModelConfig(
             role=role,
             provider=provider.id,
@@ -164,8 +166,10 @@ def _load_provider(provider_id: str) -> ProviderConfig:
     timeout_value = os.getenv(f"{prefix}_TIMEOUT_SECONDS", "60").strip()
     headers_json = os.getenv(f"{prefix}_HEADERS_JSON", "{}").strip() or "{}"
 
-    if not endpoint:
+    if not endpoint and provider_type != "aws_bedrock":
         raise ConfigError(f"Missing required environment variable: {prefix}_ENDPOINT")
+    if provider_type == "aws_bedrock" and not endpoint:
+        endpoint = "-"
     try:
         timeout_seconds = int(timeout_value)
     except ValueError as exc:
@@ -177,6 +181,10 @@ def _load_provider(provider_id: str) -> ProviderConfig:
     if not isinstance(headers, dict):
         raise ConfigError(f"{prefix}_HEADERS_JSON must be a JSON object.")
     str_headers = {str(k): str(v) for k, v in headers.items()}
+    if provider_type == "aws_bedrock" and "aws-region" not in str_headers:
+        region = os.getenv("BEDROCK_REGION", os.getenv("AWS_DEFAULT_REGION", os.getenv("AWS_REGION", ""))).strip()
+        if region:
+            str_headers["aws-region"] = region
 
     return ProviderConfig(
         id=provider_id,
@@ -225,10 +233,14 @@ def _load_registry_config() -> TeamConfig:
             "retriever": ("retriever", "default", "replace-with-retriever-model", ["search", "summarize", "json"]),
             "answerer": ("answerer", "default", "replace-with-answerer-model", ["synthesize", "cite", "json"]),
         }
+        global_default_provider = os.getenv("AI_TEAM_MODEL_DEFAULT_PROVIDER", "").strip()
+        global_default_name = os.getenv("AI_TEAM_MODEL_DEFAULT_NAME", os.getenv("BEDROCK_MODEL_ID", "")).strip()
         for model_id, (role_value, provider_default, name_default, capabilities_default) in model_defaults.items():
             role = ModelRole(role_value)
-            provider = os.getenv(f"AI_TEAM_MODEL_{model_id.upper()}_PROVIDER", provider_default).strip() or provider_default
-            model_name = os.getenv(f"AI_TEAM_MODEL_{model_id.upper()}_NAME", name_default).strip() or name_default
+            effective_provider_default = global_default_provider or provider_default
+            effective_name_default = global_default_name or name_default
+            provider = os.getenv(f"AI_TEAM_MODEL_{model_id.upper()}_PROVIDER", effective_provider_default).strip() or effective_provider_default
+            model_name = os.getenv(f"AI_TEAM_MODEL_{model_id.upper()}_NAME", effective_name_default).strip() or effective_name_default
             cap_json = os.getenv(f"AI_TEAM_MODEL_{model_id.upper()}_CAPABILITIES_JSON", "")
             capabilities = capabilities_default
             if cap_json.strip():
@@ -300,7 +312,51 @@ def _load_legacy_grok_config() -> TeamConfig:
     return TeamConfig(providers=providers, models=models)
 
 
+def _load_bedrock_auto_config() -> TeamConfig | None:
+    """Auto-configure Bedrock provider if AWS credentials are present."""
+    if not os.getenv("AWS_ACCESS_KEY_ID"):
+        return None
+    region = os.getenv("BEDROCK_REGION", os.getenv("AWS_DEFAULT_REGION", os.getenv("AWS_REGION", "eu-central-1"))).strip() or "eu-central-1"
+    model = os.getenv("BEDROCK_MODEL_ID", "").strip()
+    if not model:
+        model = os.getenv("AI_TEAM_MODEL_DEFAULT_NAME", "").strip()
+    if not model:
+        return None
+    provider = ProviderConfig(
+        id="bedrock",
+        provider_type="aws_bedrock",
+        endpoint="-",
+        api_key_env="AWS_ACCESS_KEY_ID",
+        timeout_seconds=120,
+        headers={"aws-region": region},
+    )
+    model_defaults: dict[str, tuple[ModelRole, list[str]]] = {
+        "planner": (ModelRole.PLANNER, ["plan", "reasoning", "json"]),
+        "executor": (ModelRole.EXECUTOR, ["code_edit", "json"]),
+        "verifier": (ModelRole.VERIFIER, ["verify", "json"]),
+        "gatherer": (ModelRole.GATHERER, ["web_search", "fetch", "json"]),
+        "summarizer": (ModelRole.SUMMARIZER, ["summarize", "compare", "json"]),
+        "reporter": (ModelRole.REPORTER, ["report", "synthesize", "json"]),
+        "indexer": (ModelRole.INDEXER, ["file_read", "embedding_index", "json"]),
+        "retriever": (ModelRole.RETRIEVER, ["search", "summarize", "json"]),
+        "answerer": (ModelRole.ANSWERER, ["synthesize", "cite", "json"]),
+    }
+    models: dict[str, ModelConfig] = {}
+    for model_id, (role, capabilities) in model_defaults.items():
+        models[model_id] = ModelConfig(
+            id=model_id,
+            role=role,
+            provider="bedrock",
+            model_name=model,
+            capabilities=capabilities,
+        )
+    return TeamConfig(providers={"bedrock": provider}, models=models)
+
+
 def load_team_config() -> TeamConfig:
     if os.getenv("AI_TEAM_PROVIDER_IDS"):
         return _load_registry_config()
+    auto = _load_bedrock_auto_config()
+    if auto is not None:
+        return auto
     return _load_legacy_grok_config()

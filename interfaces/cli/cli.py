@@ -512,9 +512,9 @@ def doctor_cmd(
     checks.append(("Required packages", pkg_status, pkg_detail))
 
     # Provider env vars
-    provider_envs = ["AI_TEAM_PROVIDER_IDS"]
+    provider_envs = ["AI_TEAM_PROVIDER_IDS", "AWS_ACCESS_KEY_ID", "BEDROCK_MODEL_ID"]
     has_provider = any(os.getenv(ev) for ev in provider_envs)
-    checks.append(("Provider config", "PASS" if has_provider else "WARN", "AI_TEAM_PROVIDER_IDS set" if has_provider else "No provider env vars found"))
+    checks.append(("Provider config", "PASS" if has_provider else "WARN", "Provider configured" if has_provider else "No provider env vars found"))
 
     # Writable .ai-team/
     ai_team_path = Path(".ai-team")
