@@ -13,7 +13,13 @@
 - Added provider unit tests for both adapters (`tests/test_providers_individual.py`).
 - Added local/self-hosted OpenAI-compatible provider templates: `vllm`, `tgi`, `llama_cpp` (`config/config.py`).
 - Updated `docs/SUPPORT_MATRIX.md` to include new self-hosted templates.
-- All 80 config+provider tests pass; baseline gate passes.
+- `GeminiProvider` + `VertexAIProvider` hardened (`providers/gemini.py`):
+  - Extracted shared helpers `_build_parts`, `_build_payload`, `_parse_response`, `_is_non_retryable_http_error` to reduce duplication.
+  - JSON mode support: when `json` capability is present in config metadata, `responseMimeType` is set to `application/json`.
+  - Structured retry/error classification for both providers: HTTP 400/401/403/404/409/422 raise `ProviderError` immediately; HTTP 429/5xx, timeout, and connection errors follow 3-attempt backoff.
+  - `VertexAIProvider` now has retry parity with `GeminiProvider`.
+- Added tests for JSON mode, auth error immediate raise, and rate-limit retry exhaustion for both Google providers.
+- All 46 provider tests pass; baseline gate passes.
 
 ### Phase 1 Complete — Safety And Runtime Spine
 - Unified tool invocation path across API, Web UI, and CLI (`core/tool_invocation.py`, `interfaces/api_server/app.py`, `interfaces/web_ui/app.py`, `interfaces/cli/cli.py`).

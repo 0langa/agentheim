@@ -7,6 +7,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from config.config import AgentModelConfig, ModelRole
 from core.errors import ProviderError
@@ -356,6 +357,53 @@ class TestGeminiProvider:
         payload = mock_post.call_args[1]["json"]
         assert payload["generationConfig"]["maxOutputTokens"] == 100
 
+    def test_json_capability_sets_mime_type(self) -> None:
+        config = make_config(endpoint="https://generativelanguage.googleapis.com", metadata={"capabilities": ["json"]})
+        provider = GeminiProvider(config)
+        request = make_request(user_prompt="hi")
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {
+            "candidates": [{"content": {"parts": [{"text": "{}"}]}}]
+        }
+
+        with patch("providers.gemini.requests.post", return_value=mock_response) as mock_post:
+            provider.invoke(request)
+
+        payload = mock_post.call_args[1]["json"]
+        assert payload["generationConfig"]["responseMimeType"] == "application/json"
+
+    def test_auth_error_raises_immediately(self) -> None:
+        config = make_config(endpoint="https://generativelanguage.googleapis.com")
+        provider = GeminiProvider(config)
+        request = make_request(user_prompt="hi")
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("401", response=MagicMock(status_code=401))
+
+        with patch("providers.gemini.requests.post", return_value=mock_response):
+            with pytest.raises(ProviderError, match="Gemini request failed"):
+                provider.invoke(request)
+
+    def test_rate_limit_is_retried(self) -> None:
+        config = make_config(endpoint="https://generativelanguage.googleapis.com")
+        provider = GeminiProvider(config)
+        request = make_request(user_prompt="hi")
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("429", response=MagicMock(status_code=429))
+
+        with (
+            patch("providers.gemini.requests.post", return_value=mock_response) as mock_post,
+            patch("providers.gemini.time.sleep") as mock_sleep,
+        ):
+            with pytest.raises(ProviderError, match="failed after retries"):
+                provider.invoke(request)
+
+        assert mock_post.call_count == 3
+        assert mock_sleep.call_count == 2
+
 
 # ---------------------------------------------------------------------------
 # AzureFoundryProvider
@@ -633,3 +681,88 @@ class TestVertexAIProvider:
         payload = call_args[1]["json"]
         assert headers["Authorization"] == "Bearer gcp-token"
         assert payload["contents"][0]["parts"][0]["text"] == "hi"
+
+    def test_json_capability_sets_mime_type(self) -> None:
+        config = make_config(
+            endpoint="-",
+            metadata={"location": "us-central1", "project_id": "my-project", "capabilities": ["json"]},
+        )
+        provider = VertexAIProvider(config)
+        request = make_request(user_prompt="hi")
+
+        mock_credentials = MagicMock()
+        mock_credentials.token = "gcp-token"
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {
+            "candidates": [{"content": {"parts": [{"text": "{}"}]}}]
+        }
+
+        mock_google_auth = MagicMock()
+        mock_google_auth.default.return_value = (mock_credentials, "my-project")
+        mock_transport = MagicMock()
+        mock_request_cls = MagicMock()
+        mock_transport.requests.Request = mock_request_cls
+
+        mock_google = MagicMock()
+        mock_google.auth = mock_google_auth
+
+        with (
+            patch.dict(
+                "sys.modules",
+                {
+                    "google": mock_google,
+                    "google.auth": mock_google_auth,
+                    "google.auth.transport": mock_transport,
+                    "google.auth.transport.requests": mock_transport,
+                },
+            ),
+            patch("providers.gemini.requests.post", return_value=mock_response) as mock_post,
+        ):
+            provider.invoke(request)
+
+        payload = mock_post.call_args[1]["json"]
+        assert payload["generationConfig"]["responseMimeType"] == "application/json"
+
+    def test_rate_limit_is_retried(self) -> None:
+        config = make_config(
+            endpoint="-",
+            metadata={"location": "us-central1", "project_id": "my-project"},
+        )
+        provider = VertexAIProvider(config)
+        request = make_request(user_prompt="hi")
+
+        mock_credentials = MagicMock()
+        mock_credentials.token = "gcp-token"
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("429", response=MagicMock(status_code=429))
+
+        mock_google_auth = MagicMock()
+        mock_google_auth.default.return_value = (mock_credentials, "my-project")
+        mock_transport = MagicMock()
+        mock_request_cls = MagicMock()
+        mock_transport.requests.Request = mock_request_cls
+
+        mock_google = MagicMock()
+        mock_google.auth = mock_google_auth
+
+        with (
+            patch.dict(
+                "sys.modules",
+                {
+                    "google": mock_google,
+                    "google.auth": mock_google_auth,
+                    "google.auth.transport": mock_transport,
+                    "google.auth.transport.requests": mock_transport,
+                },
+            ),
+            patch("providers.gemini.requests.post", return_value=mock_response) as mock_post,
+            patch("providers.gemini.time.sleep") as mock_sleep,
+        ):
+            with pytest.raises(ProviderError, match="failed after retries"):
+                provider.invoke(request)
+
+        assert mock_post.call_count == 3
+        assert mock_sleep.call_count == 2
