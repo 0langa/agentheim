@@ -18,8 +18,9 @@
   - JSON mode support: when `json` capability is present in config metadata, `responseMimeType` is set to `application/json`.
   - Structured retry/error classification for both providers: HTTP 400/401/403/404/409/422 raise `ProviderError` immediately; HTTP 429/5xx, timeout, and connection errors follow 3-attempt backoff.
   - `VertexAIProvider` now has retry parity with `GeminiProvider`.
-- Added tests for JSON mode, auth error immediate raise, and rate-limit retry exhaustion for both Google providers.
-- All 46 provider tests pass; baseline gate passes.
+  - Vision input mapping fixed: data URLs (`data:image/jpeg;base64,...`) are parsed and sent as `inline_data`; GCS/file URIs continue using `file_data`.
+- Added tests for JSON mode, vision data URL/file URI, auth error immediate raise, and rate-limit retry exhaustion for both Google providers.
+- All 49 provider tests pass; baseline gate passes.
 
 ### Phase 1 Complete — Safety And Runtime Spine
 - Unified tool invocation path across API, Web UI, and CLI (`core/tool_invocation.py`, `interfaces/api_server/app.py`, `interfaces/web_ui/app.py`, `interfaces/cli/cli.py`).

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 
@@ -9,13 +10,25 @@ from core.errors import ProviderError
 from providers.base import ModelProvider, ModelRequest, ModelResponse
 
 
+_DATA_URL_RE = re.compile(r"^data:(?P<mime>[^;]+);base64,(?P<data>.+)$")
+
+
 def _build_parts(request: ModelRequest) -> list[dict[str, Any]]:
     parts: list[dict[str, Any]] = [{"text": request.user_prompt}]
     for part in request.content:
         if part.type == "text" and part.text:
             parts.append({"text": part.text})
         elif part.type == "image_url" and part.image_url:
-            parts.append({"file_data": {"file_uri": part.image_url}})
+            match = _DATA_URL_RE.match(part.image_url)
+            if match:
+                parts.append({
+                    "inline_data": {
+                        "mime_type": match.group("mime"),
+                        "data": match.group("data"),
+                    }
+                })
+            else:
+                parts.append({"file_data": {"file_uri": part.image_url}})
     return parts
 
 

@@ -374,6 +374,45 @@ class TestGeminiProvider:
         payload = mock_post.call_args[1]["json"]
         assert payload["generationConfig"]["responseMimeType"] == "application/json"
 
+    def test_vision_data_url_uses_inline_data(self) -> None:
+        config = make_config(endpoint="https://generativelanguage.googleapis.com", metadata={"capabilities": ["vision"]})
+        provider = GeminiProvider(config)
+        request = make_request(user_prompt="describe this", content=[ContentPart(type="image_url", image_url="data:image/jpeg;base64,/9j/4AAQ...")])
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {
+            "candidates": [{"content": {"parts": [{"text": "a cat"}]}}]
+        }
+
+        with patch("providers.gemini.requests.post", return_value=mock_response) as mock_post:
+            provider.invoke(request)
+
+        payload = mock_post.call_args[1]["json"]
+        image_part = payload["contents"][0]["parts"][1]
+        assert "inline_data" in image_part
+        assert image_part["inline_data"]["mime_type"] == "image/jpeg"
+        assert image_part["inline_data"]["data"] == "/9j/4AAQ..."
+
+    def test_vision_file_uri_uses_file_data(self) -> None:
+        config = make_config(endpoint="https://generativelanguage.googleapis.com", metadata={"capabilities": ["vision"]})
+        provider = GeminiProvider(config)
+        request = make_request(user_prompt="describe this", content=[ContentPart(type="image_url", image_url="gs://bucket/image.jpg")])
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {
+            "candidates": [{"content": {"parts": [{"text": "a cat"}]}}]
+        }
+
+        with patch("providers.gemini.requests.post", return_value=mock_response) as mock_post:
+            provider.invoke(request)
+
+        payload = mock_post.call_args[1]["json"]
+        image_part = payload["contents"][0]["parts"][1]
+        assert "file_data" in image_part
+        assert image_part["file_data"]["file_uri"] == "gs://bucket/image.jpg"
+
     def test_auth_error_raises_immediately(self) -> None:
         config = make_config(endpoint="https://generativelanguage.googleapis.com")
         provider = GeminiProvider(config)
@@ -724,6 +763,52 @@ class TestVertexAIProvider:
 
         payload = mock_post.call_args[1]["json"]
         assert payload["generationConfig"]["responseMimeType"] == "application/json"
+
+    def test_vision_data_url_uses_inline_data(self) -> None:
+        config = make_config(
+            endpoint="-",
+            metadata={"location": "us-central1", "project_id": "my-project", "capabilities": ["vision"]},
+        )
+        provider = VertexAIProvider(config)
+        request = make_request(user_prompt="describe this", content=[ContentPart(type="image_url", image_url="data:image/png;base64,iVBORw0...")])
+
+        mock_credentials = MagicMock()
+        mock_credentials.token = "gcp-token"
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {
+            "candidates": [{"content": {"parts": [{"text": "a cat"}]}}]
+        }
+
+        mock_google_auth = MagicMock()
+        mock_google_auth.default.return_value = (mock_credentials, "my-project")
+        mock_transport = MagicMock()
+        mock_request_cls = MagicMock()
+        mock_transport.requests.Request = mock_request_cls
+
+        mock_google = MagicMock()
+        mock_google.auth = mock_google_auth
+
+        with (
+            patch.dict(
+                "sys.modules",
+                {
+                    "google": mock_google,
+                    "google.auth": mock_google_auth,
+                    "google.auth.transport": mock_transport,
+                    "google.auth.transport.requests": mock_transport,
+                },
+            ),
+            patch("providers.gemini.requests.post", return_value=mock_response) as mock_post,
+        ):
+            provider.invoke(request)
+
+        payload = mock_post.call_args[1]["json"]
+        image_part = payload["contents"][0]["parts"][1]
+        assert "inline_data" in image_part
+        assert image_part["inline_data"]["mime_type"] == "image/png"
+        assert image_part["inline_data"]["data"] == "iVBORw0..."
 
     def test_rate_limit_is_retried(self) -> None:
         config = make_config(
