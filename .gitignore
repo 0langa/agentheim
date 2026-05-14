@@ -71,3 +71,6 @@ old-docs/
 # Local reference / legacy subtrees
 Agent-Team/
 .kimi/.ai-team/tokens.jsonl
+
+# Local-only provider mock server and generated test profiles
+.localtest/
