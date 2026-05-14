@@ -39,6 +39,7 @@ def create_generator_agent(registry: ModelRegistry) -> GeneratorAgent:
 
 class CommandAssistantWorkflow(Workflow):
     workflow_id = WORKFLOW_ID
+    support_state = "stable_candidate"
     required_agents = [
         AgentRole(id="parser", capabilities=["parse"]),
         AgentRole(id="generator", capabilities=["generate"]),

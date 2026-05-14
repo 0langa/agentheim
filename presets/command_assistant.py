@@ -17,6 +17,7 @@ class CommandAssistantPreset(Preset):
                 Question(key="explain_only", type="confirm", text="Show explanation only (do not run)?", default=False),
             ],
             default_config={},
+            support_state="stable_candidate",
             required_capabilities=["plan", "code_edit"],
         )
 

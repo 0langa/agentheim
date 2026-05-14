@@ -18,6 +18,7 @@ class ResearchReportPreset(Preset):
                 Question(key="repo", type="text", text="Target repository path?", default="."),
             ],
             default_config={},
+            support_state="beta",
             required_capabilities=["web_search", "fetch", "summarize", "report"],
         )
 

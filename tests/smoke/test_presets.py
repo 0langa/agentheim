@@ -17,6 +17,7 @@ class TestPresetRegistry:
             "docs-maintainer",
             "github-maintainer",
             "command-assistant",
+            "context-maintainer",
         }
         assert expected <= ids, f"Missing presets: {expected - ids}"
 
@@ -28,6 +29,21 @@ class TestPresetRegistry:
     def test_preset_has_workflow_id(self) -> None:
         for preset in PRESET_REGISTRY.list():
             assert preset.workflow_id, f"Preset {preset.preset_id} missing workflow_id"
+
+    def test_preset_has_support_state(self) -> None:
+        for preset in PRESET_REGISTRY.list():
+            assert preset.support_state, f"Preset {preset.preset_id} missing support_state"
+            assert preset.support_state in {"stable_candidate", "beta", "experimental", "internal"}
+
+    def test_stable_candidates(self) -> None:
+        for preset_id in ("command-assistant", "local-document-chat", "codebase-assistant", "context-maintainer"):
+            preset = PRESET_REGISTRY.get(preset_id)
+            assert preset.support_state == "stable_candidate", f"Expected {preset_id} to be stable_candidate"
+
+    def test_beta_presets(self) -> None:
+        for preset_id in ("file-organizer", "docs-maintainer", "research-report", "github-maintainer"):
+            preset = PRESET_REGISTRY.get(preset_id)
+            assert preset.support_state == "beta", f"Expected {preset_id} to be beta"
 
     def test_codebase_assistant_preset(self) -> None:
         preset = PRESET_REGISTRY.get("codebase-assistant")
@@ -53,6 +69,10 @@ class TestPresetRegistry:
     def test_github_maintainer_preset(self) -> None:
         preset = PRESET_REGISTRY.get("github-maintainer")
         assert preset.workflow_id == "github_maintenance"
+
+    def test_context_maintainer_preset(self) -> None:
+        preset = PRESET_REGISTRY.get("context-maintainer")
+        assert preset.workflow_id == "context_maintainer"
 
     def test_command_assistant_preset(self) -> None:
         preset = PRESET_REGISTRY.get("command-assistant")

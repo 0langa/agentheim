@@ -23,6 +23,7 @@ class Preset:
     description: str
     guided_questions: list[Question] = field(default_factory=list)
     default_config: dict[str, Any] = field(default_factory=dict)
+    support_state: str = "experimental"
     required_capabilities: list[str] = field(default_factory=list)
 
     def run(self, inputs: dict[str, Any]) -> Any:
@@ -44,6 +45,7 @@ class PresetRegistry:
                 "workflow_id": preset.workflow_id,
                 "name": preset.name,
                 "description": preset.description,
+                "support_state": preset.support_state,
                 "required_capabilities": preset.required_capabilities,
             },
         )

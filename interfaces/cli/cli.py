@@ -54,8 +54,8 @@ from interfaces.cli.ctx_commands import ctx_app
 from interfaces.cli.provider_commands import provider_app
 
 app = typer.Typer(help="Local-first three-agent runtime.")
-app.add_typer(ctx_app, name="ctx")
-app.add_typer(provider_app, name="provider")
+app.add_typer(ctx_app, name="ctx", rich_help_panel="Context")
+app.add_typer(provider_app, name="provider", rich_help_panel="Getting Started")
 console = Console()
 
 _DOCTOR_REQUIRED_ROLES = (ModelRole.PLANNER, ModelRole.EXECUTOR, ModelRole.VERIFIER)
@@ -176,14 +176,14 @@ def _doctor_context_ops() -> tuple[str, str]:
     return "PASS", "AICtx-backed ContextOps import and initialization ok"
 
 
-@app.command("config-dump")
+@app.command("config-dump", rich_help_panel="Advanced")
 def config_dump(redacted: bool = typer.Option(True, "--redacted/--raw", help="Redact secrets in output.")) -> None:
     """Print loaded config."""
     config = load_team_config()
     console.print_json(json.dumps(config.dump(redacted=redacted)))
 
 
-@app.command("ping-models")
+@app.command("ping-models", rich_help_panel="Getting Started")
 def ping_models() -> None:
     """Ping configured models with tiny deterministic request."""
     config = load_team_config()
@@ -229,7 +229,7 @@ def ping_models() -> None:
         raise typer.Exit(code=1)
 
 
-@app.command("inspect")
+@app.command("inspect", rich_help_panel="Repository Work")
 def inspect(
     repo: str = typer.Option(..., "--repo", help="Target repository path."),
     as_json: bool = typer.Option(False, "--json", help="Emit JSON output."),
@@ -329,7 +329,7 @@ def inspect(
         console.print(f"[bold]Context pack:[/bold] .ai-team/runs/{ledger_path.parent.name}/{ledger_path.name}")
 
 
-@app.command("plan")
+@app.command("plan", rich_help_panel="Repository Work")
 def plan(
     task_text: str,
     repo: str = typer.Option(..., "--repo", help="Target repository path."),
@@ -366,7 +366,7 @@ def plan(
         console.print(f"[bold]Plan JSON:[/bold] {out_path}")
 
 
-@app.command("run")
+@app.command("run", rich_help_panel="Repository Work")
 def run(
     task_text: str,
     repo: str = typer.Option(..., "--repo", help="Target repository path."),
@@ -405,10 +405,11 @@ def run(
             console.print(f"- {item.name}: {item.status}")
 
 
-@app.command("list-runs")
+@app.command("list-runs", rich_help_panel="Repository Work")
 def list_runs_cmd(
     repo: str = typer.Option(..., "--repo", help="Target repository path."),
 ) -> None:
+    """List persisted runs under the repository."""
     runs = list_runs(repo)
     if not runs:
         console.print("No runs found.")
@@ -417,11 +418,12 @@ def list_runs_cmd(
         console.print(f"- {item}")
 
 
-@app.command("report")
+@app.command("report", rich_help_panel="Repository Work")
 def report(
     repo: str = typer.Option(..., "--repo", help="Target repository path."),
     run_id: str = typer.Option(..., "--run-id", help="Run id under .ai-team/runs."),
 ) -> None:
+    """Emit canonical run summary JSON for a run."""
     try:
         summary = build_run_summary(repo, run_id)
     except FileNotFoundError as exc:
@@ -429,11 +431,12 @@ def report(
     console.print_json(json.dumps(summary.model_dump(mode="json")))
 
 
-@app.command("resume")
+@app.command("resume", rich_help_panel="Repository Work")
 def resume(
     repo: str = typer.Option(..., "--repo", help="Target repository path."),
     run_id: str = typer.Option(..., "--run-id", help="Run id under .ai-team/runs."),
 ) -> None:
+    """Resume a run from its ledger."""
     repo_root = Path(repo).resolve()
     run_dir = repo_root / ".ai-team" / "runs" / run_id
     if not run_dir.exists():
@@ -503,7 +506,7 @@ def resume(
     console.print_json(json.dumps(summary))
 
 
-@app.command("presets")
+@app.command("presets", rich_help_panel="Presets")
 def list_presets_cmd() -> None:
     """List all available presets."""
     presets = PRESET_REGISTRY.list()
@@ -520,7 +523,7 @@ def list_presets_cmd() -> None:
     console.print(table)
 
 
-@app.command("start")
+@app.command("start", rich_help_panel="Presets")
 def start_preset(
     preset_id: str = typer.Argument(..., help="Preset ID to run."),
     input_args: list[str] = typer.Option([], "--input", help="Key=value input pairs."),
@@ -555,7 +558,7 @@ def start_preset(
     console.print(result)
 
 
-@app.command("guided")
+@app.command("guided", rich_help_panel="Presets")
 def guided() -> None:
     """Launch the guided TUI preset picker."""
     from interfaces.guided_tui.app import run_guided_tui
@@ -563,7 +566,7 @@ def guided() -> None:
     run_guided_tui()
 
 
-@app.command("memory")
+@app.command("memory", rich_help_panel="Advanced")
 def memory_cmd(
     action: str = typer.Argument(..., help="get|set|history|profile"),
     key: str = typer.Option(None, "--key", help="Preference key for get/set."),
@@ -607,7 +610,7 @@ def memory_cmd(
         raise typer.BadParameter(f"Unknown action: {action}")
 
 
-@app.command("doctor")
+@app.command("doctor", rich_help_panel="Getting Started")
 def doctor_cmd(
     skip_connectivity: bool = typer.Option(False, "--skip-connectivity", help="Skip live model connectivity check."),
     oci: bool = typer.Option(False, "--oci", help="Include OCI readiness check."),
@@ -747,7 +750,7 @@ def doctor_cmd(
     console.print("[green]All checks passed.[/green]")
 
 
-@app.command("mcp-list")
+@app.command("mcp-list", rich_help_panel="Advanced")
 def mcp_list_cmd(
     config: str = typer.Option(".ai-team/mcp.json", "--config", help="Path to MCP config file."),
 ) -> None:
@@ -784,7 +787,7 @@ def mcp_list_cmd(
     console.print(table)
 
 
-@app.command("mcp-call")
+@app.command("mcp-call", rich_help_panel="Advanced")
 def mcp_call_cmd(
     tool_name: str = typer.Argument(..., help="MCP tool name (format: server.tool or just tool)."),
     args: list[str] = typer.Option([], "--arg", help="Key=value arguments."),
@@ -832,7 +835,7 @@ def mcp_call_cmd(
     raise typer.Exit(code=1)
 
 
-@app.command("desktop")
+@app.command("desktop", rich_help_panel="Advanced")
 def desktop_cmd(
     port: int = typer.Option(8765, "--port", help="Port for the web server."),
     no_tray: bool = typer.Option(False, "--no-tray", help="Disable system tray icon."),
@@ -843,7 +846,7 @@ def desktop_cmd(
     run_desktop_app(port=port, use_tray=not no_tray)
 
 
-@app.command("copy")
+@app.command("copy", rich_help_panel="Advanced")
 def copy_cmd(
     source: str = typer.Argument(..., help="Source path within workspace."),
     destination: str = typer.Argument(..., help="Destination path within workspace."),

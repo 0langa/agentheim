@@ -109,6 +109,37 @@ class TestBuiltinWorkflowRegistry:
         from workflows.context_maintainer import ContextMaintainerWorkflow
         assert ContextMaintainerWorkflow.workflow_id == "context_maintainer"
 
+    def test_workflow_support_state_in_registry(self) -> None:
+        from workflows.registry import register_builtin_workflows
+        from core.capability_registry import get_registry, list_workflows
+        reg = get_registry()
+        for entry in list_workflows():
+            reg._entries.pop(f"workflow:{entry.id}", None)
+        register_builtin_workflows()
+        for wf in list_workflows():
+            assert "support_state" in wf.metadata, f"Workflow {wf.id} missing support_state metadata"
+            assert wf.metadata["support_state"] in {"stable_candidate", "beta", "experimental", "internal"}
+
+    def test_stable_candidate_workflows(self) -> None:
+        from workflows.coding.workflows.coding import CodingWorkflow
+        from workflows.documents.workflows.documents import DocumentsWorkflow
+        from workflows.command_assistant.workflows.command_assistant import CommandAssistantWorkflow
+        from workflows.context_maintainer.workflow import ContextMaintainerWorkflow
+        assert CodingWorkflow.support_state == "stable_candidate"
+        assert DocumentsWorkflow.support_state == "stable_candidate"
+        assert CommandAssistantWorkflow.support_state == "stable_candidate"
+        assert ContextMaintainerWorkflow.support_state == "stable_candidate"
+
+    def test_beta_workflows(self) -> None:
+        from workflows.file_organization.workflows.file_organization import FileOrganizationWorkflow
+        from workflows.docs_maintenance.workflows.docs_maintenance import DocsMaintenanceWorkflow
+        from workflows.github_maintenance.workflows.github_maintenance import GitHubMaintenanceWorkflow
+        from workflows.research.workflows.research import ResearchWorkflow
+        assert FileOrganizationWorkflow.support_state == "beta"
+        assert DocsMaintenanceWorkflow.support_state == "beta"
+        assert GitHubMaintenanceWorkflow.support_state == "beta"
+        assert ResearchWorkflow.support_state == "beta"
+
 
 class TestWorkflowRuntimeImports:
     def test_coding_runtime_imports(self) -> None:

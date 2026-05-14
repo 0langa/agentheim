@@ -13,6 +13,7 @@ from workflows.file_organization.agents.proposer import ProposerAgent, ProposerR
 
 class FileOrganizationWorkflow(Workflow):
     workflow_id = "file_organization"
+    support_state = "beta"
     required_agents = [
         AgentRole(id="analyzer", capabilities=["scan", "classify"]),
         AgentRole(id="proposer", capabilities=["plan", "structure"]),

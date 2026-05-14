@@ -8,6 +8,7 @@ from workflows.base import ExecutionDAG, Step, StepContext, StepResult, Workflow
 
 class ContextMaintainerWorkflow(Workflow):
     workflow_id = "context_maintainer"
+    support_state = "stable_candidate"
     required_agents = []
     required_tools: list[str] = []
 

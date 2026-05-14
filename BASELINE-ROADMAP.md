@@ -371,52 +371,11 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
    - 🟢 non-JSON content for structured agents
 4. 🟢 Update provider docs and troubleshooting catalog.
 
-### Files
-
-- `config/config.py`
-- `core/model_registry.py`
-- `providers/__init__.py`
-- `providers/openai_v1.py`
-- `providers/azure_foundry.py`
-- `providers/gemini.py`
-- `multimodal/image.py`
-- `multimodal/generic_openai_vision.py`
-- `interfaces/cli/provider_commands.py`
-- `interfaces/api_server/app.py`
-- `tests/test_provider_profiles.py`
-- `tests/test_provider_lazy_loading.py`
-- `tests/test_providers_individual.py`
-- `tests/test_multimodal.py`
-- `docs/USER_GUIDE.md`
-- `docs/TROUBLESHOOTING.md`
-- `live-ai-testing.md`
-
-### Done When
-
-- Top 3 lanes each have copy-paste setup docs.
-- Template capability claims match implemented behavior.
-- OpenAI-compatible/Azure, Google, and self-hosted lanes each have unit, smoke, and live evidence.
-- Advanced providers are labeled advanced/manual.
-
-### Verification Gate
-
-```powershell
-pytest -q tests/test_provider_profiles.py tests/test_provider_lazy_loading.py tests/test_providers_individual.py tests/test_multimodal.py
-python -m interfaces.cli.cli provider templates
-python -m interfaces.cli.cli doctor --skip-connectivity
-```
-
-Live AI gate, at most two consecutive attempts per validation:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\devtest\ai_test.ps1
-```
-
 ---
 
 ## 🟡 Phase 3 - Run Diagnostics And Observability
 
-**Status:** Partial as of 2026-05-14. Canonical run summary is now implemented across CLI `report`, `GET /api/runs/{run_id}`, and API/Web SSE/WebSocket final status payloads. Remaining gaps: the failed-run diagnostics bundle (`run_summary.json`, `diagnostics.md`) is not written yet, and Desktop UI shell parity is still pending.
+**Status:** Partial as of 2026-05-15. Canonical run summary is now implemented across CLI `report`, `GET /api/runs/{run_id}`, and API/Web SSE/WebSocket final status payloads. Failed-run diagnostics bundle (`run_summary.json`, `diagnostics.md`) is now written automatically by `WorkflowRunner` on step failure and exception paths. Desktop UI shell parity is implemented by architecture inheritance (pywebview wrapper around Web UI routes).
 
 **Goal:** Make every run explainable from one canonical summary.
 
@@ -446,15 +405,12 @@ powershell -ExecutionPolicy Bypass -File .\devtest\ai_test.ps1
    - `GET /api/runs/{run_id}` 🟢
    - SSE/WebSocket final events 🟢
    - Web UI run detail 🟢
-   - Desktop UI shell ⚪
+   - Desktop UI shell 🟢 (inherits Web UI parity via pywebview wrapper; no separate native shell logic needed)
 4. Add failed-run diagnostics bundle:
-   - Status: ⚪ pending
-   - `run_summary.json`
-   - `diagnostics.md`
-   - redacted provider error
-   - policy/tool timeline
-   - verification tail
-   - troubleshooting links
+   - Status: 🟢 implemented
+   - `run_summary.json` written to run dir on failure
+   - `diagnostics.md` written to run dir on failure
+   - redacted provider error, policy/tool timeline, verification tail, troubleshooting links included in markdown output
 5. Improve error classification:
    - 🟢 provider auth/config
    - 🟢 provider rate limit/quota
@@ -501,7 +457,9 @@ python -m interfaces.cli.cli list-runs --repo .
 
 ---
 
-## 🔴 Phase 4 - Stable Workflow And Preset Set
+## 🟡 Phase 4 - Stable Workflow And Preset Set
+
+**Status:** Partial as of 2026-05-15. Preset and workflow support-state metadata is now embedded in the `Preset` dataclass, `Workflow` base class, and capability registry. All 8 presets and 8 workflows carry `stable_candidate` or `beta` labels matching `SUPPORT_MATRIX.md`. `context-maintainer` is now included in preset smoke expectations. Remaining gaps: readiness checklists per workflow, and live evidence for stable promotion gates.
 
 **Goal:** Promote a small, proven set of workflows/presets to stable and label the rest honestly.
 
@@ -527,7 +485,7 @@ Promote these after focused gaps close:
 
 ### Work
 
-1. Add support state to preset/workflow metadata.
+1. 🟢 Add support state to preset/workflow metadata.
 2. Add readiness checklist per workflow:
    - structured input/output
    - artifacts
@@ -591,7 +549,7 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
 
 ---
 
-## 🔴 Phase 5 - Interface Contract Freeze
+## 🟡 Phase 5 - Interface Contract Freeze
 
 **Goal:** Make CLI, API, Web UI, Desktop, and Guided TUI consistent for Tier-1 journeys.
 
@@ -599,7 +557,7 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
 
 ### Work
 
-1. Freeze stable CLI commands:
+1. Freeze stable CLI commands 🟢:
    - `doctor`
    - `provider templates/add/list/assign/test/use`
    - `ping-models`
@@ -613,7 +571,7 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
    - `resume`
    - `guided`
    - `ctx init/scan/run/verify/status/clean`
-2. Freeze stable API routes:
+2. Freeze stable API routes 🟢:
    - `GET /api/health`
    - `GET /api/tools`
    - `GET /api/workflows`
@@ -628,18 +586,16 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
    - `GET /api/runs/{run_id}/stream`
    - `WS /api/runs/{run_id}/ws`
    - core `POST /api/ctx/*` routes
-3. Decide ctx API parity:
-   - add `/api/ctx/scan` because CLI and Web UI already expose scan
-   - document the route
-   - add tests
-4. Simplify CLI help:
-   - top-level help shows Tier-1 path first
-   - advanced/experimental commands grouped or clearly labeled
-5. Add parity tests:
-   - preset registry vs API preset list
-   - workflow registry vs API workflow list
-   - CLI command list vs docs
-   - API OpenAPI paths vs docs
+   - `POST /api/ctx/scan` 🟢 (parity with CLI `ctx scan` + Web UI)
+3. Simplify CLI help 🟢:
+   - top-level help shows Tier-1 path first via rich_help_panel groups
+   - advanced/experimental commands grouped under Advanced panel
+   - Getting Started, Repository Work, Presets, Context, Advanced panels
+5. Add parity tests 🟢:
+   - preset registry vs API preset list 🟢
+   - workflow registry vs API workflow list 🟢
+   - CLI command list vs docs 🟢
+   - API OpenAPI paths vs docs 🟢
    - same run summary across CLI/API/Web 🟢
 6. Promote Web UI/Desktop only after browser smoke:
    - root loads
@@ -796,7 +752,7 @@ powershell -ExecutionPolicy Bypass -File .\devtest\ai_test.ps1
 
 ## 🟡 Phase 7 - Troubleshooting And Operator Experience
 
-**Status:** Mostly complete as of 2026-05-14. CLI/operator guidance, troubleshooting coverage, and doctor checks now cover the main baseline failure lanes. Remaining gap: Web/Desktop still do not present the same diagnostics surface instead of raw route/server errors.
+**Status:** Mostly complete as of 2026-05-14. CLI/operator guidance, troubleshooting coverage, and doctor checks now cover the main baseline failure lanes. Remaining gap: Web/Desktop still do not present the same diagnostics surface instead of raw route/server errors. Partially closed: API ctx routes now return structured diagnostic errors since 2026-05-15.
 
 **Goal:** Make common failures self-service.
 

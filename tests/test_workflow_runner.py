@@ -222,6 +222,33 @@ class TestWorkflowRunnerBasic:
 
         assert (ledger.run_dir / "working_memory.json").exists()
 
+    def test_diagnostics_bundle_on_step_failure(self, tmp_path: Path) -> None:
+        ledger = RunLedger.create(tmp_path, "diag-step")
+        steps = [
+            Step(id="s1", agent="a1", type="t1"),
+            Step(id="s2", agent="a2", type="t2"),
+        ]
+        wf = FakeWorkflow(ledger, steps, behavior={"s2": StepResult(step_id="s2", success=False)})
+        runner = WorkflowRunner()
+        runner.run(wf, tmp_path)
+
+        assert (ledger.run_dir / "run_summary.json").exists()
+        assert (ledger.run_dir / "diagnostics.md").exists()
+        text = (ledger.run_dir / "diagnostics.md").read_text(encoding="utf-8")
+        assert "Run Diagnostics" in text
+        assert "failed" in text.lower() or "error" in text.lower()
+
+    def test_diagnostics_bundle_on_exception(self, tmp_path: Path) -> None:
+        ledger = RunLedger.create(tmp_path, "diag-exc")
+        steps = [Step(id="s1", agent="a1", type="t1")]
+        wf = FakeWorkflow(ledger, steps, behavior={"s1": RuntimeError("boom")})
+        runner = WorkflowRunner()
+        with pytest.raises(RuntimeError, match="boom"):
+            runner.run(wf, tmp_path)
+
+        assert (ledger.run_dir / "run_summary.json").exists()
+        assert (ledger.run_dir / "diagnostics.md").exists()
+
 
 class TestWorkflowRunnerBudget:
     def test_budget_enforced(self, tmp_path: Path) -> None:

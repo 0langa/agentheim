@@ -135,6 +135,36 @@ class TestCommandAssistantWorkflowExecution:
         assert len(results) == 2
         assert results[-1].success
 
+    def test_command_assistant_run_task_unsafe_command(self, tmp_path: Path) -> None:
+        from workflows.command_assistant.runtime import run_task
+        from workflows.command_assistant.agents.parser import ParserAgent
+        from workflows.command_assistant.agents.generator import GeneratorAgent
+
+        unsafe_generate = {"command": ["rm", "-rf", "/"], "explanation": "dangerous", "safe": False}
+        with (
+            patch.object(ParserAgent, "run_parse", return_value=MagicMock(success=True, parsed_output={"action": "run"})),
+            patch.object(GeneratorAgent, "run_generate", return_value=MagicMock(success=True, parsed_output=unsafe_generate, raw_output=json.dumps(unsafe_generate))),
+            patch("workflows.command_assistant.runtime.RunLedger.create", return_value=MagicMock(run_dir=tmp_path, write_json=MagicMock(), write_text=MagicMock(), emit_event=MagicMock())),
+        ):
+            report, _ = run_task("delete everything", write_ledger=True)
+
+        assert len(report.commands) == 1
+        assert report.commands[0].safe is False
+        assert report.status == "done"
+
+    def test_command_assistant_run_task_parse_failure(self, tmp_path: Path) -> None:
+        from workflows.command_assistant.runtime import run_task
+        from workflows.command_assistant.agents.parser import ParserAgent
+
+        with (
+            patch.object(ParserAgent, "run_parse", return_value=MagicMock(success=False, parsed_output=None, error="parse error")),
+            patch("workflows.command_assistant.runtime.RunLedger.create", return_value=MagicMock(run_dir=tmp_path, write_json=MagicMock(), write_text=MagicMock(), emit_event=MagicMock())),
+        ):
+            report, _ = run_task("bad input", write_ledger=True)
+
+        assert report.status == "failed"
+        assert report.commands == []
+
 
 class TestFileOrganizationWorkflowExecution:
     def test_file_organization_runs_end_to_end(self, mock_deps, tmp_path: Path) -> None:

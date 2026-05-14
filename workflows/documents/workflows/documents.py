@@ -138,6 +138,7 @@ def create_answerer_agent(registry: ModelRegistry) -> AnswerAgent:
 
 class DocumentsWorkflow(Workflow):
     workflow_id = WORKFLOW_ID
+    support_state = "stable_candidate"
     required_agents = [
         AgentRole(id="indexer", capabilities=["file_read", "embedding_index"]),
         AgentRole(id="retriever", capabilities=["search", "summarize"]),

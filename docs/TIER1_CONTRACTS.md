@@ -11,7 +11,7 @@ Tier-1 journeys are the baseline user promises. Each row maps the user action to
 | Run stable candidate presets | `start command-assistant`, `start local-document-chat`, `start codebase-assistant`, `start context-maintainer` | `POST /api/presets/{preset_id}/run` | Web route exists; Desktop experimental | `run_id`, canonical run summary when persisted artifacts exist | `USER_GUIDE.md`, `API_REFERENCE.md`, `SUPPORT_MATRIX.md` | Historical live evidence; needs current top-3 provider lane rerun |
 | Report run | `report --repo <path> --run-id <id>` | `GET /api/runs/{run_id}` | Web status route | Canonical run summary: status, summary, artifacts, verification, approvals, error guidance | `USER_GUIDE.md`, `API_REFERENCE.md`, `TROUBLESHOOTING.md` | Unit coverage; compatibility caveats for old ledgers |
 | Resume run | `resume --repo <path> --run-id <id>` | Not frozen as API contract | Not stable | Resume result or explicit unsupported reason | `USER_GUIDE.md`, `TROUBLESHOOTING.md` | Unit coverage and fresh-ledger historical fixes |
-| Inspect artifacts | `.ai-team/runs/<run-id>/` and `list-runs` | `GET /api/runs/{run_id}` | Web status route | Artifact filenames plus canonical run status/summary | `USER_GUIDE.md`, `API_REFERENCE.md`, `ARCHITECTURE.md` | Unit/API tests; failed-run diagnostics bundle still pending |
+| Inspect artifacts | `.ai-team/runs/<run-id>/` and `list-runs` | `GET /api/runs/{run_id}` | Web status route | Artifact filenames plus canonical run status/summary | `USER_GUIDE.md`, `API_REFERENCE.md`, `ARCHITECTURE.md` | Unit/API tests; failed-run diagnostics bundle (`run_summary.json`, `diagnostics.md`) auto-written on failure since 2026-05-15 |
 | Invoke tools through interfaces | `copy <source> <destination>` for filesystem copy; workflow tools internal | `POST /api/tools/{tool_id}/invoke` | `POST /api/tools/invoke` | Tool result, policy metadata, approval-required response for medium operations | `API_REFERENCE.md`, `SAFETY.md`, `SUPPORT_MATRIX.md` | Phase 1 slice adds centralized policy path for API/Web |
 
 ## Run State Contract
@@ -38,4 +38,9 @@ Stable preset runs should produce or clearly explain absence of:
 - `final_report.md` or `final_report.json`
 - relevant workflow artifacts such as plan, patch, context, or citations
 
-Missing artifacts must be treated as a support-state limit until the remaining Phase 3 diagnostics bundle work is complete.
+Failed runs should additionally produce:
+
+- `run_summary.json`
+- `diagnostics.md`
+
+Missing artifacts must be treated as a support-state limit.

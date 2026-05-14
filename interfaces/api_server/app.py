@@ -197,6 +197,19 @@ class CtxInitRequest(BaseModel):
     project: str = "."
 
 
+class CtxScanRequest(BaseModel):
+    project: str = "."
+
+
+class CtxScanResponse(BaseModel):
+    repo_root: str
+    head_commit: str
+    branch: str
+    dirty_state: bool
+    file_count: int
+    manifest_count: int
+
+
 class CtxRunRequest(BaseModel):
     project: str = "."
     scope: str = "full"
@@ -416,11 +429,14 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
         return AictxContextOps(cfg)
 
     def _ctx_exc(exc: Exception) -> None:
+        from core.error_classification import error_summary
+
+        summary = error_summary(exc)
         if isinstance(exc, ValueError):
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            raise HTTPException(status_code=400, detail=summary) from exc
         if isinstance(exc, SafetyError):
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+            raise HTTPException(status_code=409, detail=summary) from exc
+        raise HTTPException(status_code=500, detail=summary) from exc
 
     # ------------------------------------------------------------------
     # Routes
@@ -829,6 +845,25 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
         except Exception as exc:
             _ctx_exc(exc)
         return {"status": "ok"}
+
+    @app.post("/api/ctx/scan", response_model=CtxScanResponse, tags=["ctx"])
+    def ctx_scan(request: CtxScanRequest):
+        ops = _get_ops()
+        try:
+            inventory = ops.scan(Path(request.project).resolve())
+        except Exception as exc:
+            _ctx_exc(exc)
+        raw = inventory.raw
+        file_count = len(raw.files) if raw and hasattr(raw, "files") else 0
+        manifest_count = len(raw.manifests) if raw and hasattr(raw, "manifests") else 0
+        return CtxScanResponse(
+            repo_root=inventory.repo_root,
+            head_commit=inventory.head_commit,
+            branch=getattr(raw, "branch", "") if raw else "",
+            dirty_state=getattr(raw, "dirty_state", False) if raw else False,
+            file_count=file_count,
+            manifest_count=manifest_count,
+        )
 
     @app.post("/api/ctx/run", response_model=CtxRunResponse, tags=["ctx"])
     def ctx_run(request: CtxRunRequest):

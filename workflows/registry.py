@@ -27,6 +27,12 @@ BUILTIN_WORKFLOWS = (
 def register_builtin_workflows() -> None:
     for workflow_cls in BUILTIN_WORKFLOWS:
         try:
-            register_workflow(workflow_cls)
+            register_workflow(
+                workflow_cls,
+                metadata={
+                    "workflow_id": workflow_cls.workflow_id,
+                    "support_state": workflow_cls.support_state,
+                },
+            )
         except ValueError:
             continue

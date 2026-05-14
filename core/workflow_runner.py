@@ -16,6 +16,7 @@ from core.events import EventType
 from core.ledger import RunLedger
 from core.replay_engine import ReplayEngine
 from core.retry_engine import RetryEngine, RetryExhaustedError
+from core.run_summary import write_diagnostics_bundle
 from core.step_budget import BudgetLimits, BudgetExceededError, StepBudgetEnforcer
 from memory.tiers.working import WorkingMemory
 from workflows.base import ExecutionDAG, Step, StepContext, StepResult, Workflow
@@ -209,6 +210,10 @@ class WorkflowRunner:
                                 "reason": first_fail.metadata.get("error", "step failed"),
                             },
                         )
+                        try:
+                            write_diagnostics_bundle(ledger.run_dir, run_id)
+                        except Exception:
+                            pass
                     workflow.on_run_complete(results)
                     return results
 
@@ -233,6 +238,10 @@ class WorkflowRunner:
                         "error_type": type(exc).__name__,
                     },
                 )
+                try:
+                    write_diagnostics_bundle(ledger.run_dir, run_id)
+                except Exception:
+                    pass
             workflow.on_run_complete(results)
             raise
         finally:

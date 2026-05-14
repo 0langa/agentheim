@@ -17,6 +17,7 @@ class LocalDocumentChatPreset(Preset):
                 Question(key="repo", type="text", text="Repository path containing documents?", default="."),
             ],
             default_config={},
+            support_state="stable_candidate",
             required_capabilities=["file_read", "search", "synthesize", "cite"],
         )
 

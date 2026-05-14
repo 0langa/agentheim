@@ -51,6 +51,7 @@ def create_aligner_agent(registry: ModelRegistry) -> AlignerAgent:
 
 class DocsMaintenanceWorkflow(Workflow):
     workflow_id = WORKFLOW_ID
+    support_state = "beta"
     required_agents = [
         AgentRole(id="detector", capabilities=["detect"]),
         AgentRole(id="updater", capabilities=["update"]),

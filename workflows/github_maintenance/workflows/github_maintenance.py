@@ -39,6 +39,7 @@ def create_drafter_agent(registry: ModelRegistry) -> DrafterAgent:
 
 class GitHubMaintenanceWorkflow(Workflow):
     workflow_id = WORKFLOW_ID
+    support_state = "beta"
     required_agents = [
         AgentRole(id="summarizer", capabilities=["summarize"]),
         AgentRole(id="drafter", capabilities=["draft"]),

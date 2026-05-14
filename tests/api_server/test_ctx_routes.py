@@ -15,6 +15,16 @@ from interfaces.api_server.app import create_api_app
 def client(tmp_path: Path) -> TestClient:
     mock_ops = MagicMock()
     mock_ops.init.return_value = None
+    mock_inventory = MagicMock()
+    mock_inventory.repo_root = str(tmp_path)
+    mock_inventory.head_commit = "abc123"
+    raw = MagicMock()
+    raw.files = ["a.py", "b.py"]
+    raw.manifests = ["manifest.json"]
+    raw.branch = "main"
+    raw.dirty_state = False
+    mock_inventory.raw = raw
+    mock_ops.scan.return_value = mock_inventory
     mock_ops.run_pipeline.return_value = MagicMock(
         generated_files=[],
         patch_text="",
@@ -54,6 +64,17 @@ class TestCtxRoutes:
         response = client.post("/api/ctx/init", json={"project": str(tmp_path)})
         assert response.status_code == 200
         assert response.json()["status"] == "ok"
+
+    def test_ctx_scan_route(self, client: TestClient, tmp_path: Path) -> None:
+        response = client.post("/api/ctx/scan", json={"project": str(tmp_path)})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["repo_root"] == str(tmp_path)
+        assert data["head_commit"] == "abc123"
+        assert data["branch"] == "main"
+        assert data["dirty_state"] is False
+        assert data["file_count"] == 2
+        assert data["manifest_count"] == 1
 
     def test_ctx_run_route(self, client: TestClient, tmp_path: Path) -> None:
         response = client.post("/api/ctx/run", json={"project": str(tmp_path)})
@@ -102,3 +123,24 @@ class TestCtxRoutes:
         assert response.status_code == 200
         data = response.json()
         assert "patch_path" in data
+
+    def test_ctx_scan_structured_error(self, client: TestClient, tmp_path: Path) -> None:
+        with patch.object(client.app, "state", create=True):
+            # Re-patch the mock ops to raise ValueError
+            from unittest.mock import patch as _patch
+            with _patch("interfaces.api_server.app.AictxContextOps") as MockClass:
+                mock_ops = MagicMock()
+                mock_ops.scan.side_effect = ValueError("simulated scan failure")
+                MockClass.return_value = mock_ops
+                # Need to create a fresh client with the patched class
+                from interfaces.api_server.app import create_api_app
+                fresh_client = TestClient(create_api_app(repo_root=tmp_path))
+                response = fresh_client.post("/api/ctx/scan", json={"project": str(tmp_path)})
+        assert response.status_code == 400
+        data = response.json()
+        # FastAPI wraps dict detail under 'detail' key
+        detail = data.get("detail", data)
+        assert "type" in detail
+        assert "category" in detail
+        assert "retryable" in detail
+        assert "next_action" in detail

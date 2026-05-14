@@ -137,6 +137,7 @@ class ExecutionDAG:
 
 class Workflow(ABC):
     workflow_id: str = ""
+    support_state: str = "experimental"
     required_agents: list[AgentRole] = []
     required_tools: list[str] = []
     dag: ExecutionDAG | None = None

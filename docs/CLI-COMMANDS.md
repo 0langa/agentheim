@@ -27,6 +27,8 @@ The Agentheim CLI is built with [Typer](https://typer.tiangolo.com/). All comman
 | `doctor` | Diagnose common configuration and environment issues. | `--skip-connectivity`, `--oci` |
 | `mcp-list` | List MCP tools from configured servers. | `--config` (default: `.ai-team/mcp.json`) |
 | `mcp-call` | Invoke an MCP tool directly. | `TOOL_NAME`, `--arg key=value` *(repeatable)*, `--config` |
+| `copy` | Copy a file or directory within the workspace. | `SOURCE`, `DESTINATION` |
+| `desktop` | Launch the Agentheim desktop UI. | — |
 
 ---
 

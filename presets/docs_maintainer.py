@@ -17,6 +17,7 @@ class DocsMaintainerPreset(Preset):
                 Question(key="apply", type="confirm", text="Apply documentation changes?", default=True),
             ],
             default_config={"mode": "apply"},
+            support_state="beta",
             required_capabilities=["file_read", "plan", "code_edit"],
         )
 

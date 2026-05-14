@@ -19,6 +19,7 @@ class CodebaseAssistantPreset(Preset):
                 Question(key="allow_dirty", type="confirm", text="Allow running on a dirty repository?", default=False),
             ],
             default_config={"mode": "apply", "allow_dirty": False},
+            support_state="stable_candidate",
             required_capabilities=["plan", "code_edit", "verify"],
         )
 

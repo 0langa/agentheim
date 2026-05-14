@@ -14,6 +14,7 @@ from workflows.research.reports.final_report import ResearchReport
 
 class ResearchWorkflow(Workflow):
     workflow_id = "research"
+    support_state = "beta"
     required_agents = [
         AgentRole(id="gatherer", capabilities=["web_search", "fetch"]),
         AgentRole(id="summarizer", capabilities=["summarize", "compare"]),

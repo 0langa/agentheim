@@ -269,6 +269,15 @@ POST /api/ctx/init
 
 Body: `{"project": "."}` — initializes the target repository for context processing.
 
+#### Scan Repository
+```
+POST /api/ctx/scan
+```
+
+Body: `{"project": "."}` — scans the repository and returns an inventory summary.
+
+Returns: `repo_root`, `head_commit`, `branch`, `dirty_state`, `file_count`, `manifest_count`.
+
 #### Run Context Pipeline
 ```
 POST /api/ctx/run

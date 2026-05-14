@@ -35,6 +35,7 @@ class ContextMaintainerPreset(Preset):
                 ),
             ],
             default_config={"scope": "full", "write_mode": "patch", "project_path": "."},
+            support_state="stable_candidate",
             required_capabilities=[],
         )
 

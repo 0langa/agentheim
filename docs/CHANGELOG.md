@@ -1,5 +1,75 @@
 # Changelog
 
+## 2026-05-15
+
+### Phase 3 Slice — Desktop UI Shell Parity Acknowledgment
+- Confirmed Desktop UI (`interfaces/desktop_ui/app.py`) is a pywebview wrapper around Web UI; canonical run summary parity is inherited from Web UI `/api/runs/{run_id}` route.
+- Updated `BASELINE-ROADMAP.md` Phase 3 to mark Desktop UI shell as implemented by architecture inheritance.
+- No code change required; existing `tests/test_desktop_ui.py` import and launch coverage is sufficient.
+
+### Phase 4 Slice — Command Assistant Readiness Negative Tests
+- Added `test_command_assistant_run_task_unsafe_command` proving unsafe commands (`safe=false`) propagate through `run_task` into `FinalReport`.
+- Added `test_command_assistant_run_task_parse_failure` proving parse failures produce `status="failed"` with empty commands list.
+- Validation: `tests/smoke/test_workflow_execution.py` 5 passed.
+
+### Phase 7 Slice — Structured API Error Responses for Ctx Routes
+- Updated `_ctx_exc()` in `interfaces/api_server/app.py` to use `core.error_classification.error_summary()` for structured error responses.
+- API ctx route errors now include `type`, `message`, `category`, `retryable`, `halt`, `next_action`, `troubleshooting_doc`, `troubleshooting_section`.
+- Added `tests/api_server/test_ctx_routes.py::test_ctx_scan_structured_error` verifying 400 response with structured detail.
+- Validation: `tests/api_server/test_ctx_routes.py` 9 passed, `tests/test_api_server.py` 34 passed, baseline gate passes.
+
+### Phase 5 Slice — Interface Parity Tests
+- Added `tests/smoke/test_parity.py` with 4 parity tests:
+  1. `test_preset_registry_matches_api_preset_list` — compares `PresetRegistry` with `GET /api/presets`
+  2. `test_workflow_registry_matches_api_workflow_list` — compares `WorkflowRegistry` with `GET /api/workflows`
+  3. `test_cli_commands_match_docs_reference` — introspects Typer app and compares against `docs/CLI-COMMANDS.md`
+  4. `test_api_openapi_paths_match_docs_reference` — compares OpenAPI schema paths against `docs/API_REFERENCE.md`
+- Added missing `copy` and `desktop` rows to `docs/CLI-COMMANDS.md` root commands table.
+- Validation: `tests/smoke/test_parity.py` 4 passed, full smoke suite 65 passed.
+
+### Phase 5 Slice — CLI Help Grouping
+- Grouped CLI commands into `rich_help_panel` panels: `Getting Started`, `Repository Work`, `Presets`, `Context`, `Advanced`.
+- Added missing docstrings to `list-runs`, `report`, `resume` commands so help table shows descriptions.
+- Updated `docs/SUPPORT_MATRIX.md` CLI known limits to reflect grouped help.
+- Validation: `tests/smoke/test_cli.py` 14 passed, baseline gate passed.
+
+### Phase 5 Slice — API `/api/ctx/scan` Route Parity
+- Added `POST /api/ctx/scan` to the API server (`interfaces/api_server/app.py`) for parity with CLI `ctx scan` and Web UI `/api/ctx/scan`.
+- Response includes `repo_root`, `head_commit`, `branch`, `dirty_state`, `file_count`, `manifest_count`.
+- Added `CtxScanRequest`/`CtxScanResponse` Pydantic models.
+- Added `tests/api_server/test_ctx_routes.py::test_ctx_scan_route` — passes.
+- Updated `docs/API_REFERENCE.md` with scan route documentation.
+
+### Phase 4 Slice — Preset + Workflow Support-State Metadata
+- Added `support_state` field to `Preset` dataclass in `presets/base.py` with default `"experimental"`.
+- Updated `PresetRegistry.register()` to emit `support_state` into capability registry metadata.
+- Set support states on all 8 presets to match `docs/SUPPORT_MATRIX.md`:
+  - `stable_candidate`: command-assistant, local-document-chat, codebase-assistant, context-maintainer
+  - `beta`: file-organizer, docs-maintainer, research-report, github-maintainer
+- Added `support_state` class attribute to `Workflow` base in `workflows/base.py` with default `"experimental"`.
+- Set support states on all 8 workflow classes matching their preset tiers:
+  - `stable_candidate`: coding, documents, command_assistant, context_maintainer
+  - `beta`: file_organization, docs_maintenance, github_maintenance, research
+- Updated `workflows/registry.py` to pass `support_state` in workflow registration metadata.
+- Added `context-maintainer` to preset smoke test expectations (was missing).
+- Added `tests/smoke/test_presets.py` coverage for preset `support_state` presence, valid values, stable-candidate grouping, and beta grouping.
+- Added `tests/smoke/test_workflows.py` coverage for workflow `support_state` in registry, stable-candidate workflows, and beta workflows.
+- Validation: `tests/smoke/test_presets.py` 14 passed, `tests/smoke/test_workflows.py` 30 passed, baseline gate passed.
+
+### Phase 3 Slice — Failed-Run Diagnostics Bundle
+- Added `write_diagnostics_bundle()` to `core/run_summary.py` that writes `run_summary.json` and `diagnostics.md` into the run artifact directory.
+- Markdown output includes error category, retryable/halt flags, next action, troubleshooting links, state transitions, tool counts, policy decisions, approvals, verification checks, and artifact list.
+- Wired into `core/workflow_runner.py` failure paths: step failure halt and exception catch both call `write_diagnostics_bundle()` after emitting `RUN_FAILED`.
+- Added tests in `tests/test_workflow_runner.py` proving bundle creation on both step failure and exception paths.
+- Updated `BASELINE-ROADMAP.md` Phase 3 diagnostics bundle status to implemented.
+- Updated `docs/TIER1_CONTRACTS.md` stable artifact minimum to include `run_summary.json` and `diagnostics.md` for failed runs.
+- Validation: `tests/test_workflow_runner.py` 17 passed, baseline gate passed.
+
+### Docs Janitor — SUPPORT_MATRIX Drift Fix
+- Fixed stale `docs/SUPPORT_MATRIX.md` interface rows that claimed API server had "no approval continuation yet" and omitted approval continuation from Web UI description.
+- Both API server and Web UI now correctly documented as having explicit `/api/tools/approvals/{request_id}/grant` and `/deny` continuation routes with TestClient coverage.
+- Validation: `check-agent-instructions.py` passed, directive devtest passed, baseline devtest passed.
+
 ## 2026-05-14
 
 ### Phase 3 Slice — Canonical Run Summary Across CLI/API/Web

@@ -18,6 +18,7 @@ class GitHubMaintainerPreset(Preset):
                 Question(key="summary_only", type="confirm", text="Summary only (no drafting)?", default=False),
             ],
             default_config={},
+            support_state="beta",
             required_capabilities=["summarize", "report"],
         )
 

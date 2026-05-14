@@ -55,6 +55,7 @@ def create_verifier_agent(registry: ModelRegistry) -> VerifierAgent:
 
 class CodingWorkflow(Workflow):
     workflow_id = WORKFLOW_ID
+    support_state = "stable_candidate"
     required_agents = [
         AgentRole(id="orchestrator", capabilities=["plan", "reasoning", "json"]),
         AgentRole(id="coder", capabilities=["code_edit", "json"]),

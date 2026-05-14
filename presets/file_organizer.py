@@ -18,6 +18,7 @@ class FileOrganizerPreset(Preset):
                 Question(key="dry_run", type="confirm", text="Run in dry-run mode?", default=True),
             ],
             default_config={"dry_run": True},
+            support_state="beta",
             required_capabilities=["file_read", "plan"],
         )
 
