@@ -18,13 +18,17 @@ import typer
 from config.config import load_team_config
 from core.public_api import (
     AIteamError,
+    ApprovalRequest,
+    ApprovalWorkflow,
     ConfigError,
     EventType,
     ProviderError,
     PolicyEngine,
     ResumeError,
     RunLedger,
+    ToolInvoker,
     build_model_registry,
+    interface_policy_config,
     ResumeOrchestrator,
     ToolRegistry,
     WorkflowRunner,
@@ -749,15 +753,32 @@ def copy_cmd(
     destination: str = typer.Argument(..., help="Destination path within workspace."),
 ) -> None:
     """Copy a file or directory within the workspace."""
-    from tools.filesystem import FilesystemTool
     from core.public_api import ToolContext
+    from tools.registry import create_core_tool_registry
 
-    tool = FilesystemTool()
+    registry = create_core_tool_registry(".")
+    invoker = ToolInvoker(registry=registry, policy_config=interface_policy_config())
     ctx = ToolContext()
-    result = tool.invoke(
-        {"operation": "copy", "path": source, "destination": destination},
-        ctx,
-    )
+    params = {"operation": "copy", "path": source, "destination": destination}
+    result = invoker.invoke("filesystem", params, ctx)
+
+    if result.requires_approval:
+        workflow = ApprovalWorkflow()
+        req = workflow.request(result.policy, "filesystem", params)
+        console.print(
+            f"[yellow]Approval required[/yellow]: {req.action} {req.target}\n"
+            f"  Risk: {req.risk_level.value}\n"
+            f"  Reason: {req.justification}"
+        )
+        answer = typer.prompt("Grant approval? [y/N]", default="n", show_default=False)
+        if answer.lower() in ("y", "yes"):
+            workflow.grant(req.request_id)
+            result = invoker.invoke("filesystem", params, ctx, granted_request=req)
+        else:
+            workflow.deny(req.request_id)
+            console.print("[red]Denied[/red]")
+            raise typer.Exit(code=1)
+
     if result.success:
         console.print(f"[green]Copied[/green] {source} -> {result.data}")
     else:

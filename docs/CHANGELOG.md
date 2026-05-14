@@ -2,6 +2,14 @@
 
 ## 2026-05-14
 
+### Phase 1 Slice 2 — CLI Tool Invocation Unified
+- Routed CLI `copy` command through `ToolInvoker` with `interface_policy_config()` instead of direct `FilesystemTool.invoke()` (`interfaces/cli/cli.py`).
+- Added interactive approval prompt to CLI `copy`: medium-risk operations display 6-field disclosure and prompt `[y/N]`; granted requests re-invoke via `granted_request` bypass (`interfaces/cli/cli.py`).
+- Added `granted_request: ApprovalRequest | None = None` to `ToolInvoker.invoke()` so approved requests skip policy evaluation and execute directly (`core/tool_invocation.py`).
+- Expanded `tests/test_filesystem_tool.py` with actual CLI copy execution test and approval-deny/grant prompt tests.
+- Added `test_granted_request_bypasses_policy_and_executes` in `tests/test_tool_invocation.py`.
+- Updated `core/public_api.py` exports to include `ApprovalRequest`, `ApprovalWorkflow`, `ToolInvoker`, `interface_policy_config`.
+
 ### Agent Roadmap Governance
 - Added binding roadmap execution instructions covering `BASELINE-ROADMAP.md`, provider hardening priority, support-state evidence requirements, and baseline success gates.
 - Updated agent operations, autonomous engineer instructions, boundary/docs/devtest skills, and instruction drift checks so future agents use the baseline roadmap contracts before implementing roadmap batches.

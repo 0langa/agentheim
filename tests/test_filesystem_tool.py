@@ -69,7 +69,7 @@ class TestCopy:
         assert result.success is False
         assert "escapes" in result.error.lower()
 
-    def test_copy_cli_command(self) -> None:
+    def test_copy_cli_command(self, tmp_path: Path, monkeypatch) -> None:
         from typer.testing import CliRunner
         from interfaces.cli.cli import app
 
@@ -78,3 +78,29 @@ class TestCopy:
         assert result.exit_code == 0
         assert "source" in result.output.lower()
         assert "destination" in result.output.lower()
+
+        # Actual execution through ToolInvoker requires approval for medium-risk copy
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "src.txt").write_text("hello", encoding="utf-8")
+        result = runner.invoke(app, ["copy", "src.txt", "dst.txt"], input="y\n")
+        assert result.exit_code == 0
+        assert (tmp_path / "dst.txt").read_text(encoding="utf-8") == "hello"
+
+    def test_copy_cli_approval_prompt(self, tmp_path: Path, monkeypatch) -> None:
+        from typer.testing import CliRunner
+        from interfaces.cli.cli import app
+
+        runner = CliRunner()
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "src.txt").write_text("hello", encoding="utf-8")
+
+        # User denies approval
+        result = runner.invoke(app, ["copy", "src.txt", "dst-denied.txt"], input="n\n")
+        assert result.exit_code == 1
+        assert "Denied" in result.output or "approval required" in result.output.lower()
+        assert not (tmp_path / "dst-denied.txt").exists()
+
+        # User grants approval
+        result = runner.invoke(app, ["copy", "src.txt", "dst-granted.txt"], input="y\n")
+        assert result.exit_code == 0
+        assert (tmp_path / "dst-granted.txt").read_text(encoding="utf-8") == "hello"

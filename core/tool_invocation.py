@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from core.approval_workflow import ApprovalRequest
 from core.events import EventType
 from core.ledger import RunLedger
 from core.policy_engine import PolicyConfig, PolicyDecision, PolicyEngine
@@ -61,38 +62,51 @@ class ToolInvoker:
         ledger: RunLedger | None = None,
         step_id: str | None = None,
         agent_id: str | None = None,
+        granted_request: ApprovalRequest | None = None,
     ) -> ToolInvocationResult:
         tool = self.registry.get(tool_id)
         if isinstance(tool, AsyncBaseTool):
             return ToolInvocationResult(success=False, error=f"Tool '{tool_id}' requires async invocation")
 
         risk_level = resolve_operation_risk(tool.tool_id, params, tool.risk_level)
-        policy_params = _policy_params(params, context)
-        decision = self.policy_engine.evaluate(
-            tool.tool_id,
-            policy_params,
-            context,
-            risk_level,
-            ledger=ledger,
-            step_id=step_id,
-            agent_id=agent_id,
-        )
-        if decision.decision == "ask":
-            return ToolInvocationResult(
-                success=False,
-                error="approval_required",
-                metadata={"suggested_approval": decision.suggested_approval},
-                requires_approval=True,
-                policy=decision,
+        decision: PolicyDecision | None = None
+
+        if granted_request is not None:
+            decision = PolicyDecision(
+                decision="allow",
+                reason=f"Granted by approval request {granted_request.request_id}",
+                policy_id="approval_override",
+                risk_level=granted_request.risk_level,
+                suggested_approval=None,
+                override_possible=False,
             )
-        if decision.decision == "deny":
-            return ToolInvocationResult(
-                success=False,
-                error=decision.reason,
-                metadata={},
-                requires_approval=False,
-                policy=decision,
+        else:
+            policy_params = _policy_params(params, context)
+            decision = self.policy_engine.evaluate(
+                tool.tool_id,
+                policy_params,
+                context,
+                risk_level,
+                ledger=ledger,
+                step_id=step_id,
+                agent_id=agent_id,
             )
+            if decision.decision == "ask":
+                return ToolInvocationResult(
+                    success=False,
+                    error="approval_required",
+                    metadata={"suggested_approval": decision.suggested_approval},
+                    requires_approval=True,
+                    policy=decision,
+                )
+            if decision.decision == "deny":
+                return ToolInvocationResult(
+                    success=False,
+                    error=decision.reason,
+                    metadata={},
+                    requires_approval=False,
+                    policy=decision,
+                )
 
         _emit_tool_called(ledger, tool.tool_id, params, step_id, agent_id, risk_level)
         result = tool.invoke(params, context)
