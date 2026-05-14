@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -119,6 +120,33 @@ class TestMCPClient:
     def test_disconnect_without_connect_is_noop(self) -> None:
         client = MCPClient(["echo", "hi"])
         client.disconnect()  # should not raise
+
+    def test_kill_proc_tree_ignores_dead_process(self) -> None:
+        client = MCPClient(["echo", "hi"])
+        # PID 99999 is extremely unlikely to exist
+        client._kill_proc_tree(99999)  # should not raise
+
+    def test_disconnect_closes_pipes_and_kills_tree(self) -> None:
+        client = MCPClient(["echo", "hi"])
+        mock_proc = MagicMock()
+        mock_proc.pid = 1234
+        mock_proc.stdin = MagicMock()
+        mock_proc.stdout = MagicMock()
+        mock_proc.stderr = MagicMock()
+        mock_proc.terminate = MagicMock()
+        mock_proc.wait = MagicMock(side_effect=subprocess.TimeoutExpired("cmd", 3))
+        client._proc = mock_proc
+
+        with patch.object(client, "_kill_proc_tree") as mock_kill_tree:
+            client.disconnect()
+
+        mock_proc.stdin.close.assert_called_once()
+        mock_proc.stdout.close.assert_called_once()
+        mock_proc.stderr.close.assert_called_once()
+        mock_proc.terminate.assert_called_once()
+        mock_proc.wait.assert_called_once_with(timeout=3.0)
+        mock_kill_tree.assert_called_once_with(1234)
+        assert client._proc is None
 
     def test_list_tools_and_call_tool_mocked(self) -> None:
         client = MCPClient(["dummy"])

@@ -137,6 +137,6 @@ class TestArtifactStoreList:
         assert artifacts["final_report.md"] is False
 
     def test_run_artifacts_count(self) -> None:
-        assert len(RUN_ARTIFACTS) == 15
+        assert len(RUN_ARTIFACTS) == 17
         required = [a for a in RUN_ARTIFACTS if a.required]
         assert len(required) == 8  # run.json, config.redacted.json, context_bundle.md, context_manifest.json, ledger.jsonl, ledger.index, ledger.hash, checkpoints

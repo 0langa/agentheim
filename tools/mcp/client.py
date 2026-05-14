@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import platform
 import subprocess
 import threading
 import time
@@ -80,20 +81,69 @@ class MCPClient:
             "method": "notifications/initialized",
         })
 
-    def disconnect(self) -> None:
-        """Terminate the MCP server process."""
-        if self._proc is None:
-            return
+    def _kill_proc_tree(self, pid: int) -> None:
+        """Kill process *pid* and all descendants. Windows-safe."""
         try:
-            self._proc.terminate()
-            self._proc.wait(timeout=5.0)
+            import psutil
+
+            parent = psutil.Process(pid)
+            for child in parent.children(recursive=True):
+                try:
+                    child.kill()
+                    child.wait(timeout=2)
+                except psutil.NoSuchProcess:
+                    pass
+            parent.kill()
+            parent.wait(timeout=2)
+        except ImportError:
+            # Fallback without psutil
+            if platform.system() == "Windows":
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(pid)],
+                    capture_output=True,
+                )
+            else:
+                import os
+                import signal
+
+                try:
+                    os.killpg(os.getpgid(pid), signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+        except psutil.NoSuchProcess:
+            pass
+
+    def disconnect(self) -> None:
+        """Terminate the MCP server process and its children."""
+        proc = self._proc
+        if proc is None:
+            return
+        self._proc = None
+
+        # Close pipes first to avoid the child blocking on I/O
+        for pipe in (proc.stdin, proc.stdout, proc.stderr):
+            if pipe is not None:
+                try:
+                    pipe.close()
+                except Exception:
+                    pass
+
+        try:
+            # Graceful termination first
+            proc.terminate()
+            proc.wait(timeout=3.0)
         except subprocess.TimeoutExpired:
-            self._proc.kill()
-            self._proc.wait()
+            # Hard kill — entire tree on Windows, direct process on Unix
+            try:
+                if platform.system() == "Windows":
+                    self._kill_proc_tree(proc.pid)
+                else:
+                    proc.kill()
+                    proc.wait(timeout=2.0)
+            except Exception as exc:
+                logger.warning("MCP disconnect kill error: %s", exc)
         except Exception as exc:
             logger.warning("MCP disconnect error: %s", exc)
-        finally:
-            self._proc = None
 
     def __enter__(self) -> "MCPClient":
         self.connect()

@@ -6,6 +6,7 @@ do not hold references to disconnected clients.
 
 from __future__ import annotations
 
+import atexit
 import logging
 import threading
 import weakref
@@ -34,6 +35,7 @@ class MCPConnectionPool:
         self._clients: dict[str, MCPClient] = {}
         self._lock = threading.Lock()
         self._refs: dict[str, int] = {}
+        atexit.register(self._atexit_cleanup)
 
     def get_client(self, server: MCPServerConfig) -> MCPClient:
         """Return an active MCPClient for *server*, reconnecting if needed."""
@@ -73,6 +75,17 @@ class MCPConnectionPool:
         with self._lock:
             for name in list(self._clients.keys()):
                 self._disconnect_locked(name)
+
+    def _atexit_cleanup(self) -> None:
+        """Emergency cleanup registered with atexit.
+
+        Prevents MCP server child-process leaks when the interpreter
+        exits without an explicit disconnect_all() call.
+        """
+        try:
+            self.disconnect_all()
+        except Exception as exc:
+            logger.warning("MCP pool atexit cleanup error: %s", exc)
 
     def _disconnect_locked(self, name: str) -> None:
         client = self._clients.pop(name, None)

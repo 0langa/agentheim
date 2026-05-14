@@ -198,6 +198,19 @@ agentheim presets             # List available presets
 | `agentheim memory set --key <key> --value <value>` | Store a value in global memory |
 | `agentheim mcp-list` | List tools provided by configured MCP servers |
 | `agentheim mcp-call <tool> --arg key=value` | Call an MCP tool directly |
+| `agentheim ctx init` | Initialize repo for context processing |
+| `agentheim ctx scan` | Scan repository and print inventory summary |
+| `agentheim ctx run` | Run full context generation pipeline |
+| `agentheim ctx verify` | Verify context lock against repository state |
+| `agentheim ctx status` | Show stale-context detection status |
+| `agentheim ctx clean` | Remove generated run artifacts |
+| `agentheim ctx public-docs impact` | Map source changes to impacted public docs |
+| `agentheim ctx public-docs update` | Generate patches for impacted public docs |
+| `agentheim ctx oci doctor` | Run OCI readiness checks |
+| `agentheim ctx oci snapshot create` | Create deterministic repo snapshot |
+| `agentheim ctx oci snapshot verify` | Verify snapshot integrity |
+| `agentheim ctx oci bundle create` | Create result bundle for a run |
+| `agentheim ctx oci bundle verify` | Verify result bundle integrity |
 
 ### What is MCP?
 
@@ -240,6 +253,7 @@ agentheim mcp-call filesystem_search --arg query="*.py"
 | **Docs Maintainer** | Detects stale documentation → updates or aligns it | `agentheim start docs-maintainer` |
 | **GitHub Maintainer** | Summarizes issues → drafts PR descriptions | `agentheim start github-maintainer` |
 | **Command Assistant** | Parses natural language → generates safe shell commands | `agentheim start command-assistant` |
+| **Context Maintainer** | Detects stale context → runs context pipeline | `agentheim start context-maintainer` |
 
 ---
 

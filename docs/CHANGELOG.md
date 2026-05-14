@@ -505,4 +505,4 @@
 - **M7**: Built `AgentheimToAictxAdapter` bridging Agentheim `ModelProvider` ↔ AICtx `ModelProvider`. Replaced `providers/oci_genai.py` stub with bridge to AICtx OCI provider.
 - **M8**: Added `agentheim ctx oci <doctor|snapshot|bundle>` commands. `agentheim doctor --oci` and `/api/health/oci` endpoint. `ArtifactStore.produce_snapshot()` method.
 - **M9**: Removed legacy `build_context_pack` fallback from all workflows. Deprecated `ContextPacker`/`ContextManifest`/`build_context_pack` in `core.public_api` (emits `DeprecationWarning`). Final docs sweep.
-- Validation: `pytest -q` passed with **760 passed, 3 skipped** (audited by external validation run).
+- Validation: `pytest -q` passed with **785 collected, 3 skipped** (audited by external validation run).

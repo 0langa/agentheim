@@ -1,6 +1,6 @@
 # Agentheim
 
-[![Tests](https://img.shields.io/badge/tests-760%20passing-brightgreen)](https://github.com/0langa/agentheim/actions)
+[![Tests](https://img.shields.io/badge/tests-785%20passing-brightgreen)](https://github.com/0langa/agentheim/actions)
 [![Architecture](https://img.shields.io/badge/architecture-local_first-blue)](docs/ARCHITECTURE.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-unified-blue)](docs/README.md)
@@ -44,7 +44,6 @@ Full documentation is available in the [`docs/`](docs/README.md) directory:
 | [Development & Testing](docs/DEV_TESTING.md) | Test commands and runner reference |
 | [Agent Operations](docs/AGENT_OPERATIONS.md) | Agent instructions, skills, validation, and future MCP guidance |
 | [Changelog](docs/CHANGELOG.md) | Release history |
-| [AICtx Integration Plan](docs/AICTX_INTEGRATION_PLAN.md) | Planned full integration path for AICtx |
 
 ---
 
@@ -58,10 +57,10 @@ pip install -e .
 
 ### Configure
 
-Copy `.env.example` to `.env` and fill in your provider details:
+Configure providers via the CLI (secrets stored in OS keychain):
 
 ```powershell
-cp .env.example .env
+agentheim provider add openai --template openai_v1 --model gpt-4o-mini --role planner
 ```
 
 ### Run a preset
@@ -114,7 +113,7 @@ Core Runtime (Generic)    →  DAG execution, policy engine, ledger, model regis
 pytest tests\ -v
 ```
 
-**760 tests passing, 3 skipped in this validated environment.** The skipped tests are optional GUI-environment checks when desktop dependencies are unavailable.
+**785 tests passing, 3 skipped in this validated environment.** The skipped tests are optional GUI-environment checks when desktop dependencies are unavailable.
 
 ---
 
@@ -143,7 +142,6 @@ agentheim/
 - [Architecture](docs/ARCHITECTURE.md)
 - [Safety & Security](docs/SAFETY.md)
 - [Agent Instructions](AGENTS.md)
-- [AICtx Integration Plan](docs/AICTX_INTEGRATION_PLAN.md)
 
 ---
 

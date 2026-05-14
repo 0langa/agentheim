@@ -38,7 +38,7 @@ pytest -q
 pytest -q tests/
 ```
 
-Current status: **760 passed, 3 skipped** (skipped tests are optional GUI-environment checks when desktop dependencies are unavailable).
+Current status: **785 collected** (3 skipped) (skipped tests are optional GUI-environment checks when desktop dependencies are unavailable).
 
 ---
 
@@ -121,7 +121,6 @@ files = [
     root/'CONTRIBUTING.md',
     root/'SECURITY.md',
     root/'AGENTS.md',
-    root/'Agent-Team'/'README.md',
 ]
 files += sorted((root/'docs').glob('*.md'))
 files += sorted((root/'.github').glob('*.md'))
@@ -238,25 +237,58 @@ Tests are organized by subsystem under `tests/`:
 
 ```
 tests/
+├── api_server/        # API server route tests
+├── cli/               # CLI command tests
 ├── core/              # Core runtime tests (events, ledger, runner, policy, etc.)
 ├── memory/            # Memory system tests (brain, episodic, semantic, backends)
-├── smoke/             # Smoke tests (CLI, presets, basic integration)
-├── integration/       # Cross-subsystem integration tests
-├── test_mcp.py        # MCP integration tests
-├── test_mcp_pool.py   # MCP connection pool tests
-├── test_browser_tool.py # Browser automation tool tests
-├── test_api_server.py # API server tests
-├── test_web_ui.py     # Web UI tests
-├── test_workflow_runner.py       # Workflow runner tests
-├── test_workflow_runner_parallel.py # Parallel execution tests
-├── test_workflow_isolation.py    # Workflow boundary tests
-├── test_import_linting.py        # Import boundary enforcement
-├── test_privacy_enforcer.py      # Privacy mode tests
+├── smoke/             # Smoke tests (CLI, presets, workflow execution, basic integration)
+├── test_agent_protocol.py        # Agent message protocol tests
 ├── test_approval_workflow.py     # Approval gate tests
-├── test_policy_engine.py         # Policy engine tests
-├── test_provider_lazy_loading.py # Provider lazy loading tests
+├── test_artifact_store.py        # Artifact store tests
+├── test_browser_e2e.py           # Browser end-to-end tests
+├── test_browser_tool.py          # Browser automation tool tests
+├── test_cascading_router.py      # Cascading model router tests
+├── test_context_ops_impl.py      # ContextOps implementation tests
+├── test_context_ops_paths.py     # ContextOps path tests
+├── test_context_packer.py        # Context packer tests
+├── test_desktop_ui.py            # Desktop UI tests
+├── test_distributed.py           # Distributed worker tests
+├── test_distributed_transport.py # Distributed transport tests
+├── test_error_classification.py  # Error classification tests
+├── test_events.py                # Event system tests
+├── test_federation.py            # Federation protocol tests
+├── test_federation_transport.py  # Federation transport tests
+├── test_import_linting.py        # Import boundary enforcement
 ├── test_interface_isolation.py   # Interface boundary tests
-└── ...                           # Additional test modules
+├── test_ledger_checkpoints.py    # Ledger checkpoint tests
+├── test_ledger_hash.py           # Ledger hash chain tests
+├── test_ledger_index.py          # Ledger index tests
+├── test_legacy_aictx_reader.py   # Legacy AICtx reader tests
+├── test_local_db_tool.py         # Local DB tool tests
+├── test_marketplace.py           # Plugin marketplace tests
+├── test_mcp.py                   # MCP integration tests
+├── test_mcp_pool.py              # MCP connection pool tests
+├── test_monitoring.py            # Monitoring tests
+├── test_multimodal.py            # Multimodal processor tests
+├── test_oci_commands.py          # OCI CLI command tests
+├── test_policy_audit.py          # Policy audit tests
+├── test_policy_engine.py         # Policy engine tests
+├── test_privacy_enforcer.py      # Privacy mode tests
+├── test_provider_adapter.py      # Provider adapter tests
+├── test_provider_lazy_loading.py # Provider lazy loading tests
+├── test_provider_profiles.py     # Provider profile tests
+├── test_public_api.py            # Public API facade tests
+├── test_replay_engine.py         # Run replay tests
+├── test_resume.py                # Resume orchestrator tests
+├── test_retry_engine.py          # Retry engine tests
+├── test_run_executor.py          # Run executor tests
+├── test_self_improving.py        # Self-improving agent tests
+├── test_step_budget.py           # Step budget tests
+├── test_tool_protocol.py         # Tool protocol tests
+├── test_web_ui.py                # Web UI tests
+├── test_workflow_isolation.py    # Workflow boundary tests
+├── test_workflow_runner.py       # Workflow runner tests
+└── test_workflow_runner_parallel.py # Parallel execution tests
 ```
 
 ---

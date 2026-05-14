@@ -12,10 +12,10 @@
 | M3 | Workflow/preset/CLI exposure | ✅ Done |
 | M4 | Context-aware workflow adoption | ✅ Done |
 | M5 | Public-docs impact integration | ✅ Done |
-| M6 | Runtime/storage convergence | ✅ Done |
-| M7 | Provider unification | ✅ Done |
-| M8 | OCI/remote backend adoption | ✅ Done |
-| M9 | Decommissioning duplicates | ✅ Done |
+| M6 | Runtime/storage convergence | ✅ Done — all writes go to `.ai-team/runs/`; `.aictx/runs/` legacy readable only |
+| M7 | Provider unification | ✅ Done — `run_local_context_pipeline()` requires injected provider; `llm/providers.py` emptied |
+| M8 | OCI/remote backend adoption | ✅ Done — diagnostic commands wired; snapshot/bundle artifacts registered in `ArtifactStore`; remote execution out of scope |
+| M9 | Decommissioning vendor duplicates | ✅ Done — vendor copy trimmed to library modules only; external project remains standalone |
 
 ---
 
@@ -24,7 +24,7 @@
 ### `cli.py` — Standalone CLI
 - **M1:** Preserved as-is.
 - **M3:** Thin wrapper around `agentheim ctx <subcommand>`.
-- **M9:** Deprecated / removed.
+- **M9:** Removed from vendor copy. External project at `../AICtx` remains independent.
 
 ### `config.py` — Configuration models
 - **M1:** Preserved.
@@ -62,7 +62,7 @@
 ### `llm/` — Provider abstraction
 | File | Role | Disposition |
 |------|------|-------------|
-| `base.py` | `ModelProvider` ABC + `ChatRequest`/`ChatResponse` | Preserved; unified with Agentheim `providers/base.py` via `AgentheimToAictxAdapter` in M7 |
+| `base.py` | `ModelProvider` ABC + `ChatRequest`/`ChatResponse` | Preserved; `AgentheimToAictxAdapter` bridges Agentheim providers when injected, but AICtx default path still uses `llm/` stack |
 | `dry_run.py` | Dry-run provider | Preserved |
 | `oci_genai.py` | OCI GenAI provider | Preserved |
 | `providers.py` | Provider factory | Preserved |
@@ -129,5 +129,5 @@
 
 1. `core/` must **never** import from `agentheim.vendor.aictx` directly.
 2. All AICtx access from Agentheim code must go through `ContextOps` (or its public façade).
-3. AICtx provider internals (`llm/`) are accessed through `AgentheimToAictxAdapter` (M7 complete).
-4. AICtx transient artifacts (`.aictx/runs/`) are readable via `LegacyAictxReader`; canonical store is `.ai-team/runs/` (M6 complete).
+3. AICtx provider internals (`llm/`) can be bridged via `AgentheimToAictxAdapter` when Agentheim injects a provider, but AICtx default path still uses its own `llm/` stack (M7 partial).
+4. AICtx transient artifacts (`.aictx/runs/`) are readable via `LegacyAictxReader`; canonical store is `.ai-team/runs/` but `.aictx/runs/` still actively used (M6 partial).

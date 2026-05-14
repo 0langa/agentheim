@@ -43,7 +43,7 @@ def update_public_docs(
         return None
 
     run_id = datetime.now(UTC).strftime("%Y-%m-%dT%H%M%SZ-public-docs")
-    runs_dir = repo_root / ".aictx" / "runs" / run_id
+    runs_dir = repo_root / ".ai-team" / "runs" / run_id
     out_path = runs_dir / "out" / PUBLIC_DOCS_REVIEW_PATH
     review = _render_review(
         scope=scope,

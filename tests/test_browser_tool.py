@@ -71,15 +71,17 @@ class TestBrowserToolUrlSchemeEnforcement:
     def test_http_allowed(self) -> None:
         tool = BrowserTool()
         ctx = ToolContext(network_allowed=True)
-        with patch.object(tool, "_navigate_http_fallback", return_value=ToolResult(success=True, data={})):
-            result = tool.invoke({"operation": "navigate", "url": "http://example.com", "timeout": 10}, ctx)
+        with patch.object(BrowserTool, "_playwright_available", return_value=False):
+            with patch.object(tool, "_navigate_http_fallback", return_value=ToolResult(success=True, data={})):
+                result = tool.invoke({"operation": "navigate", "url": "http://example.com", "timeout": 10}, ctx)
         assert result.success is True
 
     def test_https_allowed(self) -> None:
         tool = BrowserTool()
         ctx = ToolContext(network_allowed=True)
-        with patch.object(tool, "_navigate_http_fallback", return_value=ToolResult(success=True, data={})):
-            result = tool.invoke({"operation": "navigate", "url": "https://example.com", "timeout": 10}, ctx)
+        with patch.object(BrowserTool, "_playwright_available", return_value=False):
+            with patch.object(tool, "_navigate_http_fallback", return_value=ToolResult(success=True, data={})):
+                result = tool.invoke({"operation": "navigate", "url": "https://example.com", "timeout": 10}, ctx)
         assert result.success is True
 
     def test_private_ip_blocked(self) -> None:

@@ -94,6 +94,7 @@ oci_app.add_typer(snapshot_app, name="snapshot")
 @snapshot_app.command("create")
 def snapshot_create_cmd(
     project: str = typer.Option(".", "--project", help="Target repository path."),
+    run_id: str = typer.Option("", "--run-id", help="Optional run ID to register as artifact."),
 ) -> None:
     """Create a deterministic snapshot of the repository."""
     try:
@@ -103,7 +104,7 @@ def snapshot_create_cmd(
         raise typer.Exit(code=1)
 
     repo_root = Path(project).resolve()
-    output_dir = repo_root / ".aictx" / "runs"
+    output_dir = repo_root / ".ai-team" / "runs"
 
     try:
         snapshot_path = create_snapshot(repo_root=repo_root, output_dir=output_dir)
@@ -111,7 +112,15 @@ def snapshot_create_cmd(
         console.print(f"[red]Error:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
-    console.print(f"[green]Snapshot created:[/green] {snapshot_path}")
+    if run_id:
+        from core.public_api import ArtifactStore
+
+        run_dir = repo_root / ".ai-team" / "runs" / run_id
+        store = ArtifactStore(run_dir)
+        store.produce_snapshot_zip(snapshot_path)
+        console.print(f"[green]Snapshot created and registered to run {run_id}:[/green] {snapshot_path}")
+    else:
+        console.print(f"[green]Snapshot created:[/green] {snapshot_path}")
 
 
 @snapshot_app.command("verify")
@@ -126,7 +135,7 @@ def snapshot_verify_cmd(
         raise typer.Exit(code=1)
 
     repo_root = Path(project).resolve()
-    snapshot_path = repo_root / ".aictx" / "runs" / "aictx-snapshot.zip"
+    snapshot_path = repo_root / ".ai-team" / "runs" / "aictx-snapshot.zip"
 
     try:
         result = verify_snapshot(snapshot_path)
@@ -163,7 +172,7 @@ def bundle_create_cmd(
         raise typer.Exit(code=1)
 
     repo_root = Path(project).resolve()
-    output_dir = repo_root / ".aictx" / "runs" / run_id
+    output_dir = repo_root / ".ai-team" / "runs" / run_id
 
     try:
         bundle_path = create_result_bundle(output_dir=output_dir)
@@ -171,7 +180,12 @@ def bundle_create_cmd(
         console.print(f"[red]Error:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
-    console.print(f"[green]Bundle created:[/green] {bundle_path}")
+    from core.public_api import ArtifactStore
+
+    run_dir = repo_root / ".ai-team" / "runs" / run_id
+    store = ArtifactStore(run_dir)
+    store.produce_bundle_zip(bundle_path)
+    console.print(f"[green]Bundle created and registered:[/green] {bundle_path}")
 
 
 @bundle_app.command("verify")
@@ -187,7 +201,7 @@ def bundle_verify_cmd(
         raise typer.Exit(code=1)
 
     repo_root = Path(project).resolve()
-    bundle_path = repo_root / ".aictx" / "runs" / run_id / "aictx-result.zip"
+    bundle_path = repo_root / ".ai-team" / "runs" / run_id / "aictx-result.zip"
 
     try:
         result = verify_bundle(bundle_path)

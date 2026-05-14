@@ -10,14 +10,11 @@ ROOT = Path(__file__).resolve().parents[1]
 INSTRUCTIONS = ROOT / ".github" / "instructions"
 AGENT_FILE = ROOT / ".github" / "agents" / "agentheim-autonomous-engineer.agent.md"
 CHANGELOG = ROOT / "docs" / "CHANGELOG.md"
-CANONICAL_FORBIDDEN = "02-forbidden-behaviors.md"
-ALIAS_FORBIDDEN = "02-forbidden-behaviours.md"
 REQUIRED_INSTRUCTIONS = [
     "00-instruction-priority.md",
     "README.md",
     "01-doctrine.md",
-    CANONICAL_FORBIDDEN,
-    ALIAS_FORBIDDEN,
+    "02-forbidden-behaviors.md",
     "03-traceability.md",
     "04-AICtx-integration.md",
     "05-documentation-integrity.md",
@@ -50,16 +47,8 @@ def check_agent_references() -> None:
         fail(f"missing main agent file: {AGENT_FILE.relative_to(ROOT)}")
     text = read(AGENT_FILE)
     for name in REQUIRED_INSTRUCTIONS:
-        if name == ALIAS_FORBIDDEN:
-            continue
         if name not in text:
             fail(f"main agent does not reference {name}")
-
-
-def check_forbidden_alias() -> None:
-    alias_text = read(INSTRUCTIONS / ALIAS_FORBIDDEN)
-    if CANONICAL_FORBIDDEN not in alias_text:
-        fail(f"{ALIAS_FORBIDDEN} must point to {CANONICAL_FORBIDDEN}")
 
 
 def markdown_files() -> list[Path]:
@@ -68,7 +57,6 @@ def markdown_files() -> list[Path]:
         ROOT / "CONTRIBUTING.md",
         ROOT / "SECURITY.md",
         ROOT / "AGENTS.md",
-        ROOT / "Agent-Team" / "README.md",
     ]
     files += sorted((ROOT / "docs").glob("*.md"))
     files += sorted((ROOT / ".github").glob("*.md"))
@@ -137,7 +125,6 @@ def check_aictx_state() -> None:
 def main() -> int:
     check_required_instruction_files()
     check_agent_references()
-    check_forbidden_alias()
     check_markdown_links()
     check_no_active_roadmap_links()
     check_changelog_policy()

@@ -91,10 +91,11 @@ class TestCleanIgnoresAictxRuns:
         ops = AictxContextOps()
         result = ops.clean(tmp_path, keep_runs=0)
 
-        assert legacy_run.exists()
+        # M6: legacy .aictx/runs/ is also cleaned during migration
+        assert not legacy_run.exists()
         assert not ai_run.exists()
-        assert result.removed_count == 1
-        assert result.removed_paths == ["ai-run"]
+        assert result.removed_count == 2
+        assert "ai-run" in result.removed_paths
 
 
 class TestRuntimeArtifactsExcludedFromChanged:

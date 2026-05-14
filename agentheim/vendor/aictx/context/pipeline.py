@@ -20,7 +20,6 @@ from agentheim.vendor.aictx.context.writer import (
 from agentheim.vendor.aictx.errors import SafetyError
 from agentheim.vendor.aictx.io.files import safe_write
 from agentheim.vendor.aictx.io.patches import make_unified_diff
-from agentheim.vendor.aictx.llm.providers import create_model_provider
 from agentheim.vendor.aictx.llm.transfer import prepare_model_transfer
 from agentheim.vendor.aictx.models.inventory import RepositoryInventory
 from agentheim.vendor.aictx.models.run_report import ContextEntropyMetrics, RunReport, TimingMetrics
@@ -34,9 +33,9 @@ def run_local_context_pipeline(
     config: AictxConfig,
     scope: Literal["full", "changed"],
     write_mode: Literal["patch", "apply"],
+    provider: Any,
     allow_ai: bool = False,
     allow_dirty: bool = False,
-    provider: Any | None = None,
 ) -> RunReport:
     """Run the local Phase 1 context generation pipeline."""
     started_at = datetime.now(UTC)
@@ -81,9 +80,7 @@ def run_local_context_pipeline(
     )
 
     _print_transfer_summary(transfer_plan)
-    if provider is None:
-        provider = create_model_provider(config.llm, allow_ai=allow_ai)
-    runs_dir = repo_root / ".aictx" / "runs" / run_id
+    runs_dir = repo_root / ".ai-team" / "runs" / run_id
     out_dir = runs_dir / "out"
     out_dir.mkdir(parents=True, exist_ok=True)
     safe_write(

@@ -307,4 +307,3 @@ Every directory has an implied subsystem owner. Cross-boundary changes must expl
 - [Forbidden Behaviors](../.github/instructions/02-forbidden-behaviors.md) — hard rejection rules
 - [Traceability](../.github/instructions/03-traceability.md) — evidence and verification expectations
 - [AICtx Integration Rules](../.github/instructions/04-AICtx-integration.md) — integration-specific rules
-- [AICtx Integration Plan](AICTX_INTEGRATION_PLAN.md) — milestone plan

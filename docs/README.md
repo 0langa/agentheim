@@ -25,7 +25,6 @@
 | [Development & Testing](DEV_TESTING.md) | Test commands, smoke tests, devtest runner, CI |
 | [Agent Operations](AGENT_OPERATIONS.md) | How agents, instructions, skills, docs, and validation fit together |
 | [Changelog](CHANGELOG.md) | Release history and notable changes |
-| [AICtx Integration Plan](AICTX_INTEGRATION_PLAN.md) | Milestone plan for fully absorbing AICtx into Agentheim |
 
 ### 🤖 Agent And Governance Rules
 
@@ -55,7 +54,6 @@ docs/
 ├── SAFETY.md              # Security model, privacy, threat reporting
 ├── TROUBLESHOOTING.md     # Common problems and solutions
 ├── DEV_TESTING.md         # Test commands and runner reference
-├── AICTX_INTEGRATION_PLAN.md # Milestone plan for AICtx integration
 └── CHANGELOG.md           # Release history
 ```
 

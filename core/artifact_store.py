@@ -70,6 +70,8 @@ RUN_ARTIFACTS: list[ArtifactSpec] = [
     ArtifactSpec("verification.json", required=False, validator=_is_valid_json),
     ArtifactSpec("final_report.md", required=False),
     ArtifactSpec("checkpoints", required=True),  # directory
+    ArtifactSpec("oci_snapshot.zip", required=False),
+    ArtifactSpec("oci_bundle.zip", required=False),
 ]
 
 
@@ -232,6 +234,18 @@ class ArtifactStore:
         ]
         path.write_text("\n".join(lines), encoding="utf-8")
         return path
+
+    def produce_snapshot_zip(self, snapshot_path: Path) -> Path:
+        """Copy snapshot zip into artifacts."""
+        dst = self.run_dir / "oci_snapshot.zip"
+        dst.write_bytes(snapshot_path.read_bytes())
+        return dst
+
+    def produce_bundle_zip(self, bundle_path: Path) -> Path:
+        """Copy result bundle zip into artifacts."""
+        dst = self.run_dir / "oci_bundle.zip"
+        dst.write_bytes(bundle_path.read_bytes())
+        return dst
 
     def produce_context_lock(self, lock_path: Path | str | None = None) -> Path:
         """Copy the context lockfile into artifacts as context.lock.json.

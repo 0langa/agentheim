@@ -98,26 +98,44 @@ class AictxContextOps(ContextOps):
         if keep_runs is not None and keep_runs < 0:
             raise ValueError("keep_runs must be >= 0")
 
-        runs_dir = repo_root / ".ai-team" / "runs"
-        if not runs_dir.exists():
-            return CleanResult()
-
-        targets: list[Path] = []
-        all_runs = sorted([p for p in runs_dir.iterdir() if p.is_dir()])
-
-        if run_id:
-            target = runs_dir / run_id
-            if target.exists() and target.is_dir():
-                targets = [target]
-        elif keep_runs is not None:
-            targets = all_runs[: max(0, len(all_runs) - keep_runs)]
-
         removed: list[str] = []
-        for path in targets:
-            _rm_tree(path)
-            removed.append(path.name)
 
-        kept = [p.name for p in all_runs if p.name not in removed]
+        # Canonical store
+        runs_dir = repo_root / ".ai-team" / "runs"
+        if runs_dir.exists():
+            all_runs = sorted([p for p in runs_dir.iterdir() if p.is_dir()])
+            targets: list[Path] = []
+            if run_id:
+                target = runs_dir / run_id
+                if target.exists() and target.is_dir():
+                    targets = [target]
+            elif keep_runs is not None:
+                targets = all_runs[: max(0, len(all_runs) - keep_runs)]
+            for path in targets:
+                _rm_tree(path)
+                removed.append(path.name)
+            kept = [p.name for p in all_runs if p.name not in removed]
+        else:
+            all_runs = []
+            kept = []
+
+        # Migration cleanup: also remove from legacy .aictx/runs/
+        legacy_runs_dir = repo_root / ".aictx" / "runs"
+        if legacy_runs_dir.exists():
+            legacy_targets: list[Path] = []
+            legacy_all = sorted([p for p in legacy_runs_dir.iterdir() if p.is_dir()])
+            if run_id:
+                lt = legacy_runs_dir / run_id
+                if lt.exists() and lt.is_dir():
+                    legacy_targets = [lt]
+            elif keep_runs is not None:
+                legacy_targets = legacy_all[: max(0, len(legacy_all) - keep_runs)]
+            for path in legacy_targets:
+                _rm_tree(path)
+                removed.append(path.name)
+            if not kept:
+                kept = [p.name for p in legacy_all if p.name not in removed]
+
         return CleanResult(
             removed_count=len(removed),
             kept_count=len(kept),
@@ -271,12 +289,17 @@ class AictxContextOps(ContextOps):
                 timing=written.timing or {},
                 entropy=written.entropy or {},
             )
+        if provider is None:
+            from agentheim.vendor.aictx.llm.dry_run import DryRunProvider
+
+            provider = DryRunProvider()
         report = run_local_context_pipeline(
             repo_root=repo_root,
             run_id=run_id,
             config=self.config,
             scope=scope,  # type: ignore[arg-type]
             write_mode=write_mode,  # type: ignore[arg-type]
+            provider=provider,
             allow_ai=allow_ai,
             allow_dirty=allow_dirty,
         )

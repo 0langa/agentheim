@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -8,11 +9,17 @@ from typing import Any
 class LegacyAictxReader:
     """Read old AICtx run artifacts from `.aictx/runs/` directories.
 
-    M6 migrated transient storage to `.ai-team/runs/`. This reader
-    provides backward compatibility for old runs.
+    DEPRECATED: M6 migrated transient storage to `.ai-team/runs/`.
+    This reader remains only for one-time migration of old runs.
+    No new writes go to `.aictx/runs/`.
     """
 
     def __init__(self, repo_root: Path) -> None:
+        warnings.warn(
+            "LegacyAictxReader is deprecated. Transient storage is now at .ai-team/runs/.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.repo_root = Path(repo_root)
         self.runs_dir = self.repo_root / ".aictx" / "runs"
 

@@ -11,6 +11,21 @@ from tools.mcp.config import MCPServerConfig
 from tools.mcp.pool import MCPConnectionPool
 
 
+class TestMCPConnectionPoolCleanup:
+    def test_atexit_cleanup_disconnects_all(self) -> None:
+        pool = MCPConnectionPool()
+        server = MCPServerConfig(name="test", command=["echo"])
+        mock_client = MagicMock()
+        mock_client._proc = MagicMock()
+        mock_client._proc.poll.return_value = None
+        with patch("tools.mcp.pool.MCPClient", return_value=mock_client):
+            pool.get_client(server)
+        # Simulate the atexit handler
+        pool._atexit_cleanup()
+        mock_client.disconnect.assert_called_once()
+
+
+
 class TestMCPConnectionPool:
     def test_get_client_creates_new_connection(self) -> None:
         pool = MCPConnectionPool()

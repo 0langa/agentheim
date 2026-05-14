@@ -161,16 +161,16 @@ Requires `X-API-Key`. Body: `profile`, `role`, `provider_id`, `model`, `capabili
 
 #### Read Memory
 ```
-GET /api/memory/{backend}/{key}
+GET /api/memory/{scope}/{key}
 ```
 
-Backends: `jsonl` (default), `sqlite`, `vector`
+Scopes: `global`, `run`, `repository`
 
-The underlying `MemoryBus` supports scopes (`global`, `run`, `repository`), but the current API routes expose the backend name in the path. Run-scoped and repository-scoped reads are handled by the bus internally; direct scope selection via query parameter is planned.
+The `MemoryBus` supports scopes (`global`, `run`, `repository`). The API routes expose the scope name in the path. Run-scoped and repository-scoped reads are handled by the bus internally.
 
 #### Write Memory
 ```
-POST /api/memory/{backend}/{key}
+POST /api/memory/{scope}/{key}
 ```
 
 Body: `{"value": <any JSON-serializable value>}`
@@ -215,6 +215,69 @@ WS /api/runs/{run_id}/ws
 ```
 
 Bidirectional WebSocket for real-time run events.
+
+### Context (AICtx)
+
+#### Initialize Repository
+```
+POST /api/ctx/init
+```
+
+Body: `{"project": "."}` — initializes the target repository for context processing.
+
+#### Run Context Pipeline
+```
+POST /api/ctx/run
+```
+
+Body: `{"project": ".", "scope": "full", "write_mode": "patch", "allow_dirty": false}` — runs the full context generation pipeline.
+
+Returns: `run_id`, `generated_files`, `patch_text`, `timing`, `entropy`.
+
+#### Verify Context
+```
+POST /api/ctx/verify
+```
+
+Body: `{"project": ".", "strict": false}` — verifies the context lock against the repository state.
+
+Returns: `result`, `is_pass`.
+
+#### Context Status
+```
+POST /api/ctx/status
+```
+
+Body: `{"project": ".", "strict": false}` — shows stale-context detection status.
+
+Returns: `is_stale`, `stale_sources`, `missing_sources`, `next_command`.
+
+#### Clean Context Artifacts
+```
+POST /api/ctx/clean
+```
+
+Body: `{"project": ".", "run_id": null, "keep_runs": null}` — removes generated run artifacts.
+
+Returns: `removed_count`, `kept_count`, `removed_paths`.
+
+#### Public Docs Impact
+```
+POST /api/ctx/public-docs/impact
+```
+
+Body: `{"project": ".", "scope": "full"}` — maps source changes to impacted public docs.
+
+Returns: `entries`.
+
+#### Public Docs Update
+```
+POST /api/ctx/public-docs/update
+```
+
+Body: `{"project": ".", "scope": "changed", "write_mode": "patch"}` — generates patches for impacted public docs.
+
+Returns: `patch_path`.
 
 ### Metrics
 

@@ -11,10 +11,12 @@ from agentheim.vendor.aictx.models.inventory import FileEntry, RepositoryInvento
 
 RUNTIME_BLOCKED_PREFIXES = (
     ".git/",
+    ".ai-team/runs/",
+    ".ai-team/cache/",
+    ".ai-team/tmp/",
     ".aictx/runs/",
     ".aictx/cache/",
     ".aictx/tmp/",
-    ".ai-team/runs/",
     "build/",
     "dist/",
     "node_modules/",
