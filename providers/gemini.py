@@ -95,14 +95,25 @@ class GeminiProvider(ModelProvider):
 class VertexAIProvider(ModelProvider):
     def invoke(self, request: ModelRequest) -> ModelResponse:
         self.validate_request(request)
+        if not self.config.model or self.config.model == "-":
+            raise ProviderError("Vertex AI provider requires a model name. Set model in the provider config.")
         try:
             import google.auth
             from google.auth.transport.requests import Request
         except ImportError as exc:
             raise ImportError("Vertex AI provider requires google-auth. Install google-auth and configure ADC.") from exc
 
-        credentials, project = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
-        credentials.refresh(Request())
+        try:
+            credentials, project = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+            credentials.refresh(Request())
+        except Exception as exc:
+            if type(exc).__name__ == "DefaultCredentialsError":
+                raise ProviderError(
+                    "Vertex AI ADC not found. Run 'gcloud auth application-default login' "
+                    "or set GOOGLE_APPLICATION_CREDENTIALS to a service-account key file."
+                ) from exc
+            raise ProviderError(f"Vertex AI authentication failed: {exc}") from exc
+
         location = self.config.metadata.get("location", "us-central1")
         project_id = self.config.metadata.get("project_id") or project
         if not project_id:
@@ -123,6 +134,12 @@ class VertexAIProvider(ModelProvider):
                 raw = response.json()
                 break
             except requests.exceptions.HTTPError as exc:
+                resp = getattr(exc, "response", None)
+                if resp is not None and resp.status_code == 403:
+                    raise ProviderError(
+                        "Vertex AI permission denied. Ensure the account has 'aiplatform.endpoints.predict' "
+                        f"permission for project '{project_id}' and location '{location}'."
+                    ) from exc
                 if _is_non_retryable_http_error(exc):
                     raise ProviderError(f"Vertex AI request failed: {exc}") from exc
                 last_error = exc

@@ -19,8 +19,9 @@
   - Structured retry/error classification for both providers: HTTP 400/401/403/404/409/422 raise `ProviderError` immediately; HTTP 429/5xx, timeout, and connection errors follow 3-attempt backoff.
   - `VertexAIProvider` now has retry parity with `GeminiProvider`.
   - Vision input mapping fixed: data URLs (`data:image/jpeg;base64,...`) are parsed and sent as `inline_data`; GCS/file URIs continue using `file_data`.
-- Added tests for JSON mode, vision data URL/file URI, auth error immediate raise, and rate-limit retry exhaustion for both Google providers.
-- All 49 provider tests pass; baseline gate passes.
+  - Vertex setup UX: clear `ProviderError` for missing model name, ADC failure (`DefaultCredentialsError` detected by name), and HTTP 403 permission denied with actionable guidance.
+- Added tests for JSON mode, vision data URL/file URI, auth error immediate raise, rate-limit retry exhaustion, and Vertex setup errors.
+- All 52 provider tests pass; baseline gate passes.
 
 ### Phase 1 Complete — Safety And Runtime Spine
 - Unified tool invocation path across API, Web UI, and CLI (`core/tool_invocation.py`, `interfaces/api_server/app.py`, `interfaces/web_ui/app.py`, `interfaces/cli/cli.py`).
