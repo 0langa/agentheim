@@ -386,6 +386,22 @@ class TestAzureFoundryProvider:
             provider = AzureFoundryProvider(config)
         assert provider.config.endpoint == "https://my-resource.openai.azure.com/openai/v1"
 
+    def test_auth_mode_none_no_api_key_header(self) -> None:
+        config = make_config(endpoint="https://my-resource.openai.azure.com", auth_mode="none", api_key="dummy")
+        with patch("providers.openai_v1.OpenAI"):
+            provider = AzureFoundryProvider(config)
+        assert "api-key" not in provider.config.headers
+
+    def test_missing_api_key_raises_clear_error(self) -> None:
+        config = make_config(endpoint="https://my-resource.openai.azure.com", auth_mode="api_key", api_key="-")
+        with pytest.raises(ProviderError, match="no api_key is configured"):
+            AzureFoundryProvider(config)
+
+    def test_invalid_endpoint_raises_clear_error(self) -> None:
+        config = make_config(endpoint="not-a-url", auth_mode="api_key")
+        with pytest.raises(ProviderError, match="must be a valid HTTP\\(S\\) URL"):
+            AzureFoundryProvider(config)
+
 
 # ---------------------------------------------------------------------------
 # PerplexityProvider
