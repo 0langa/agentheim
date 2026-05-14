@@ -61,15 +61,24 @@ class SummarizerAgent(BaseAgent[SummaryResult]):
     def _parse(self, raw_output: str) -> SummaryResult:
         data = json.loads(repair_json_text(raw_output))
 
-        if "summaries" not in data and isinstance(data.get("summary"), dict):
-            summaries = []
-            for key, value in data["summary"].items():
-                if isinstance(value, dict):
-                    points = [f"{subkey}: {subvalue}" for subkey, subvalue in value.items()]
+        # Normalize summaries array items (model returns title/summary/url variants)
+        raw_summaries = data.get("summaries", [])
+        normalized_summaries: list[dict] = []
+        if isinstance(raw_summaries, list):
+            for item in raw_summaries:
+                if not isinstance(item, dict):
+                    continue
+                url = str(item.get("url") or item.get("link") or item.get("source") or "unknown")
+                key_points = item.get("key_points") or item.get("summary") or item.get("findings") or item.get("description") or item.get("points") or []
+                if isinstance(key_points, str):
+                    key_points = [key_points]
+                elif isinstance(key_points, list):
+                    key_points = [str(kp) for kp in key_points]
                 else:
-                    points = [str(value)]
-                summaries.append({"url": str(key), "key_points": points, "credibility": "unknown"})
-            data["summaries"] = summaries
+                    key_points = [str(key_points)]
+                credibility = str(item.get("credibility") or item.get("trustworthiness") or item.get("reliability") or "unknown")
+                normalized_summaries.append({"url": url, "key_points": key_points, "credibility": credibility})
+        data["summaries"] = normalized_summaries
 
         if "comparisons" not in data and isinstance(data.get("comparison"), dict):
             comparisons = []
@@ -83,16 +92,40 @@ class SummarizerAgent(BaseAgent[SummaryResult]):
                 comparisons.append({"dimension": str(key), "findings": findings})
             data["comparisons"] = comparisons
 
-        if isinstance(data.get("conflicts"), dict):
+        # Normalize conflicts: dict items → string, dict-of-dicts → flattened strings
+        raw_conflicts = data.get("conflicts", [])
+        if isinstance(raw_conflicts, dict):
             data["conflicts"] = [
                 f"{key}: " + "; ".join(f"{subkey}={subvalue}" for subkey, subvalue in value.items())
                 if isinstance(value, dict)
                 else f"{key}: {value}"
-                for key, value in data["conflicts"].items()
+                for key, value in raw_conflicts.items()
             ]
+        elif isinstance(raw_conflicts, list):
+            normalized_conflicts = []
+            for item in raw_conflicts:
+                if isinstance(item, dict):
+                    normalized_conflicts.append(
+                        "; ".join(f"{k}={v}" for k, v in item.items())
+                    )
+                else:
+                    normalized_conflicts.append(str(item))
+            data["conflicts"] = normalized_conflicts
 
-        if isinstance(data.get("gaps"), dict):
-            data["gaps"] = [f"{key}: {value}" for key, value in data["gaps"].items()]
+        # Normalize gaps: dict items → string, dict-of-dicts → flattened strings
+        raw_gaps = data.get("gaps", [])
+        if isinstance(raw_gaps, dict):
+            data["gaps"] = [f"{key}: {value}" for key, value in raw_gaps.items()]
+        elif isinstance(raw_gaps, list):
+            normalized_gaps = []
+            for item in raw_gaps:
+                if isinstance(item, dict):
+                    normalized_gaps.append(
+                        "; ".join(f"{k}={v}" for k, v in item.items())
+                    )
+                else:
+                    normalized_gaps.append(str(item))
+            data["gaps"] = normalized_gaps
 
         try:
             return self.output_schema.model_validate(data)

@@ -68,6 +68,19 @@ class ReporterAgent(BaseAgent[ResearchReport]):
                 "confidence": confidence or "medium",
                 "recommendations": data.get("recommendations", []),
             }
+        # Normalize sources: dict items → "title (url)" strings
+        raw_sources = data.get("sources", [])
+        if isinstance(raw_sources, list):
+            normalized_sources = []
+            for item in raw_sources:
+                if isinstance(item, dict):
+                    title = str(item.get("title") or item.get("name") or "Source")
+                    url = str(item.get("url") or item.get("link") or "")
+                    normalized_sources.append(f"{title} ({url})" if url else title)
+                else:
+                    normalized_sources.append(str(item))
+            data["sources"] = normalized_sources
+
         try:
             return self.output_schema.model_validate(data)
         except (ValueError, ValidationError):

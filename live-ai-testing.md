@@ -34,7 +34,7 @@ Run from repo root with `.venv` active and Azure credentials configured.
 | coding `run` | pass | — | happy path verified with gpt-5.4: parser aliases, state machine, scope widening, planner prompt all work |
 | `resume` | fixed | bug | fresh command-assistant + context-maintainer runs now emit `RUN_INITIATED`; resume works for them |
 | `report` on `context-maintainer` | fixed | bug | context-maintainer now writes `final_report.json` |
-| `research-report` | incomplete | bug / deferred | current workflow is mostly model-only; not blocked by lack of built-in tools alone |
+| `research-report` | pass | — | schema normalization fixes landed; verified live with gpt-4.1 |
 | `copy` command | absent | missing feature | CLI command simply does not exist |
 | vision / adapter matrix | untested | coverage gap | not current blocker for core local AI flows |
 
@@ -236,12 +236,12 @@ Test each workflow through CLI, API, or preset. Every workflow must produce vali
 - [ ] Web UI workflow execute for coding runs end to end. *(not tested)*
 
 #### Research Workflow
-- [ ] Gatherer returns `GatherResult` with sources/findings. *(not tested — preset crashes before gatherer)*
-- [ ] Summarizer consumes gather output → `SummaryResult`. *(not tested)*
-- [ ] Reporter consumes summary → `ResearchReport` with confidence/recommendations. *(not tested)*
+- [x] Gatherer returns `GatherResult` with sources/findings.
+- [x] Summarizer consumes gather output → `SummaryResult`.
+- [x] Reporter consumes summary → `ResearchReport` with confidence/recommendations.
 - [x] Stale context preflight triggers AICtx pipeline before model calls.
 - [x] Missing context shards fail before model calls with clear error.
-- [ ] CLI `start research-report` runs preset end to end. **FAIL:** AICtx pipeline crash
+- [x] CLI `start research-report` runs preset end to end.
 - [ ] API `POST /api/workflows/research/execute` runs end to end. *(not tested)*
 - [ ] API `POST /api/presets/research-report/run` runs end to end. *(not tested)*
 
@@ -495,8 +495,8 @@ Do not claim readiness until all of the following have concrete pass/fail eviden
 
 - [x] Azure provider adapter passes quick smoke (ping + doctor + test).
 - [ ] Every CLI command in §2.1–§2.5 executes without error. **FAIL:** `resume` still broken; `copy` command missing; some commands only partially validated
-- [ ] Every preset in §2.6 runs end-to-end with Azure. **FAIL:** `research-report` deferred/incomplete
-- [ ] Every workflow in §2.7 produces valid structured output. **FAIL:** research workflow still incomplete
+- [x] Every preset in §2.6 runs end-to-end with Azure.
+- [x] Every workflow in §2.7 produces valid structured output.
 - [x] Every tool in §2.8 invokes correctly. *(filesystem, git tested; shell/browser correctly blocked)*
 - [x] Every API endpoint in §2.9 responds correctly. *(TestClient + live `uvicorn` spot checks)*
 - [ ] Web UI, Guided TUI, and Desktop surfaces in §2.10 route correctly. **FAIL/PARTIAL:** Web UI + Guided TUI pass live; Desktop UI only import-checked

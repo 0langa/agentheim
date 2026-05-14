@@ -81,31 +81,40 @@ class ResearchWorkflow(Workflow):
         shards = context.metadata.get("context_shards", {})
         if step.id == "gather":
             agent_result = self._gatherer.run_gather(topic, context_shards=shards)
+            meta: dict[str, Any] = {"parsed": agent_result.parsed_output}
+            if agent_result.error:
+                meta["error"] = agent_result.error
             return StepResult(
                 step_id=step.id,
                 success=agent_result.success,
                 output=agent_result.raw_output,
-                metadata={"parsed": agent_result.parsed_output},
+                metadata=meta,
             )
         elif step.id == "summarize":
             gather_meta = context.prior_results.get("gather")
             gather_parsed = gather_meta.metadata.get("parsed", {}) if gather_meta else {}
             agent_result = self._summarizer.run_summarize(topic, gather_parsed, context_shards=shards)
+            meta = {"parsed": agent_result.parsed_output}
+            if agent_result.error:
+                meta["error"] = agent_result.error
             return StepResult(
                 step_id=step.id,
                 success=agent_result.success,
                 output=agent_result.raw_output,
-                metadata={"parsed": agent_result.parsed_output},
+                metadata=meta,
             )
         elif step.id == "report":
             summary_meta = context.prior_results.get("summarize")
             summary_parsed = summary_meta.metadata.get("parsed", {}) if summary_meta else {}
             agent_result = self._reporter.run_report(topic, summary_parsed, context_shards=shards)
+            meta = {"parsed": agent_result.parsed_output}
+            if agent_result.error:
+                meta["error"] = agent_result.error
             return StepResult(
                 step_id=step.id,
                 success=agent_result.success,
                 output=agent_result.raw_output,
-                metadata={"parsed": agent_result.parsed_output},
+                metadata=meta,
             )
         return StepResult(step_id=step.id, success=False, output=f"Unknown step: {step.id}")
 

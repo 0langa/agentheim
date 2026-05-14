@@ -2,6 +2,13 @@
 
 ## 2026-05-14
 
+### Research Workflow Happy Path
+- Fixed `SummarizerAgent._parse()` to normalize `summaries[]` items: `url`/`link`/`source`, `key_points`/`summary`/`findings`/`description`/`points`, `credibility`/`trustworthiness`/`reliability` (`workflows/research/agents/summarizer.py`)
+- Fixed `SummarizerAgent._parse()` to normalize `conflicts[]` and `gaps[]` dict items to strings
+- Fixed `ReporterAgent._parse()` to normalize `sources[]` dict items to `"title (url)"` strings (`workflows/research/agents/reporter.py`)
+- Fixed research workflow to propagate `agent_result.error` into `StepResult.metadata` for diagnostics (`workflows/research/workflows/research.py`)
+- Verified research-report preset end-to-end with Azure Foundry `gpt-4.1`
+
 ### Coding Workflow Happy Path
 - Fixed `PatchPlan`/`FileChange` schema aliases to accept PascalCase and snake_case variants: `FileChanges`, `fileChanges`, `patchPlan`, `patches`, `changes`, `FilePath`, `filePath`, `file_path`, `file`, `filename`, `Patch`, `ChangeType`, `PatchType` (`core/schemas_runtime.py`)
 - Added empty `file_changes` guard in coding runtime: valid JSON with no file changes now triggers retry instead of silent no-op (`workflows/coding/runtime.py`)
