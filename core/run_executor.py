@@ -13,7 +13,7 @@ import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +38,22 @@ class RunRecord:
     logs: list[str] = field(default_factory=list)
 
 
+class RunHook(Protocol):
+    """Protocol for hooks that observe run lifecycle events."""
+
+    def start_run(self, run_id: str) -> None:
+        ...
+
+    def end_run(self, run_id: str) -> None:
+        ...
+
+    def record_error(self, run_id: str) -> None:
+        ...
+
+    def on_run_complete(self, run_id: str, success: bool, error: str | None = None) -> None:
+        ...
+
+
 class RunExecutor:
     """Singleton executor that manages background runs."""
 
@@ -51,6 +67,7 @@ class RunExecutor:
                 cls._instance._runs: dict[str, RunRecord] = {}
                 cls._instance._run_lock = threading.Lock()
                 cls._instance._subscribers: dict[str, list[Callable[[RunRecord], None]]] = {}
+                cls._instance._hooks: list[RunHook] = []
             return cls._instance
 
     @classmethod
@@ -78,12 +95,11 @@ class RunExecutor:
             self._subscribers[run_id] = []
 
         def _run() -> None:
-            from agents.self_improving.hooks import SelfImprovingHook
-            from monitoring.metrics import MetricsCollector
-
-            metrics = MetricsCollector()
-            metrics.start_run(run_id)
-            hook = SelfImprovingHook()
+            for hook in self._hooks:
+                try:
+                    hook.start_run(run_id)
+                except Exception:
+                    logger.exception("Run start hook failed for %s", run_id)
 
             with self._run_lock:
                 record.status = RunStatus.RUNNING
@@ -101,16 +117,30 @@ class RunExecutor:
                             record.artifacts = [report.run_id]
                         if isinstance(ledger_dir, Path):
                             record.artifacts.append(str(ledger_dir.name))
-                metrics.end_run(run_id)
-                hook.on_run_complete(run_id, success=True)
+                for hook in self._hooks:
+                    try:
+                        hook.end_run(run_id)
+                    except Exception:
+                        logger.exception("Run end hook failed for %s", run_id)
+                    try:
+                        hook.on_run_complete(run_id, success=True)
+                    except Exception:
+                        logger.exception("Run complete hook failed for %s", run_id)
             except Exception as exc:
                 logger.exception("Run %s failed", run_id)
                 with self._run_lock:
                     record.status = RunStatus.FAILED
                     record.error = str(exc)
                     record.finished_at = time.time()
-                metrics.record_error(run_id)
-                hook.on_run_complete(run_id, success=False, error=str(exc))
+                for hook in self._hooks:
+                    try:
+                        hook.record_error(run_id)
+                    except Exception:
+                        logger.exception("Run error hook failed for %s", run_id)
+                    try:
+                        hook.on_run_complete(run_id, success=False, error=str(exc))
+                    except Exception:
+                        logger.exception("Run complete hook failed for %s", run_id)
             self._notify(run_id)
 
         thread = threading.Thread(target=_run, daemon=True)
@@ -149,6 +179,11 @@ class RunExecutor:
                 cb(record)
             except Exception:
                 pass
+
+    def add_hook(self, hook: RunHook) -> None:
+        """Register a lifecycle hook if not already registered."""
+        if not any(h is hook for h in self._hooks):
+            self._hooks.append(hook)
 
     def log(self, run_id: str, message: str) -> None:
         with self._run_lock:

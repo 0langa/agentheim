@@ -2,6 +2,12 @@
 
 ## 2026-05-14
 
+### Phase 1 Slice 3 — Core Side Dependencies Moved Outward
+- Removed `agents.self_improving` and `monitoring.metrics` lazy imports from `core/run_executor.py` — replaced with generic `RunHook` protocol and `add_hook()` registration.
+- Added `interfaces/run_hooks.py` with `_DefaultRunHook` adapter and `register_default_run_hooks()` to inject concrete hooks from outside `core/`.
+- Registered default hooks in `interfaces/api_server/app.py` and `interfaces/web_ui/app.py` so `RunExecutor` behavior is preserved without core knowing concrete implementations.
+- Added hook invocation and idempotency tests in `tests/test_run_executor.py`.
+
 ### Phase 1 Slice 2 — CLI Tool Invocation Unified
 - Routed CLI `copy` command through `ToolInvoker` with `interface_policy_config()` instead of direct `FilesystemTool.invoke()` (`interfaces/cli/cli.py`).
 - Added interactive approval prompt to CLI `copy`: medium-risk operations display 6-field disclosure and prompt `[y/N]`; granted requests re-invoke via `granted_request` bypass (`interfaces/cli/cli.py`).

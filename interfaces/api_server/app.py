@@ -291,6 +291,9 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
     memory_bus = MemoryBus(repo_root)
     rate_limiter = RateLimiter(max_requests=60, window_seconds=60.0)
     run_executor = RunExecutor()
+    from interfaces.run_hooks import register_default_run_hooks
+
+    register_default_run_hooks(run_executor)
 
     # ------------------------------------------------------------------
     # Request logging middleware

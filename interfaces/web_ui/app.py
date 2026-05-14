@@ -171,6 +171,9 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
     tool_invoker = ToolInvoker(registry=core_tool_registry, policy_config=interface_policy_config())
     memory_bus = MemoryBus(repo_root)
     run_executor = RunExecutor()
+    from interfaces.run_hooks import register_default_run_hooks
+
+    register_default_run_hooks(run_executor)
     aictx_config = AictxConfig()
 
     # Serve static files if the directory exists
