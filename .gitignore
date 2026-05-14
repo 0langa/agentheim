@@ -70,4 +70,4 @@ old-docs/
 
 # Local reference / legacy subtrees
 Agent-Team/
-.kimi/
+.kimi/.ai-team/tokens.jsonl

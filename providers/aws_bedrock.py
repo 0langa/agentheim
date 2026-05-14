@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from providers.base import ModelProvider, ModelRequest, ModelResponse, log_token_usage
+from providers.base import ModelProvider, ModelRequest, ModelResponse
 
 
 class AWSBedrockProvider(ModelProvider):
@@ -80,15 +80,6 @@ class AWSBedrockProvider(ModelProvider):
             "region": region,
             "model_id": self.config.model,
         }
-
-        log_token_usage(
-            provider="aws_bedrock",
-            model=self.config.model,
-            role=request.role.value,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            metadata={"region": region},
-        )
 
         return ModelResponse(
             role=request.role,
