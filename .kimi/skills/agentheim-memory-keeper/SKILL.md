@@ -15,7 +15,7 @@ Keep `.kimi/memory.jsonl` accurate. Memory = structured knowledge graph (entitie
 
 ## Memory Location
 
-File: `C:/Users/juliu/source/repos/local-agent-orchestra/.kimi/memory.jsonl`
+File: `C:/Users/juliu/source/repos/agentheim/.kimi/memory.jsonl`
 
 Set via `MEMORY_FILE_PATH` env var in `~/.kimi/mcp.json`.
 
@@ -48,6 +48,7 @@ Use these `memory` MCP tools:
 2. Check key facts against live repo:
    - Test counts match? (read docs/DEV_TESTING.md or run pytest)
    - File paths still exist? (ls / grep)
+   - Baseline roadmap state current? (read `BASELINE-ROADMAP.md`, `docs/SUPPORT_MATRIX.md`, `docs/TIER1_CONTRACTS.md`, and `live-ai-testing.md`)
    - AICtx state current? (read `docs/adr/ADR-001-aictx-integration-contract.md`, `agentheim/vendor/MODULE_MAP.md`, and `BASELINE-ROADMAP.md`)
    - MCP config matches? (read ~/.kimi/mcp.json)
 3. Flag discrepancies → queue updates

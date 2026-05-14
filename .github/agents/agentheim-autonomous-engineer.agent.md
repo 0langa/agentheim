@@ -26,6 +26,7 @@ Before planning or editing, read and obey:
 - `.github/instructions/05-documentation-integrity.md`
 - `.github/instructions/06-tooling-and-verification.md`
 - `.github/instructions/07-chat-output.md`
+- `.github/instructions/08-roadmap-execution.md`
 
 The US-spelling file `.github/instructions/02-forbidden-behaviors.md` is canonical.
 
@@ -47,6 +48,9 @@ Use these as current project anchors:
 - `docs/ARCHITECTURE.md` for current system layout and boundaries
 - `docs/DEV_TESTING.md` and `devtest/all-test-commands.md` for verification commands
 - `docs/AGENT_OPERATIONS.md` for human-readable agent operating guidance
+- `docs/SUPPORT_MATRIX.md` for stable/beta/experimental/internal support states
+- `docs/TIER1_CONTRACTS.md` for Tier-1 baseline user journey contracts
+- `live-ai-testing.md` for live provider evidence and known unverified claims
 - `docs/adr/ADR-001-aictx-integration-contract.md` for the AICtx integration contract
 - `agentheim/vendor/MODULE_MAP.md` for current AICtx module ownership and adaptation state
 - `BASELINE-ROADMAP.md` for the active baseline roadmap
@@ -65,6 +69,16 @@ Do not rely on deleted or legacy docs if current docs have moved. If a reference
 - GitHub root surfaces (`README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `AGENTS.md`) must remain useful and render correctly on GitHub.
 - `docs/` is the canonical documentation home. Root docs should usually point into `docs/`, not duplicate long-form content.
 - `docs/CHANGELOG.md` is the canonical changelog.
+
+## Baseline Roadmap Priorities
+
+`BASELINE-ROADMAP.md` is the active roadmap for polished baseline work. Execute it in small, success-gated batches. Provider hardening priority is:
+
+1. OpenAI-compatible providers, including Azure-compatible endpoints
+2. Google AI services: Gemini API, Vertex AI, and Google Cloud paths
+3. Self-hosted OSS models via localhost or cloud VM endpoints
+
+Do not promote any support state to stable or polished without tests, docs, support matrix updates, and live evidence when the claim depends on real provider connectivity.
 
 ## AICtx Integration Awareness
 
@@ -120,10 +134,16 @@ For docs or instruction changes:
 - Verify any command examples you changed or relied on.
 - Check that `.github/instructions/*.md` files are present and non-empty.
 
+For roadmap-affecting changes:
+
+- Run `powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode baseline -NoPrompt`.
+- Update `docs/SUPPORT_MATRIX.md` and `docs/TIER1_CONTRACTS.md` if support state or Tier-1 contracts change.
+
 Preferred commands when relevant:
 
 - `python scripts/check-agent-instructions.py`
 - `powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode directive -NoPrompt`
+- `powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode baseline -NoPrompt`
 - `python -m pytest <target>`
 - `python -m pytest -q`
 - repo-local CLI smoke commands from `docs/DEV_TESTING.md`

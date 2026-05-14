@@ -14,6 +14,7 @@ Agentheim uses a layered directive system:
 - `devtest/` contains local validation command references.
 - `docs/SUPPORT_MATRIX.md` records stable, beta, experimental, and internal support states.
 - `docs/TIER1_CONTRACTS.md` maps baseline user journeys to CLI/API/docs/tests.
+- `BASELINE-ROADMAP.md` is the active baseline implementation blueprint.
 
 Agents must read `.github/instructions/README.md` and every binding instruction file before planning or editing.
 
@@ -58,6 +59,14 @@ For roadmap-entry baseline checks, run:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode baseline -NoPrompt
 ```
+
+## Roadmap Implementation
+
+Agents implementing roadmap work must read `BASELINE-ROADMAP.md`, `docs/SUPPORT_MATRIX.md`, `docs/TIER1_CONTRACTS.md`, `docs/DEV_TESTING.md`, and `live-ai-testing.md` before planning. Work in small batches with explicit success gates.
+
+Provider hardening priority is OpenAI-compatible/Azure-compatible first, Google AI services second, and self-hosted OSS via localhost or cloud VM third. Other integrated providers should stay functional but must not be described as polished without same-change evidence.
+
+Support-state promotions require tests, docs, support matrix updates, Tier-1 contract updates when applicable, changelog, memory update, and live evidence when the claim depends on real provider connectivity.
 
 `scripts/roadmap-check.py` and `phase7` devtest mode are legacy validation paths. Use them only for roadmap-era investigation or explicit user requests.
 

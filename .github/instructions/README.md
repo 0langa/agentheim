@@ -14,6 +14,7 @@ This directory contains binding instructions for agents working on Agentheim.
 | `05-documentation-integrity.md` | always-read, always-enforced | Documentation accuracy, link, example, and GitHub rendering rules |
 | `06-tooling-and-verification.md` | always-read, always-enforced | Canonical local validation, AI live-test limits, and legacy roadmap status |
 | `07-chat-output.md` | always-read, always-enforced | rules for how to interact with user in input/output interface talking with you |
+| `08-roadmap-execution.md` | always-read, always-enforced | Active baseline roadmap execution, provider priority, support-state evidence, and success gates |
 
 ## AICtx Rule
 
@@ -22,3 +23,7 @@ All agents must read `04-AICtx-integration.md`.
 Its integration workflow rules apply when work touches AICtx, repository context generation, `docs/AIprojectcontext/**`, `context.lock.json`, public-doc impact mapping, context verification, or migration from the AICtx workspace project at `../AICtx`.
 
 Its hard boundaries always apply, including using the editable AICtx install from `../AICtx` rather than vendored or copied source.
+
+## Roadmap Rule
+
+All roadmap implementation must use `BASELINE-ROADMAP.md` as the active blueprint, with `docs/SUPPORT_MATRIX.md` and `docs/TIER1_CONTRACTS.md` as contract evidence files. Legacy roadmap checker paths are historical unless explicitly requested.

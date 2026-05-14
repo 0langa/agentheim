@@ -20,6 +20,7 @@ REQUIRED_INSTRUCTIONS = [
     "05-documentation-integrity.md",
     "06-tooling-and-verification.md",
     "07-chat-output.md",
+    "08-roadmap-execution.md",
 ]
 
 

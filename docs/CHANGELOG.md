@@ -2,6 +2,10 @@
 
 ## 2026-05-14
 
+### Agent Roadmap Governance
+- Added binding roadmap execution instructions covering `BASELINE-ROADMAP.md`, provider hardening priority, support-state evidence requirements, and baseline success gates.
+- Updated agent operations, autonomous engineer instructions, boundary/docs/devtest skills, and instruction drift checks so future agents use the baseline roadmap contracts before implementing roadmap batches.
+
 ### Baseline Roadmap Phase 0 + Phase 1 Tool Slice
 - Renamed the active baseline blueprint to `BASELINE-ROADMAP.md` and marked Phase 0 complete with evidence links.
 - Added `docs/SUPPORT_MATRIX.md` for stable/beta/experimental/internal support states across providers, presets, interfaces, tools, and advanced subsystems.

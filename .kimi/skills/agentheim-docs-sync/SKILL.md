@@ -44,6 +44,10 @@ Map modified files to code areas:
 | `presets/*.py` | Presets |
 | `config/*.py` | Config |
 | `.github/instructions/*.md` | Agent Instructions |
+| `BASELINE-ROADMAP.md` | Baseline Roadmap |
+| `docs/SUPPORT_MATRIX.md` | Support Matrix |
+| `docs/TIER1_CONTRACTS.md` | Tier-1 Contracts |
+| `live-ai-testing.md` | Live Provider Evidence |
 | `agentheim/vendor/aictx/**/*.py` | AICtx Integration |
 
 ### 2. Map to Required Doc Updates
@@ -88,6 +92,11 @@ Read `references/doc-map.md` for full mapping. Key rules:
 
 **`.github/instructions/` changes → `AGENTS.md`**
 - Update binding instructions list
+
+**Roadmap/support-state changes → `BASELINE-ROADMAP.md` + `docs/SUPPORT_MATRIX.md` + `docs/TIER1_CONTRACTS.md` + `live-ai-testing.md`**
+- Keep roadmap phase status, support states, Tier-1 contracts, and live evidence consistent
+- Do not mark support stable/polished unless tests and live evidence exist when relevant
+- If live evidence was not run, document the claim as unverified or mock-only
 
 **AICtx changes → `docs/adr/ADR-001-aictx-integration-contract.md` + `agentheim/vendor/MODULE_MAP.md`**
 - Update integration contract or ownership notes

@@ -23,6 +23,7 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode <mode> 
 | `narrow` | Quick sanity, single file changed | Focused subset (~30s) |
 | `targeted` | Feature area changed, medium confidence | Specific test areas (~60s) |
 | `directive` | Docs/instructions changed | Docs, GitHub instructions, governance checks |
+| `baseline` | Roadmap-affecting batch or baseline readiness check | Directive checks, CLI smoke, provider/preset/tool registry load, pytest collection |
 | `phase7` | Pre-release hardening | Legacy roadmap-era production gates |
 | `broad` | Cross-cutting change | Functional + memory suites (~90s) |
 | `full` | Pre-release or big refactor | Complete validation (~120s) |
@@ -42,6 +43,11 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
 ### Changed docs or instructions
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode directive -NoPrompt
+```
+
+### Roadmap batch or support-state change
+```powershell
+powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode baseline -NoPrompt
 ```
 
 ### Pre-commit on feature branch

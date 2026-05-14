@@ -29,6 +29,12 @@ Directive devtest:
 powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode directive -NoPrompt
 ```
 
+Baseline roadmap gate:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode baseline -NoPrompt
+```
+
 ## Roadmap Checker Status
 
 `scripts/roadmap-check.py` and `phase7` devtest mode are legacy validation paths. Do not use them as default completion gates for new directive-system work. Use them only when investigating historical phase-gate behavior or when a user explicitly asks.
@@ -44,4 +50,3 @@ Final handoffs must say:
 - which checks ran
 - whether they passed or failed
 - whether skipped checks were unnecessary, too broad for the change, or blocked by environment
-

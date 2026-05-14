@@ -24,6 +24,30 @@ Auto-discovered by Kimi CLI. Trigger without explicit user request:
 | `agentheim-memory-keeper` | After significant tasks, at session start, when loading context for complex tasks |
 | `agentheim-aictx-guide` | When touching `agentheim/vendor/aictx/`, `agentheim/context_ops.py`, or AICtx integration work |
 
+## Baseline Roadmap Execution
+
+`BASELINE-ROADMAP.md` is the active implementation blueprint for reaching a polished, dependable Agentheim baseline. Before any roadmap work, agents must read:
+
+- `BASELINE-ROADMAP.md`
+- `docs/SUPPORT_MATRIX.md`
+- `docs/TIER1_CONTRACTS.md`
+- `docs/DEV_TESTING.md`
+- `live-ai-testing.md`
+
+Provider/model hardening priority is fixed unless the user explicitly changes it:
+
+1. OpenAI-compatible providers, including Azure-compatible endpoints
+2. Google AI services: Gemini API, Vertex AI, and Google Cloud paths
+3. Self-hosted OSS models through localhost or cloud VM endpoints
+
+Other integrated providers should remain functional in theory, but must not be promoted to stable/polished without evidence. Any support-state change must update `docs/SUPPORT_MATRIX.md`, relevant user/API docs, tests, live evidence when applicable, `docs/CHANGELOG.md`, and `.kimi/memory.jsonl`.
+
+Roadmap implementation must proceed in small, success-gated batches. Run the baseline gate before starting a new roadmap batch when practical, and after finishing any batch that changes runtime behavior, provider support, user-facing flows, docs, skills, or instructions:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode baseline -NoPrompt
+```
+
 ### MCP Servers (`~/.kimi/mcp.json`)
 
 Use relevant MCP servers without waiting for user prompt:

@@ -45,6 +45,9 @@ All side effects go through maintained safety paths: tool protocol, policy engin
 - `docs/README.md` is the documentation index.
 - `docs/ARCHITECTURE.md` describes current architecture.
 - `docs/SAFETY.md` describes current safety behavior.
+- `BASELINE-ROADMAP.md` is the active baseline roadmap.
+- `docs/SUPPORT_MATRIX.md` is the support-state authority.
+- `docs/TIER1_CONTRACTS.md` is the Tier-1 journey contract authority.
 - `docs/adr/ADR-001-aictx-integration-contract.md` and `agentheim/vendor/MODULE_MAP.md` govern AICtx integration boundaries and module ownership.
 - `.github/instructions/*.md` files are binding agent instructions.
 
@@ -81,6 +84,7 @@ These behaviors are automatic rejection unless the user explicitly asks for a co
 - Changing artifact layout without updating docs, tests, and consumers
 - Adding workflow packs without registration and smoke coverage
 - Adding provider adapters without lazy-loading and capability coverage
+- Promoting provider, preset, interface, tool, workflow, or advanced subsystem support state without same-change evidence and docs
 - Adding generated files without ignore/update rules
 - Touching multiple subsystems without explaining the cross-boundary impact
 
