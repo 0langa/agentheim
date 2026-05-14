@@ -2,6 +2,13 @@
 
 ## 2026-05-14
 
+### Resume + HTTP Tool + Adapter Tests (Verifier Blockers)
+- Fixed CLI `resume` to fallback to `run.json` when `RUN_INITIATED` event is missing or `workflow_id` is empty (`interfaces/cli/cli.py`)
+- Added `ledger.verify_chain()` integrity check in resume command (warning only, non-blocking)
+- Added `tests/test_resume.py` with 3 fallback tests (missing RUN_INITIATED, empty workflow_id, both missing)
+- Added `tests/test_http_tool.py` with 12 tests covering GET/POST success, network policy denial (private IP, http scheme, context.network_allowed), timeout/404/URLError handling, param validation
+- Added `tests/test_adapters.py` with 12 tests covering WebResearchAdapter dispatch chain, GitHubCliAdapter subprocess wrapping, MCPClientAdapter allowlist/enabled behavior
+
 ### Test Suite Optimization
 - Marked 35 slow tests (`@pytest.mark.slow`) across stress, integration, e2e, and lint check suites
 - Default `pytest` now runs 790 fast tests in ~27s instead of 825 tests in ~122s

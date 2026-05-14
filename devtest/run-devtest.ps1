@@ -1,6 +1,6 @@
 param(
-    [ValidateSet("narrow", "targeted", "broad", "full", "directive", "phase7")]
-    [string]$Mode = "targeted",
+    [ValidateSet("narrow", "targeted", "broad", "full", "directive", "phase7", "auto")]
+    [string]$Mode = "auto",
     [string]$K = "",
     [switch]$NoPrompt
 )
@@ -52,6 +52,50 @@ function Invoke-CommandCheck {
 $baseArgs = @("-q")
 if ($K.Trim()) {
     $baseArgs += @("-k", $K.Trim())
+}
+
+function Resolve-AutoMode {
+    param([string]$RepoRoot)
+    Push-Location $RepoRoot
+    try {
+        $null = & git rev-parse --git-dir 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            return "targeted"
+        }
+        $changed = (& git diff --name-only) + (& git diff --cached --name-only) | Select-Object -Unique
+        if (-not $changed) {
+            return "targeted"
+        }
+        $broadDirs = @("core/", "workflows/", "memory/", "federation/", "marketplace/", "monitoring/", "multimodal/")
+        $targetedDirs = @("tools/", "interfaces/", "config/", "providers/", "tests/", "presets/")
+        $directiveDirs = @("docs/", "scripts/", ".github/", "devtest/")
+        $hasBroad = $false
+        $hasTargeted = $false
+        $hasDirective = $false
+        foreach ($file in $changed) {
+            foreach ($d in $broadDirs) {
+                if ($file.StartsWith($d)) { $hasBroad = $true }
+            }
+            foreach ($d in $targetedDirs) {
+                if ($file.StartsWith($d)) { $hasTargeted = $true }
+            }
+            foreach ($d in $directiveDirs) {
+                if ($file.StartsWith($d)) { $hasDirective = $true }
+            }
+        }
+        if ($hasBroad) { return "broad" }
+        if ($hasTargeted) { return "targeted" }
+        if ($hasDirective) { return "directive" }
+        return "targeted"
+    }
+    finally {
+        Pop-Location
+    }
+}
+
+if ($Mode -eq "auto") {
+    $Mode = Resolve-AutoMode -RepoRoot $RepoRoot
+    Write-Host "Auto-selected mode: $Mode"
 }
 
 switch ($Mode) {

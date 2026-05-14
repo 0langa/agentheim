@@ -14,6 +14,13 @@ from core.tool_protocol import ToolRegistry
 from core.workflow_runner import WorkflowRunner
 from workflows.base import ExecutionDAG, Step, StepResult, Workflow
 
+import json
+
+from typer.testing import CliRunner
+
+from core.model_registry import ModelRegistry
+from interfaces.cli.cli import app
+
 
 class FakeWorkflow(Workflow):
     workflow_id = "test-resume"
@@ -122,3 +129,67 @@ class TestResumeOrchestrator:
         # s2 and s3 should also execute
         assert "s2" in wf.call_log
         assert "s3" in wf.call_log
+
+
+class _FakeWorkflowEntry:
+    @staticmethod
+    def factory(*, model_registry, tool_registry, policy_engine, ledger):
+        return FakeWorkflow(
+            ledger=ledger,
+            model_registry=model_registry,
+            tool_registry=tool_registry,
+            policy_engine=policy_engine,
+        )
+
+
+class TestCliResumeFallback:
+    @pytest.fixture(autouse=True)
+    def _patch_cli_deps(self, monkeypatch):
+        monkeypatch.setattr("interfaces.cli.cli.get_workflow", lambda w: _FakeWorkflowEntry())
+        monkeypatch.setattr("interfaces.cli.cli.load_team_config", lambda: None)
+        monkeypatch.setattr(
+            "interfaces.cli.cli.build_model_registry",
+            lambda config: ModelRegistry({}, {}),
+        )
+
+    def test_resume_fallback_to_run_json_when_run_initiated_missing(self, tmp_path: Path) -> None:
+        ledger = RunLedger.create(tmp_path, "test-run")
+        # No RUN_INITIATED event
+        (ledger.run_dir / "run.json").write_text(
+            json.dumps({"workflow_id": "test-resume"}), encoding="utf-8"
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(
+            app, ["resume", "--repo", str(tmp_path), "--run-id", ledger.run_dir.name]
+        )
+        assert result.exit_code == 0, result.output
+        assert "test-resume" in result.output
+
+    def test_resume_fallback_to_run_json_when_workflow_id_empty(self, tmp_path: Path) -> None:
+        ledger = RunLedger.create(tmp_path, "test-run")
+        ledger.emit_event(EventType.RUN_INITIATED, payload={"workflow_id": ""})
+        (ledger.run_dir / "run.json").write_text(
+            json.dumps({"workflow_id": "test-resume"}), encoding="utf-8"
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(
+            app, ["resume", "--repo", str(tmp_path), "--run-id", ledger.run_dir.name]
+        )
+        assert result.exit_code == 0, result.output
+        assert "test-resume" in result.output
+
+    def test_resume_fails_when_neither_source_has_workflow_id(self, tmp_path: Path) -> None:
+        ledger = RunLedger.create(tmp_path, "test-run")
+        # No RUN_INITIATED event
+        (ledger.run_dir / "run.json").write_text(
+            json.dumps({"metadata": {}}), encoding="utf-8"
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(
+            app, ["resume", "--repo", str(tmp_path), "--run-id", ledger.run_dir.name]
+        )
+        assert result.exit_code == 1, result.output
+        assert "no-run-initiated-event" in result.output or "missing-workflow-id" in result.output

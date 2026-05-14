@@ -32,6 +32,7 @@ from core.public_api import (
     inspect_repository,
     list_resume_runs as list_runs,
     load_final_report,
+    load_run,
 )
 import importlib.util
 
@@ -356,15 +357,37 @@ def resume(
     ledger = RunLedger(repo_root=repo_root, run_dir=run_dir)
     events = ledger.read_ledger()
     started = next((event for event in events if event.event_type == EventType.RUN_INITIATED), None)
-    if started is None:
-        console.print_json(json.dumps({"run_id": run_id, "status": "no-run-initiated-event"}))
+
+    workflow_id = ""
+    metadata = {}
+    if started is not None:
+        workflow_id = str(started.payload.get("workflow_id", "")).strip()
+        metadata = started.payload.get("metadata") or {}
+
+    if not workflow_id:
+        try:
+            run_data = load_run(repo_root, run_id)
+        except ResumeError:
+            run_data = {}
+
+        if run_data:
+            for key in ("workflow_id", "workflow", "action"):
+                val = run_data.get(key)
+                if isinstance(val, str) and val.strip():
+                    workflow_id = val.strip()
+                    break
+            metadata = run_data.get("metadata") or {}
+
+    if not workflow_id:
+        if started is None:
+            console.print_json(json.dumps({"run_id": run_id, "status": "no-run-initiated-event"}))
+        else:
+            console.print_json(json.dumps({"run_id": run_id, "status": "missing-workflow-id"}))
         raise typer.Exit(code=1)
 
-    workflow_id = str(started.payload.get("workflow_id", "")).strip()
-    metadata = started.payload.get("metadata") or {}
-    if not workflow_id:
-        console.print_json(json.dumps({"run_id": run_id, "status": "missing-workflow-id"}))
-        raise typer.Exit(code=1)
+    is_valid, _broken = ledger.verify_chain()
+    if not is_valid:
+        console.print("[yellow]Warning: ledger chain verification failed[/yellow]")
 
     from workflows.registry import register_builtin_workflows
 
