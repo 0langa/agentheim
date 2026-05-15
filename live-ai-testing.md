@@ -8,7 +8,7 @@ Run live AI checks from repo root with the intended provider profile configured.
 
 ## Current Drift Sweep
 
-**Sweep date:** 2026-05-14
+**Sweep date:** 2026-05-15
 
 This sweep did not rerun live AI workflows. It verified docs, governance, CLI smoke, and test collection only.
 
@@ -16,10 +16,10 @@ This sweep did not rerun live AI workflows. It verified docs, governance, CLI sm
 |-------|--------|----------|
 | Agent instruction drift | pass | `python scripts/check-agent-instructions.py` |
 | Directive devtest | pass | `powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode directive -NoPrompt` |
-| Baseline smoke gate | pass after Phase 0/1 slice | `powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode baseline -NoPrompt` |
+| Baseline smoke gate | pass after Phase 4 slice | `powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode baseline -NoPrompt` |
 | CLI help smoke | pass | included in directive devtest |
 | Doctor smoke | pass | `doctor --skip-connectivity`, included in directive devtest |
-| Test collection | pass | `pytest --collect-only -q` collected 1133 total tests; default lane selected 1098 and deselected 35 |
+| Test collection | pass | `pytest --collect-only -q` collected 1230 total tests; default lane selected 1195 and deselected 35 |
 | Markdown local links | pass after docs sync | repo-wide `*.md` link scan |
 
 ---
