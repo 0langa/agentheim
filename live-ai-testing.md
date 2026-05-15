@@ -17,14 +17,21 @@ Real local endpoint smoke using llama.cpp server in `.localtest/llama.cpp/`.
 | `llama-local` | `openai_compatible` / `qwen2.5-3b` | pass | `provider test` + `ping-models` all 4 roles pass; chat completions API responds with valid JSON |
 | `llama-local` | `openai_compatible` / `qwen2.5-3b` | fail | `start command-assistant` → parser structured-output parsing fails |
 | `llama-local` | `openai_compatible` / `qwen2.5-3b` | fail | `start local-document-chat` → indexer JSON truncated at max_tokens |
+| `llama-local` | `openai_compatible` / `qwen2.5-7b` | pass | `provider test` + `ping-models` pass; `start command-assistant` → status `done`, correct PS command in 25s |
+| `llama-local` | `openai_compatible` / `qwen2.5-7b` | fail | `start local-document-chat` → client timeout after 5 min on 10k-token indexer prompt (CPU-bound) |
 
 **Setup:**
 - Binary: llama.cpp b9165 win-cpu-x64 from GitHub releases
-- Model: `Qwen2.5-3B-Instruct-Q4_K_M.gguf` (~1.9 GB)
+- Models: `Qwen2.5-3B-Instruct-Q4_K_M.gguf` (~1.9 GB), `Qwen2.5-7B-Instruct-Q4_K_M.gguf` (~4.4 GB)
 - Endpoint: `http://127.0.0.1:8080/v1`
 - Scripts: `start-server.ps1` / `stop-server.ps1` in `.localtest/llama.cpp/`
+- Context sizes tested: 4096 (3B), 8192, 16384 (7B)
 
-**Note:** 3B model loaded after RAM cleanup (killed leaked MCP servers, paused AV, stopped WARP). Provider lane wiring is proven. Presets fail due to model-quality limits (structured JSON output, token budget) — not provider connectivity.
+**Notes:**
+- 3B presets fail due to model-quality limits (structured JSON output, token budget) — not provider connectivity.
+- 7B `command-assistant` passes end-to-end; model capability sufficient for structured output.
+- 7B `local-document-chat` times out on 10k-token indexer prompt due to CPU inference speed. GPU or chunked indexing needed for large-document workflows.
+- RAM usage: 3B ~1.5 GB, 7B ~4.5 GB. 16 GB system handles 7B at ~75% total RAM after cleanup.
 
 ### Provider Stability Sweep — Azure `gpt-5.4` and Gemini Key Test — 2026-05-15
 
