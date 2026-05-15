@@ -643,7 +643,9 @@ python -m interfaces.cli.cli copy --help
 
 ---
 
-## 🔴 Phase 6 - Live Validation Program
+## 🟡 Phase 6 - Live Validation Program
+
+**Status:** Partial as of 2026-05-15. Foundation slice complete: `scripts/live_validate.py` provides a repeatable, bounded live validation runner with built-in matrix, structured evidence output (JSONL + summary JSON/Markdown), provider/profile/model detection, failure category classification, and configurable max attempts (default 2) with 120-second timeout per attempt. Remaining work: define explicit live gate categories (provider lanes, stable presets, tools, safety negatives, interfaces, vision), run the full matrix against each top-3 provider lane, and archive contradictory historical results.
 
 **Goal:** Make live evidence repeatable, bounded, and safe.
 
@@ -651,7 +653,7 @@ python -m interfaces.cli.cli copy --help
 
 ### Work
 
-1. Create a live validation runner or documented script that records:
+1. 🟢 Create a live validation runner or documented script that records:
    - command
    - provider/profile
    - model

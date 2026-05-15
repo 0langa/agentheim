@@ -2,6 +2,17 @@
 
 ## 2026-05-15
 
+### Phase 6 Slice — Live Validation Program Foundation
+- Created `scripts/live_validate.py`: repeatable bounded live validation runner with built-in matrix.
+- Records per-test: command, provider/profile, model, repo path, run ID, result, artifact path, timestamp, failure category.
+- Supports configurable `--max-attempts` (default 2) and 120-second per-test timeout.
+- Failure categories: timeout, provider_auth, provider_rate_limit, provider_error, policy_denial, approval_required, model_misformat, missing_output, exit_failure, skipped, unexpected_error.
+- Creates `evidence.jsonl`, `summary.json`, `summary.md`, and per-test stdout/stderr logs.
+- Added `devtest/live_validate.ps1` Windows wrapper.
+- Updated `live-ai-testing.md` and `docs/DEV_TESTING.md` with runner usage and output format.
+- Updated `BASELINE-ROADMAP.md` Phase 6 status from 🔴 to 🟡.
+- Validation: runner lists 15 checks, doctor smoke passes, retry logic verified, evidence JSONL schema confirmed.
+
 ### Janitor — Roadmap Status Drift Fix
 - Fixed BASELINE-ROADMAP.md Phase 7 status paragraph: removed stale "Remaining gap: Web/Desktop still do not present..." now that structured error middleware + ctx route wrappers are implemented and tested.
 - Updated Phase 8 header from 🔴 to 🟡 with status note reflecting completed regression-guard slice.

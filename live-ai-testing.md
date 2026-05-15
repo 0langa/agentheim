@@ -135,6 +135,45 @@ Do not claim live baseline readiness until:
 
 ---
 
+## Live Validation Runner
+
+Use `scripts/live_validate.py` (or `devtest/live_validate.ps1` on Windows) for repeatable, bounded live evidence collection.
+
+```powershell
+# List available checks
+python scripts/live_validate.py --list
+
+# Run default matrix against current provider profile
+python scripts/live_validate.py --repo-root . --test-repo ../agentheim-testing-enviroment
+
+# Run only stable presets with max 2 attempts
+python scripts/live_validate.py --include-tags stable --max-attempts 2
+
+# Run with explicit profile override for evidence logging
+python scripts/live_validate.py --profile azure-real --only doctor,ping-models
+```
+
+The runner produces:
+- `evidence.jsonl` — one line per test with command, provider/profile, model, repo path, run ID, result, artifact path, timestamp, failure category
+- `summary.json` — structured pass/fail/skip counts and per-test metadata
+- `summary.md` — human-readable Markdown table
+- Per-test `.stdout.log` and `.stderr.log` files
+
+Failure categories:
+- `timeout` — exceeded per-test timeout (default 120s)
+- `provider_auth` — authentication or configuration failure
+- `provider_rate_limit` — rate limit or quota exhaustion
+- `provider_error` — other provider-side error
+- `policy_denial` — tool invocation denied by policy engine
+- `approval_required` — approval required but not granted
+- `model_misformat` — model output did not match expected schema
+- `missing_output` — expected pattern not found in output
+- `exit_failure` — non-zero exit code without specific provider error
+- `skipped` — dependency missing (e.g., prior test run_id unavailable)
+- `unexpected_error` — catch-all for uncategorized failures
+
+---
+
 ## Useful Commands
 
 ```powershell

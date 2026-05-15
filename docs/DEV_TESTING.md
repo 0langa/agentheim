@@ -108,6 +108,20 @@ powershell -ExecutionPolicy Bypass -File .\devtest\ai_test.ps1 -AllowMismatchPur
 
 ---
 
+## Live Validation Runner
+
+Run bounded live checks against configured providers and record structured evidence:
+
+```powershell
+python scripts/live_validate.py --list
+python scripts/live_validate.py --repo-root . --test-repo ../agentheim-testing-enviroment
+python scripts/live_validate.py --only doctor,ping-models --profile azure-real
+```
+
+Output includes `evidence.jsonl`, `summary.json`, `summary.md`, and per-test stdout/stderr logs in `.localtest/runs/<timestamp>-live-validation/`.
+
+---
+
 ## CLI Smoke Tests
 
 ```bash
