@@ -2,6 +2,14 @@
 
 ## 2026-05-15
 
+### Phase 4 Slice — Docs Maintenance Workflow Apply/Aligner Path Coverage
+- Added `TestDocsMaintenanceWorkflowNegativePaths` with 3 tests:
+  1. `test_detect_failure_halts_before_update` — invalid detector output halts DAG before update/align.
+  2. `test_update_failure_halts_before_align` — invalid updater output halts DAG before align.
+  3. `test_empty_stale_docs_graceful` — empty `stale_docs` propagates through update → align without crashing; all 4 steps succeed.
+- Updated `docs/SUPPORT_MATRIX.md` `docs-maintainer` known limits to reflect stronger coverage.
+- Validation: `tests/smoke/test_workflow_execution.py` 18 passed.
+
 ### Phase 4 Slice — Research Workflow Negative-Path Coverage
 - Added `TestResearchWorkflowNegativePaths` with 2 tests:
   1. `test_research_workflow_gather_failure_halts` — invalid gather output halts DAG before summarize/report; runner returns single failed step.

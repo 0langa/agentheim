@@ -511,7 +511,7 @@ Promote these after focused gaps close:
    - 🟢 documents binary/excluded-dir and empty-repo behavior (smoke tests added 2026-05-15)
    - 🟢 file organization missing/unsafe move reporting (explicit overwrite guard + negative tests added 2026-05-15)
    - 🟢 command assistant unsafe command returns `safe=false` (negative tests added 2026-05-15)
-   - docs maintenance align/apply path
+   - 🟢 docs maintenance align/apply path (detect/update failure halt + empty stale-docs graceful propagation covered by smoke tests 2026-05-15)
    - 🟢 research API execution path (gather failure halt + empty sources graceful propagation covered by smoke tests 2026-05-15)
    - GitHub API execution path
 5. Add context-maintainer to preset smoke expectations.

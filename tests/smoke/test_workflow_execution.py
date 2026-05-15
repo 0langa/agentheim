@@ -342,3 +342,64 @@ class TestResearchWorkflowNegativePaths:
         # Verify gather carried empty sources
         gather_parsed = results[0].metadata.get("parsed", {})
         assert gather_parsed.get("sources") == []
+
+
+class TestDocsMaintenanceWorkflowNegativePaths:
+    def test_detect_failure_halts_before_update(self, mock_deps, tmp_path: Path) -> None:
+        from workflows.docs_maintenance import DocsMaintenanceWorkflow
+        from workflows.docs_maintenance.agents.base import BaseAgent
+        registry, tools, policy, ledger = mock_deps
+
+        def _bad_detect(self, user_prompt: str, max_output_tokens: int | None = None) -> str:
+            if self.output_schema.__name__ == "DetectionResult":
+                return "not valid json"
+            return _fake_invoke(self, user_prompt, max_output_tokens)
+
+        with patch.object(BaseAgent, "_invoke", _bad_detect):
+            wf = DocsMaintenanceWorkflow(registry, tools, policy, ledger)
+            results = wf.run(tmp_path, metadata={"docs_context": "readme info"})
+
+        # public_docs_impact succeeds, detect fails, runner halts
+        assert len(results) == 2
+        assert results[0].step_id == "public_docs_impact"
+        assert results[0].success
+        assert results[1].step_id == "detect"
+        assert not results[1].success
+
+    def test_update_failure_halts_before_align(self, mock_deps, tmp_path: Path) -> None:
+        from workflows.docs_maintenance import DocsMaintenanceWorkflow
+        from workflows.docs_maintenance.agents.base import BaseAgent
+        registry, tools, policy, ledger = mock_deps
+
+        def _bad_update(self, user_prompt: str, max_output_tokens: int | None = None) -> str:
+            if self.output_schema.__name__ == "UpdateResult":
+                return "not valid json"
+            return _fake_invoke(self, user_prompt, max_output_tokens)
+
+        with patch.object(BaseAgent, "_invoke", _bad_update):
+            wf = DocsMaintenanceWorkflow(registry, tools, policy, ledger)
+            results = wf.run(tmp_path, metadata={"docs_context": "readme info"})
+
+        # public_docs_impact + detect + update; align skipped
+        assert len(results) == 3
+        assert results[0].success
+        assert results[1].success
+        assert results[2].step_id == "update"
+        assert not results[2].success
+
+    def test_empty_stale_docs_graceful(self, mock_deps, tmp_path: Path) -> None:
+        from workflows.docs_maintenance import DocsMaintenanceWorkflow
+        from workflows.docs_maintenance.agents.base import BaseAgent
+        registry, tools, policy, ledger = mock_deps
+
+        def _empty_detect(self, user_prompt: str, max_output_tokens: int | None = None) -> str:
+            if self.output_schema.__name__ == "DetectionResult":
+                return json.dumps({"stale_docs": []})
+            return _fake_invoke(self, user_prompt, max_output_tokens)
+
+        with patch.object(BaseAgent, "_invoke", _empty_detect):
+            wf = DocsMaintenanceWorkflow(registry, tools, policy, ledger)
+            results = wf.run(tmp_path, metadata={"docs_context": "readme info"})
+
+        assert len(results) == 4
+        assert all(r.success for r in results)
