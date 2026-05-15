@@ -13,7 +13,7 @@ Records structured evidence for each check:
 - failure category
 
 Usage:
-    python scripts/live_validate.py --repo-root . --test-repo ../agentheim-testing-enviroment
+    python scripts/live_validate.py --repo-root . --test-repo .localtest/test-repo
     python scripts/live_validate.py --only doctor,ping-models --profile azure-real
     powershell -ExecutionPolicy Bypass -File .\devtest\live_validate.ps1
 """
@@ -46,7 +46,7 @@ RUN_ID_PATTERNS = [
 DEFAULT_MATRIX: dict[str, Any] = {
     "defaults": {
         "repo_root": ".",
-        "test_repo": "../agentheim-testing-enviroment",
+        "test_repo": ".localtest/test-repo",
         "python": "python",
         "cli_module": "interfaces.cli.cli",
         "issues_file": "{test_repo}/issues.json",
@@ -313,7 +313,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--matrix", default=None, help="Path to JSON matrix file (default: built-in matrix)")
     parser.add_argument("--output-root", default=str(Path(".localtest/runs")))
     parser.add_argument("--repo-root", default=".")
-    parser.add_argument("--test-repo", default="../agentheim-testing-enviroment")
+    parser.add_argument("--test-repo", default=".localtest/test-repo")
     parser.add_argument("--profile", default="", help="Override provider profile name for evidence logging.")
     parser.add_argument("--only", default="", help="Comma-separated test ids to run.")
     parser.add_argument("--skip", default="", help="Comma-separated test ids to skip.")
@@ -559,7 +559,7 @@ def main() -> int:
     defaults = dict(matrix.get("defaults", {}))
 
     repo_root = str(Path(args.repo_root or defaults.get("repo_root", ".")).resolve())
-    test_repo = str(Path(args.test_repo or defaults.get("test_repo", "../agentheim-testing-enviroment")).resolve())
+    test_repo = str(Path(args.test_repo or defaults.get("test_repo", ".localtest/test-repo")).resolve())
     defaults["repo_root"] = repo_root
     defaults["test_repo"] = test_repo
 

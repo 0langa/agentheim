@@ -148,7 +148,7 @@ Typical symptoms:
 - localhost endpoint warnings in `agentheim doctor`
 
 Recovery:
-1. Start the local server first, for example Ollama, LM Studio, vLLM, TGI, llama.cpp, or the `.localtest/mock-ai-server/` shim.
+1. Start the local server first, for example Ollama, LM Studio, vLLM, TGI, llama.cpp, or a local mock server.
 2. Re-run `agentheim doctor --skip-connectivity` and confirm `Local endpoint reachability` passes or skips as expected.
 3. Retry with `agentheim provider test --role planner`.
 

@@ -42,29 +42,64 @@ class RetrieverAgent(BaseAgent[RetrieverOutput]):
 
     def _parse(self, raw_output: str) -> RetrieverOutput:
         data = json.loads(repair_json_text(raw_output))
-        chunks = data.get("chunks")
-        if isinstance(chunks, list) and chunks:
-            return RetrieverOutput.model_validate({"chunks": chunks})
-        alias_chunks = data.get("results")
-        if isinstance(alias_chunks, list):
+
+        # Case 1: Model returns a list directly ([{"chunk": "..."}] or [{"path": "..."}])
+        if isinstance(data, list):
             normalized = []
-            for item in alias_chunks:
+            for item in data:
                 if not isinstance(item, dict):
                     continue
-                normalized.append(
-                    {
-                        "path": item.get("path") or item.get("file") or item.get("document") or item.get("source") or "",
-                        "excerpt": item.get("excerpt") or item.get("quote") or item.get("text") or "",
-                        "relevance_score": max(
-                            0.0,
-                            min(
-                                1.0,
-                                float(item.get("relevance_score") or item.get("score") or 0.0),
+                chunk_text = item.get("chunk") or item.get("excerpt") or item.get("text") or item.get("quote") or ""
+                path = item.get("path") or item.get("file") or item.get("document") or item.get("source") or ""
+                score = max(0.0, min(1.0, float(item.get("relevance_score") or item.get("score") or 0.8)))
+                if chunk_text or path:
+                    normalized.append({"path": path, "excerpt": chunk_text, "relevance_score": score})
+            if normalized:
+                return RetrieverOutput.model_validate({"chunks": normalized})
+
+        # Case 2: Expected {"chunks": [...]}
+        if isinstance(data, dict):
+            chunks = data.get("chunks")
+            if isinstance(chunks, list) and chunks:
+                return RetrieverOutput.model_validate({"chunks": chunks})
+
+            # Case 3: Aliases {"results": [...]} or {"retrieved_chunks": [...]}
+            alias_chunks = data.get("results") or data.get("retrieved_chunks")
+            if isinstance(alias_chunks, list):
+                normalized = []
+                for item in alias_chunks:
+                    if not isinstance(item, dict):
+                        continue
+                    path = (
+                        item.get("path")
+                        or item.get("file")
+                        or item.get("document")
+                        or item.get("document_id")
+                        or item.get("source")
+                        or ""
+                    )
+                    excerpt = (
+                        item.get("excerpt")
+                        or item.get("quote")
+                        or item.get("text")
+                        or item.get("chunk")
+                        or ""
+                    )
+                    normalized.append(
+                        {
+                            "path": path,
+                            "excerpt": excerpt,
+                            "relevance_score": max(
+                                0.0,
+                                min(
+                                    1.0,
+                                    float(item.get("relevance_score") or item.get("score") or 0.0),
+                                ),
                             ),
-                        ),
-                    }
-                )
-            return RetrieverOutput.model_validate({"chunks": normalized})
+                        }
+                    )
+                return RetrieverOutput.model_validate({"chunks": normalized})
+
         try:
             return self.output_schema.model_validate(data)
         except (ValueError, ValidationError):

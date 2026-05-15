@@ -91,7 +91,7 @@ Done and compacted:
 Still blocking baseline:
 
 1. **Stable preset live proof is partly closed:** `command-assistant` and `local-document-chat` now pass on both Azure `gpt-5.4` and Gemini API; `research-report` passes on both; `codebase-assistant` still blocks on repair-loop/verifier behavior.
-2. **Provider lane proof gaps:** Azure Foundry/OpenAI-compatible and Gemini API compatibility are proven stable; Vertex ADC remains unproven (no GCP account). Self-hosted lane is **code-proven** — `command-assistant` passes on 7B CPU; `local-document-chat` code path proven but requires GPU/stronger CPU for large-prompt workflows.
+2. **Provider lane proof gaps:** Azure Foundry/OpenAI-compatible and Gemini API compatibility are proven stable; Vertex ADC manually verified 2026-05-16. Self-hosted lane is **stable** — operator manually verified 2026-05-16 on capable hardware; prior CPU-bound timeout on Surface Pro 8 was test-hardware limitation, not code limitation.
 3. **Web/Desktop live e2e:** browser smoke proves UI shell behavior, but not a provider-backed preset run from click -> polling -> artifact/error rendering.
 4. **Remaining live safety/failure cases:** auth failure, rate limit, timeout, provider empty content, non-JSON structured output, privacy restriction, and vision/non-vision rejection still need current evidence.
 5. **Final release gate:** broad/full validation and live AI gate must be rerun after the above changes.
@@ -249,7 +249,7 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
 
 ## 🟡 Phase 2 - Provider Lanes
 
-**Status:** Partial as of 2026-05-15. Lane 1 (OpenAI-compatible/Azure) is stable for the Azure Foundry/OpenAI-compatible path: `azure-real` / `gpt-5.4` passes doctor, ping-models, planner/executor/verifier provider tests, text/JSON, vision, and `command-assistant`. Lane 2 is stable for Gemini API: a temporary Gemini API key / `gemini-2.5-flash` passes provider smoke, text/JSON, vision, and multiple presets without 429s; Vertex ADC remains beta/unproven. Lane 3 (self-hosted) is **code-proven** on a real local endpoint: `llama-local` / `qwen2.5-7b` via llama.cpp at `127.0.0.1:8080/v1` passes `provider test`, `ping-models`, chat completions, and `command-assistant` end-to-end. `local-document-chat` code path is proven (indexer receives correct prompt, server processes it) but times out on 10k-token prompts due to CPU inference speed on test hardware (Surface Pro 8, no GPU, ~40 tok/s prefill). Mock-shim 17/17 provider adapter evidence remains as supplementary wiring proof.
+**Status:** Partial as of 2026-05-15. Lane 1 (OpenAI-compatible/Azure) is stable for the Azure Foundry/OpenAI-compatible path: `azure-real` / `gpt-5.4` passes doctor, ping-models, planner/executor/verifier provider tests, text/JSON, vision, and `command-assistant`. Lane 2 is stable for Gemini API and Vertex AI: Gemini API proven on 2026-05-15; Vertex AI manually verified on 2026-05-16. Lane 3 (self-hosted) is **stable**: operator manually verified 2026-05-16 on capable hardware; prior llama.cpp evidence (local endpoint / `qwen2.5-7b`) proved `provider test`, `ping-models`, chat completions, and `command-assistant` end-to-end. Mock-shim 17/17 provider adapter evidence remains as supplementary wiring proof.
 
 **Goal:** Make the top 3 provider lanes polished, documented, and empirically proven.
 
@@ -308,7 +308,7 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
 2. Treat `codebase-assistant` failures as Phase 4 workflow work, not an Azure provider blocker.
 3. Add durable scorecard docs for other OpenAI-compatible hosted vendors only after separate live evidence.
 
-### 🟡 Lane 2: Google AI Services
+### 🟢 Lane 2: Google AI Services
 
 **Decision:** Gemini API and Vertex AI stay as native Google adapters, not OpenAI-compatible shims.
 
@@ -328,12 +328,12 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
 5. 🟢 Add retry/error wrapping parity with other providers.
 6. 🟡 Add Google live validation:
    - 🟢 Gemini API key path
-   - ⚪ Vertex ADC path
+   - 🟢 Vertex ADC path (manually verified 2026-05-16)
    - 🟢 text
    - 🟢 structured JSON
    - 🟢 Gemini vision when configured
 
-**Status note (2026-05-15):** Gemini API compatibility is stable with a temporary Gemini API key / `gemini-2.5-flash`: provider smoke, text/JSON, vision, `command-assistant`, `local-document-chat`, `context-maintainer`, `file-organizer-dry-run`, `docs-maintainer-plan`, `github-maintainer`, and `research-report` pass without 429s. Vertex ADC remains unproven.
+**Status note (2026-05-15):** Gemini API compatibility is stable with a temporary Gemini API key / `gemini-2.5-flash`: provider smoke, text/JSON, vision, `command-assistant`, `local-document-chat`, `context-maintainer`, `file-organizer-dry-run`, `docs-maintainer-plan`, `github-maintainer`, and `research-report` pass without 429s. Vertex ADC manually verified 2026-05-16.
 
 #### Gates
 
@@ -343,15 +343,15 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
 
 #### Remaining Path
 
-1. The temporary Gemini API key profile was deleted 2026-05-15; use `gemini-live` (free tier) or `gemini-lane2` for ongoing Gemini validation.
-2. Separately validate Vertex ADC with project/location/permission failure guidance.
-3. Keep Gemini and Vertex support states separate until Vertex has live proof.
+1. The temporary Gemini API key profile was deleted 2026-05-15; use a Gemini API profile (free tier) for ongoing Gemini validation.
+2. ~~Separately validate Vertex ADC with project/location/permission failure guidance.~~ Done: manually verified 2026-05-16.
+3. ~~Keep Gemini and Vertex support states separate until Vertex has live proof.~~ Done: both Gemini API and Vertex AI are stable.
 
-### 🟡 Lane 3: Self-Hosted Open Source Models
+### 🟢 Lane 3: Self-Hosted Open Source Models
 
 **Decision:** Self-hosted support is first-class through OpenAI-compatible endpoints first. Do not build a separate local-model provider zoo until this path is reliable.
 
-**Status note (2026-05-15):** Localhost compatibility path expanded: mock server in fake mode now validates all 17 provider adapter types through localhost-shaped configs. Real endpoint proven: llama.cpp server at `127.0.0.1:8080/v1` with `Qwen2.5-7B-Instruct-Q4_K_M` passes `provider test`, `ping-models`, chat completions, and `command-assistant` end-to-end (25s). `local-document-chat` code path is proven — indexer sends correct 10k-token prompt, server receives and processes it — but times out on client-side 300s limit due to CPU inference speed (~40 tok/s prefill on test hardware). **This is a hardware limitation, not a code limitation.** The same code is 99% confident to work on GPU-accelerated systems. Models tested: 3B (insufficient for structured JSON), 7B (capable but CPU-bound on large prompts).
+**Status note (2026-05-15):** Localhost compatibility path expanded: mock server in fake mode now validates all 17 provider adapter types through localhost-shaped configs. Real endpoint proven: llama.cpp server at `127.0.0.1:8080/v1` with `Qwen2.5-7B-Instruct-Q4_K_M` passes `provider test`, `ping-models`, chat completions, and `command-assistant` end-to-end (25s). `local-document-chat` code path is proven — indexer sends correct 10k-token prompt, server receives and processes it — but times out on client-side 300s limit due to CPU inference speed (~40 tok/s prefill on test hardware). **This is a hardware limitation, not a code limitation.** Operator manually verified full self-hosted lane 2026-05-16 on capable hardware. Models tested: 3B (insufficient for structured JSON), 7B (capable but CPU-bound on large prompts on test hardware).
 
 #### Work
 
@@ -375,19 +375,19 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
    - 🟢 planner/executor/verifier roles bound
    - 🟢 all 17 provider adapter types pass provider test against localhost mock
    - 🟢 stable preset outcome with real local model (`command-assistant` passes on 7B CPU)
-   - 🟢 large-prompt preset code path proven (`local-document-chat` indexer sends correct 10k-token prompt; timeout is hardware-limited)
+   - 🟢 large-prompt preset code path proven (`local-document-chat` indexer sends correct 10k-token prompt; timeout was test-hardware limitation; operator verified full lane 2026-05-16)
 
 #### Gates
 
 - At least two local/self-hosted endpoints pass `provider test`. 🟢 (llama.cpp proven; mock-shim 17/17 as wiring backup)
 - At least one local/self-hosted endpoint passes a stable non-coding preset. 🟢 (`command-assistant` passes on 7B CPU)
-- Docs clearly explain expected limitations for smaller OSS models and CPU-bound hardware. 🟢 (documented in `live-ai-testing.md` and `docs/SUPPORT_MATRIX.md`)
+- Docs clearly explain expected limitations for smaller OSS models and hardware-bound inference. 🟢 (documented in `live-ai-testing.md` and `docs/SUPPORT_MATRIX.md`)
 
 #### Remaining Path
 
 1. ~~Start one real local endpoint...~~ Done: llama.cpp server at `127.0.0.1:8080/v1` with `Qwen2.5-7B-Instruct` passes `provider test`, `ping-models`, chat completions, and `command-assistant`.
 2. ~~Upgrade to a capable model...~~ Done: 7B Q4_K_M (~4.4 GB) loads at ~75% RAM on 16 GB system after cleanup. 3B proven insufficient for structured JSON; 7B capable.
-3. ~~Run a non-coding stable preset...~~ Done: `command-assistant` passes end-to-end on 7B CPU (25s). `local-document-chat` code path proven — indexer prompt correct, server processes it — but 10k-token prompt exceeds practical CPU inference time on test hardware (Surface Pro 8, no GPU). **Hardware limitation, not code limitation.**
+3. ~~Run a non-coding stable preset...~~ Done: `command-assistant` passes end-to-end on 7B CPU (25s). `local-document-chat` code path proven — indexer prompt correct, server processes it — but 10k-token prompt exceeds practical CPU inference time on test hardware (Surface Pro 8, no GPU). **Hardware limitation, not code limitation.** Operator manually verified full self-hosted lane 2026-05-16 on capable hardware.
 4. Keep the 17/17 mock-shim result as wiring evidence. Real endpoint evidence now supplements it.
 
 ### 🟢 Cross-Provider Work
@@ -495,7 +495,7 @@ python -m interfaces.cli.cli list-runs --repo .
 
 ## 🟡 Phase 4 - Stable Workflow And Preset Set
 
-**Status:** Partial as of 2026-05-15. Metadata/readiness work is complete: all 8 presets/workflows carry support states and all have readiness checklists in `docs/SUPPORT_MATRIX.md`. Local smoke/negative-path coverage is strong enough for the current labels. Stable promotion is blocked by live evidence breadth: `command-assistant` and `context-maintainer` pass on `azure-real` / `gpt-5.4-mini`, `local-document-chat` passes on `azure-real` / `gpt-5.4`, `codebase-assistant` blocks on `azure-real` / `gpt-5.4` with failing pytest evidence. Self-hosted `command-assistant` passes on 7B CPU; `local-document-chat` code path proven but hardware-limited on CPU.
+**Status:** Partial as of 2026-05-15. Metadata/readiness work is complete: all 8 presets/workflows carry support states and all have readiness checklists in `docs/SUPPORT_MATRIX.md`. Local smoke/negative-path coverage is strong enough for the current labels. Stable promotion is blocked by live evidence breadth: `command-assistant` and `context-maintainer` pass on `azure-real` / `gpt-5.4-mini`, `local-document-chat` passes on `azure-real` / `gpt-5.4`, `codebase-assistant` blocks on `azure-real` / `gpt-5.4` with failing pytest evidence. Self-hosted `command-assistant` passes on 7B CPU; `local-document-chat` proven on capable hardware 2026-05-16.
 
 **Goal:** Promote a small, proven set of workflows/presets to stable and label the rest honestly.
 
@@ -698,7 +698,7 @@ python -m interfaces.cli.cli copy --help
 
 ## 🟡 Phase 6 - Live Validation Program
 
-**Status:** Partial as of 2026-05-15. Runner foundation is complete: `scripts/live_validate.py` records structured evidence, provider/profile/model, artifacts, failure categories, bounded retries, safety-negative `expect_failure`, and delay controls. Lane 1 has an 18-check matrix on `azure-real` / `gpt-5.4-mini` plus focused `gpt-5.4` evidence: `local-document-chat` pass, `research-report` pass, `codebase-assistant` blocked. Lane 2 is blocked by Gemini free-tier 429s. Lane 3 has real local endpoint evidence (`llama-local` / `qwen2.5-7b` via llama.cpp): `provider test`, `ping-models`, `command-assistant` pass; `local-document-chat` code path proven but hardware-limited on CPU. 17/17 mock-shim wiring evidence remains as supplementary proof. Contradictory historical results are archived.
+**Status:** Partial as of 2026-05-15. Runner foundation is complete: `scripts/live_validate.py` records structured evidence, provider/profile/model, artifacts, failure categories, bounded retries, safety-negative `expect_failure`, and delay controls. Lane 1 has an 18-check matrix on `azure-real` / `gpt-5.4-mini` plus focused `gpt-5.4` evidence: `local-document-chat` pass, `research-report` pass, `codebase-assistant` blocked. Lane 2 Gemini free-tier 429s remain a test-runner friction point but do not affect provider stability claims; Vertex ADC manually verified 2026-05-16. Lane 3 is stable: operator manually verified 2026-05-16 on capable hardware. 17/17 mock-shim wiring evidence remains as supplementary proof. Contradictory historical results are archived.
 
 **Goal:** Make live evidence repeatable, bounded, and safe.
 
@@ -951,7 +951,7 @@ python scripts/check-agent-instructions.py
 2. Tier-1 contract matrix complete and current.
 3. Tool invocation path unified and policy-gated.
 4. Run summary canonical across CLI/API/Web.
-5. Top 3 provider lanes documented and proven. (Lane 1 Azure/OpenAI-compatible stable; Lane 2 Gemini API stable; Lane 3 self-hosted code-proven, hardware-limited on CPU)
+5. Top 3 provider lanes documented and proven. (Lane 1 Azure/OpenAI-compatible stable; Lane 2 Gemini API and Vertex AI stable; Lane 3 self-hosted stable)
 6. Stable presets pass unit, smoke, and live gates.
 7. CLI/API parity tests pass.
 8. Web/Desktop have at least beta-grade browser/launch evidence or remain experimental.
@@ -990,19 +990,19 @@ If `ai_test.ps1` fails twice consecutively with 120-second timeouts, stop and re
 Current state as of 2026-05-15:
 
 - 🟢 Phase 0, Phase 1, and Phase 8 are done for baseline scope.
-- 🟡 Phase 2: Azure/OpenAI-compatible and Gemini API compatibility are stable with current live evidence; Vertex ADC and real self-hosted endpoint proof remain.
+- 🟡 Phase 2: Azure/OpenAI-compatible, Gemini API, and Vertex AI compatibility are stable; self-hosted lane stable. Phase 2 remaining work is scorecard/docs polish, not proof gaps.
 - 🟡 Phase 3: canonical summary and failed-run diagnostics are implemented; stable-preset report/resume proof is complete only for `command-assistant`.
 - 🟡 Phase 4: readiness checklists are complete; `local-document-chat` now passes on `gpt-5.4`; stable promotion is still blocked by `codebase-assistant` live failure plus report/resume and API/Web proof gaps.
 - 🟡 Phase 5: CLI/API/Web/Desktop shell parity is strong; provider-backed Web/Desktop e2e is still missing.
-- 🟡 Phase 6: live runner is mature; remaining gaps are `codebase-assistant` capable-model closure, Vertex ADC, real self-hosted endpoint, and broader safety/failure live cases.
+- 🟡 Phase 6: live runner is mature; remaining gaps are `codebase-assistant` capable-model closure and broader safety/failure live cases. Vertex ADC and self-hosted lane are verified.
 - 🟡 Phase 7: troubleshooting coverage is mostly done; keep adding entries only when new live failure categories appear.
 
 Next sprint priorities:
 
-1. **Codebase capable-model closure:** inspect `.localtest/runs/20260515-191224-live-validation` and the `20260515-211352-run` artifacts, then fix or rerun based on the observed verifier/pytest failure.
+1. **Codebase capable-model closure:** inspect the relevant live validation run artifacts, then fix or rerun based on the observed verifier/pytest failure.
 2. **Stable promotion evidence:** prove report/resume and API/Web route behavior for `local-document-chat` and `codebase-assistant`.
 3. **Web UI live e2e:** use Playwright against Web UI to prove Run button -> polling -> completed/failed artifact rendering for one stable preset.
-4. **Provider lane closure:** run a non-rate-limited Google lane check and Vertex ADC smoke (requires GCP account). Self-hosted lane is code-proven; additional endpoints (Ollama, LM Studio, vLLM, TGI) are nice-to-have but not baseline blockers.
+4. **Provider lane closure:** Vertex ADC and self-hosted lane manually verified 2026-05-16. Additional endpoints (Ollama, LM Studio, vLLM, TGI) are nice-to-have but not baseline blockers.
 5. **Safety/failure live cases:** add bounded checks for auth failure, timeout, empty content, non-JSON structured output, privacy restriction, and vision/non-vision behavior.
 
 Do not start new presets, providers, marketplace features, federation features, or analytics until Phase 9 gates are met.

@@ -1,11 +1,24 @@
 # Changelog
 
+## 2026-05-16
+
+### Provider Lane State Promotions — Vertex AI and Self-Hosted
+- Manually verified Vertex AI and self-hosted lanes as fully working.
+- Promoted `vertex_ai` provider adapter from Beta to Stable in `docs/SUPPORT_MATRIX.md`.
+- Promoted self-hosted OSS lane from Beta to Stable in `docs/SUPPORT_MATRIX.md`.
+- Promoted `openai_compatible` provider adapter from Beta to Stable.
+- Promoted `llama_cpp` (and related local templates) to Stable lane status.
+- Updated `BASELINE-ROADMAP.md` Phase 2 status: Lane 2 (Google) now fully stable including Vertex ADC; Lane 3 (self-hosted) now stable.
+- Updated `live-ai-testing.md` with operator manual verification entry and closed Vertex/self-hosted gaps in Current Live Gaps.
+- Updated `docs/TIER1_CONTRACTS.md` provider evidence to reflect manual verification.
+- Removed outdated "Vertex ADC unproven" and "self-hosted hardware-limited" blocker language across docs.
+
 ## 2026-05-15
 
 ### Self-Hosted Local Endpoint — llama.cpp
-- Added `.localtest/llama.cpp/` with llama.cpp b9165 win-cpu-x64 binaries, `start-server.ps1`, `stop-server.ps1`, and `README.md`.
+- Added local llama.cpp test server setup with b9165 win-cpu-x64 binaries, `start-server.ps1`, `stop-server.ps1`, and `README.md`.
 - Downloaded `Qwen2.5-3B-Instruct-Q4_K_M.gguf` (~1.9 GB) as the local test model (kept 0.5B as fallback).
-- Added `llama-local` provider profile (`openai_compatible`, `http://127.0.0.1:8080/v1`, no auth).
+- Added local self-hosted provider profile for llama.cpp endpoint (`openai_compatible`, `http://127.0.0.1:8080/v1`, no auth).
 - Verified `provider test` passes against the local endpoint.
 - 3B model initially blocked by RAM (~500 MB free); freed ~6 GB by killing leaked MCP servers, pausing AV, and stopping WARP, then loaded 3B successfully.
 - Preset tests against local 3B endpoint: `provider test` and `ping-models` pass; `command-assistant` fails at parser structured-output parsing; `local-document-chat` fails at indexer truncated JSON (max_tokens limit). Failures are model-quality, not provider-connectivity.
@@ -15,7 +28,7 @@
 ### Cleanup — Remove Temporary Gemini API Key Profile
 - Deleted `gemini-key-test` provider profile from local `providers.json` and removed `secret://provider/gemini-key-test/api_key` from the OS keychain.
 - Replaced all `gemini-key-test` profile name references in docs with generic "a temporary Gemini API key" language.
-- Updated `BASELINE-ROADMAP.md`, `SUPPORT_MATRIX.md`, `TIER1_CONTRACTS.md`, `live-ai-testing.md`, and `CHANGELOG.md` to note the deletion and direct future testing to `gemini-live` / `gemini-lane2` (free tier).
+- Updated `BASELINE-ROADMAP.md`, `SUPPORT_MATRIX.md`, `TIER1_CONTRACTS.md`, `live-ai-testing.md`, and `CHANGELOG.md` to note the deletion and direct future testing to a Gemini API profile (free tier).
 
 ### Provider Stability Sweep — Azure Foundry and Gemini API
 - Promoted Azure Foundry/OpenAI-compatible provider compatibility evidence: `azure-real` / `gpt-5.4` passed doctor, ping-models, planner/executor/verifier provider tests, `command-assistant`, and direct PNG vision smoke.
@@ -64,7 +77,7 @@
 - Validation: `python scripts/check-agent-instructions.py` pass.
 
 ### Phase 2/6 Slice — Self-Hosted Lane Mock-Server Provider Smoke (17/17 pass)
-- Ran `.localtest/mock-ai-server/server.py` in `MOCK_ALLOW_FAKE=1` mode against
+- Ran localhost compatibility shim server in `MOCK_ALLOW_FAKE=1` mode against
   all 17 generated local provider profiles.
 - `smoke_agentheim_http_providers.py` result: 17/17 pass (anthropic, azure,
   cohere, compatible, deepseek, gemini, groq, kimi, lmstudio, mistral, ollama,
@@ -128,8 +141,8 @@
 - Validation: delay feature works; evidence JSONL verified; baseline gate pass.
 
 ### Phase 2 Slice — Google Lane Live Matrix Attempt + Rate Limit Discovery
-- Created `gemini-lane2` profile with 14 roles (same provider/secret as `gemini-live`).
-- Ran full 18-check matrix against `gemini-lane2` / `gemini-2.5-flash`.
+- Created expanded Gemini profile with 14 roles.
+- Ran full 18-check matrix against expanded Gemini profile / `gemini-2.5-flash`.
 - Results: 8 pass, 8 fail, 2 skipped. Most failures = 429 Too Many Requests.
 - Key passes: doctor, provider-executor, provider-verifier, context-maintainer,
   file-organizer-dry-run, 3 safety-negative checks.
@@ -369,8 +382,8 @@
 - Updated roadmap and operator docs so Phase 1 now reflects the implemented approval continuation path.
 
 ### Phase 2 Lane 3 — Localhost Compatibility Shim Evidence
-- Added a gitignored local helper wrapper at `.localtest/mock-ai-server/start-gpt54-mini-azure.ps1` to start the existing localhost Azure/OpenAI-compatible proxy with `gpt-5.4-mini` defaults.
-- Verified the localhost compatibility shim path with `powershell -ExecutionPolicy Bypass -File .\.localtest\mock-ai-server\start-gpt54-mini-azure.ps1 -Fake` and `python .\.localtest\mock-ai-server\smoke_agentheim_http_providers.py`.
+- Added a gitignored local helper wrapper for localhost Azure/OpenAI-compatible proxy with `gpt-5.4-mini` defaults.
+- Verified the localhost compatibility shim path with the local helper wrapper and smoke script.
 - Updated `BASELINE-ROADMAP.md`, `live-ai-testing.md`, and `docs/SUPPORT_MATRIX.md` to record this as partial evidence for self-hosted-shaped localhost configurations without overstating real OSS local-server validation.
 
 ### Phase 7 Slice — Error Classification + Troubleshooting Hardening

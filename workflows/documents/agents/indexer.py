@@ -48,13 +48,31 @@ class IndexerAgent(BaseAgent[IndexerOutput]):
 
     def _parse(self, raw_output: str) -> IndexerOutput:
         data = json.loads(repair_json_text(raw_output))
-        documents = data.get("documents")
-        if isinstance(documents, list) and documents:
-            return IndexerOutput.model_validate({"documents": documents})
-        alias_documents = data.get("index")
-        if isinstance(alias_documents, list):
+
+        # Case 1: Expected {"documents": [...]}
+        if isinstance(data, dict):
+            documents = data.get("documents")
+            if isinstance(documents, list) and documents:
+                return IndexerOutput.model_validate({"documents": documents})
+            alias_documents = data.get("index") or data.get("indexed_files") or data.get("files")
+            if isinstance(alias_documents, list):
+                normalized = []
+                for item in alias_documents:
+                    if not isinstance(item, dict):
+                        continue
+                    normalized.append(
+                        {
+                            "path": item.get("path") or item.get("file") or item.get("source") or "",
+                            "summary": item.get("summary") or item.get("description") or "",
+                            "keywords": item.get("keywords") or item.get("tags") or [],
+                        }
+                    )
+                return IndexerOutput.model_validate({"documents": normalized})
+
+        # Case 2: Model returns a list directly ([{"path": "...", "summary": "..."}])
+        if isinstance(data, list):
             normalized = []
-            for item in alias_documents:
+            for item in data:
                 if not isinstance(item, dict):
                     continue
                 normalized.append(
@@ -64,7 +82,9 @@ class IndexerAgent(BaseAgent[IndexerOutput]):
                         "keywords": item.get("keywords") or item.get("tags") or [],
                     }
                 )
-            return IndexerOutput.model_validate({"documents": normalized})
+            if normalized:
+                return IndexerOutput.model_validate({"documents": normalized})
+
         try:
             return self.output_schema.model_validate(data)
         except (ValueError, ValidationError):

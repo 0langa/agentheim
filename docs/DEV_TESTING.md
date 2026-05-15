@@ -108,17 +108,37 @@ powershell -ExecutionPolicy Bypass -File .\devtest\ai_test.ps1 -AllowMismatchPur
 
 ---
 
+## Test Repository
+
+A token-friendly test repository is available under `.localtest/test-repo/` (gitignored) for workflow and preset validation:
+
+```
+.localtest/test-repo/
+├── README.md
+├── requirements.txt
+├── .gitignore
+├── src/
+│   ├── main.py
+│   └── utils.py
+├── docs/
+│   └── guide.md
+└── config/
+    └── settings.yaml
+```
+
+Use it for live AI smoke tests and document-chat presets. Files are intentionally small to stay within local 7B context limits while providing enough content for indexing, retrieval, and answer verification.
+
 ## Live Validation Runner
 
 Run bounded live checks against configured providers and record structured evidence:
 
 ```powershell
 python scripts/live_validate.py --list
-python scripts/live_validate.py --repo-root . --test-repo ../agentheim-testing-enviroment
+python scripts/live_validate.py --repo-root . --test-repo <test-repo-path>
 python scripts/live_validate.py --only doctor,ping-models --profile azure-real
 ```
 
-Output includes `evidence.jsonl`, `summary.json`, `summary.md`, and per-test stdout/stderr logs in `.localtest/runs/<timestamp>-live-validation/`.
+Output includes `evidence.jsonl`, `summary.json`, `summary.md`, and per-test stdout/stderr logs in the local runs directory.
 
 ---
 

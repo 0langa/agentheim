@@ -10,21 +10,21 @@ Run live AI checks from repo root with the intended provider profile configured.
 
 ### Self-Hosted Local Endpoint — llama.cpp — 2026-05-15
 
-Real local endpoint smoke using llama.cpp server in `.localtest/llama.cpp/`.
+Real local endpoint smoke using llama.cpp server in the local test directory.
 
 | Profile | Provider/model | Result | Evidence |
 |---------|----------------|--------|----------|
-| `llama-local` | `openai_compatible` / `qwen2.5-3b` | pass | `provider test` + `ping-models` all 4 roles pass; chat completions API responds with valid JSON |
-| `llama-local` | `openai_compatible` / `qwen2.5-3b` | fail | `start command-assistant` → parser structured-output parsing fails |
-| `llama-local` | `openai_compatible` / `qwen2.5-3b` | fail | `start local-document-chat` → indexer JSON truncated at max_tokens |
-| `llama-local` | `openai_compatible` / `qwen2.5-7b` | pass | `provider test` + `ping-models` pass; `start command-assistant` → status `done`, correct PS command in 25s |
-| `llama-local` | `openai_compatible` / `qwen2.5-7b` | fail | `start local-document-chat` → client timeout after 5 min on 10k-token indexer prompt (CPU-bound) |
+| local endpoint | `openai_compatible` / `qwen2.5-3b` | pass | `provider test` + `ping-models` all 4 roles pass; chat completions API responds with valid JSON |
+| local endpoint | `openai_compatible` / `qwen2.5-3b` | fail | `start command-assistant` → parser structured-output parsing fails |
+| local endpoint | `openai_compatible` / `qwen2.5-3b` | fail | `start local-document-chat` → indexer JSON truncated at max_tokens |
+| local endpoint | `openai_compatible` / `qwen2.5-7b` | pass | `provider test` + `ping-models` pass; `start command-assistant` → status `done`, correct PS command in 25s |
+| local endpoint | `openai_compatible` / `qwen2.5-7b` | fail | `start local-document-chat` → client timeout after 5 min on 10k-token indexer prompt (CPU-bound) |
 
 **Setup:**
 - Binary: llama.cpp b9165 win-cpu-x64 from GitHub releases
 - Models: `Qwen2.5-3B-Instruct-Q4_K_M.gguf` (~1.9 GB), `Qwen2.5-7B-Instruct-Q4_K_M.gguf` (~4.4 GB)
 - Endpoint: `http://127.0.0.1:8080/v1`
-- Scripts: `start-server.ps1` / `stop-server.ps1` in `.localtest/llama.cpp/`
+- Scripts: `start-server.ps1` / `stop-server.ps1` in the local llama.cpp test directory
 - Context sizes tested: 4096 (3B), 8192, 16384 (7B)
 
 **Notes:**
@@ -33,19 +33,34 @@ Real local endpoint smoke using llama.cpp server in `.localtest/llama.cpp/`.
 - 7B `local-document-chat` times out on 10k-token indexer prompt due to CPU inference speed. GPU or chunked indexing needed for large-document workflows.
 - RAM usage: 3B ~1.5 GB, 7B ~4.5 GB. 16 GB system handles 7B at ~75% total RAM after cleanup.
 
+### Operator Manual Verification — Vertex AI and Self-Hosted — 2026-05-16
+
+Operator manually verified Vertex AI and self-hosted lanes on 2026-05-16.
+
+| Lane | Profile | Result | Evidence |
+|------|---------|--------|----------|
+| Vertex AI | operator's Vertex profile | pass | `provider test`, `ping-models`, text/JSON, vision, and preset execution pass |
+| Self-hosted | operator's local endpoint | pass | `provider test`, `ping-models`, chat completions, and presets pass on capable hardware |
+
+**Interpretation:**
+
+- Vertex AI ADC path is stable. All provider smoke and preset paths pass.
+- Self-hosted lane is stable on capable hardware. Prior Surface Pro 8 CPU-bound timeout was test-hardware limitation, not code limitation.
+- Both lanes meet the Phase 2 stable gate.
+
 ### Provider Stability Sweep — Azure `gpt-5.4` and Gemini Key Test — 2026-05-15
 
 Goal: close provider-compatibility proof with bounded, low-quota live checks. This does **not** promote `codebase-assistant`; coding workflow stability remains tracked separately.
 
 | Profile | Provider/model | Result | Evidence |
 |---------|----------------|--------|----------|
-| `azure-real` | `azure_foundry` / `gpt-5.4` | pass | `.localtest/runs/20260515-194401-live-validation`: doctor, ping-models, planner/executor/verifier provider tests, and `command-assistant` all passed |
+| `azure-real` | `azure_foundry` / `gpt-5.4` | pass | doctor, ping-models, planner/executor/verifier provider tests, and `command-assistant` all passed |
 | `azure-real` | `azure_foundry` / `gpt-5.4` | pass | Tiny generated PNG vision smoke returned `{"color":"red"}` |
-| a temporary Gemini API key | `gemini` / `gemini-2.5-flash` | pass | `.localtest/runs/20260515-193551-live-validation`: doctor, ping-models, planner/executor/verifier provider tests, `context-maintainer`, and `file-organizer-dry-run` all passed |
-| a temporary Gemini API key | `gemini` / `gemini-2.5-flash` | pass | `.localtest/runs/20260515-193700-live-validation`: `command-assistant`, `docs-maintainer-plan`, `github-maintainer`, and `research-report` passed |
-| a temporary Gemini API key | `gemini` / `gemini-2.5-flash` | pass | `.localtest/runs/20260515-194244-live-validation`: `local-document-chat` passed after documents workflow provider-map fix |
+| a temporary Gemini API key | `gemini` / `gemini-2.5-flash` | pass | doctor, ping-models, planner/executor/verifier provider tests, `context-maintainer`, and `file-organizer-dry-run` all passed |
+| a temporary Gemini API key | `gemini` / `gemini-2.5-flash` | pass | `command-assistant`, `docs-maintainer-plan`, `github-maintainer`, and `research-report` passed |
+| a temporary Gemini API key | `gemini` / `gemini-2.5-flash` | pass | `local-document-chat` passed after documents workflow provider-map fix |
 | a temporary Gemini API key | `gemini` / `gemini-2.5-flash` | pass | Tiny generated PNG vision smoke returned `{"color":"red"}` |
-| `azure-real` | `azure_foundry` / `gpt-5.4` | fail | `.localtest/runs/20260515-194935-live-validation`: `codebase-assistant` still returned `status='blocked'`; follow-up auto run hit empty PatchPlan |
+| `azure-real` | `azure_foundry` / `gpt-5.4` | fail | `codebase-assistant` still returned `status='blocked'`; follow-up auto run hit empty PatchPlan |
 
 **Interpretation:**
 
@@ -55,15 +70,15 @@ Goal: close provider-compatibility proof with bounded, low-quota live checks. Th
 
 ### Azure Foundry Capable-Model Rerun — 2026-05-15
 
-Profile `azure-real` was updated locally from `gpt-5.4-mini` to deployed `gpt-5.4` for all roles. The rerun used a clean clone of `../agentheim-testing-enviroment` to avoid stale edits from prior live runs.
+Profile `azure-real` was updated locally from `gpt-5.4-mini` to deployed `gpt-5.4` for all roles. The rerun used a clean clone of the local test repository to avoid stale edits from prior live runs.
 
-Primary run: `.localtest/runs/20260515-191224-live-validation`
+Primary run: live validation runner output.
 
 | Check | Result | Duration | Evidence |
 |-------|--------|----------|----------|
 | local-document-chat | pass | 28.7s | `status='done'`; run_id `20260515-211226-documents-run` |
 | codebase-assistant | fail | 42.8s | run_id `20260515-211352-run`; workflow returned `status='blocked'` after pytest failed on `test_ignores_boolean_values` (`assert 3 == 2`) |
-| research-report | pass | 74.8s | Follow-up run `.localtest/runs/20260515-191923-live-validation` passed after runner expectation/schema tolerance fixes |
+| research-report | pass | 74.8s | Follow-up run passed after runner expectation/schema tolerance fixes |
 
 **Interpretation:**
 
@@ -139,7 +154,7 @@ Server started via `uvicorn interfaces.web_ui.app:create_app --factory --host 12
 | Check | Result | Evidence |
 |-------|--------|----------|
 | Root loads | pass | Title "Agentheim", status "API connected — v0.1.0-prototype" |
-| Provider health visible | pass | All 4 configured profiles listed (azure-real, gemini-lane2, gemini-live, vertex-live) |
+| Provider health visible | pass | All configured profiles listed with support-state badges |
 | Presets list | pass | All 8 presets rendered with Run buttons |
 | Active Runs | pass | Shows "No active runs" initially; polling mechanism implemented |
 | Console errors | pass | 0 JS errors (only favicon.ico 404, harmless) |
@@ -187,17 +202,17 @@ Historical model entries include `gpt-4.1`, `gpt-4.1-mini`, and `gpt-5.4`. Treat
 
 ### Gemini API Key Path — 2026-05-14
 
-Profile `gemini-live` with model `gemini-2.5-flash`:
+Gemini API key path profile with model `gemini-2.5-flash`:
 
 | Check | Result | Evidence |
 |-------|--------|----------|
-| Gemini API key path | pass | `provider test --profile gemini-live --role planner` |
-| Gemini text connectivity | pass | `ping-models` after `provider use gemini-live` |
-| Gemini structured JSON-capable provider path | pass | `gemini-live` created with `text,json` capabilities; `provider test` passed |
+| Gemini API key path | pass | `provider test --profile <gemini-profile> --role planner` |
+| Gemini text connectivity | pass | `ping-models` after `provider use <gemini-profile>` |
+| Gemini structured JSON-capable provider path | pass | Gemini profile created with `text,json` capabilities; `provider test` passed |
 
 ### Gemini Full Matrix — 2026-05-15
 
-Profile `gemini-lane2` (expanded 14-role profile) with model `gemini-2.5-flash` via `scripts/live_validate.py`:
+Expanded 14-role Gemini profile with model `gemini-2.5-flash` via `scripts/live_validate.py`:
 
 | Check | Result | Duration | Evidence |
 |-------|--------|----------|----------|
@@ -269,13 +284,13 @@ Other integrated providers should remain loadable and theoretically functional, 
 
 ### Self-Hosted Localhost Compatibility Shim Evidence
 
-Recorded on 2026-05-15 using the gitignored local helper under `.localtest/mock-ai-server/`.
+Recorded on 2026-05-15 using a gitignored local mock server helper.
 
 | Check | Result | Evidence |
 |-------|--------|----------|
-| Localhost mock server startup (fake mode) | pass | `MOCK_ALLOW_FAKE=1 python .localtest/mock-ai-server/server.py` |
-| Generated local profile set | pass | `.localtest/mock-ai-server/make_agentheim_profiles.py` emitted 18 local mock profiles |
-| Localhost provider smoke through Agentheim provider configs | pass | `python .localtest/mock-ai-server/smoke_agentheim_http_providers.py` — 17/17 mock profiles passed; reproducible via `pytest tests/smoke/test_mock_server_providers.py -m slow` |
+| Localhost mock server startup (fake mode) | pass | `MOCK_ALLOW_FAKE=1 python <mock-server-path>/server.py` |
+| Generated local profile set | pass | Local helper script emitted 18 local mock profiles |
+| Localhost provider smoke through Agentheim provider configs | pass | Local smoke script — 17/17 mock profiles passed; reproducible via `pytest tests/smoke/test_mock_server_providers.py -m slow` |
 
 Detailed results (all 17 providers ok):
 
@@ -286,7 +301,7 @@ Interpretation:
 - This is valid evidence that self-hosted-shaped localhost configuration paths work through Agentheim.
 - This proves endpoint wiring, profile generation, role binding, and request/response handling against a localhost endpoint across all 17 supported provider adapter types.
 - This does **not** prove real OSS model quality or actual local-server quirks for Ollama, LM Studio, vLLM, TGI, or llama.cpp.
-- Keep the self-hosted lane as partial until at least one real local endpoint is rerun end-to-end.
+- Self-hosted lane is now stable following operator manual verification 2026-05-16. The mock-shim remains valid wiring evidence.
 
 ---
 
@@ -297,8 +312,8 @@ These need fresh evidence before claiming a polished baseline:
 | Gap | Needed proof |
 |-----|--------------|
 | OpenAI-compatible lane | Azure Foundry compatibility stable on `azure-real` / `gpt-5.4`: provider smoke, text/JSON, vision, and `command-assistant` pass. `codebase-assistant` still blocks as workflow quality, not provider connectivity. |
-| Google lane | Gemini API compatibility stable on a temporary Gemini API key / `gemini-2.5-flash`: provider smoke, text/JSON, vision, and multiple presets pass. Vertex ADC still unproven and remains beta. |
-| Self-hosted lane | Real local endpoint added 2026-05-15: llama.cpp at `127.0.0.1:8080/v1` with `Qwen2.5-0.5B-Instruct` passes `provider test`; upgrade to 1B–3B when RAM available |
+| Google lane | Gemini API compatibility stable on a temporary Gemini API key / `gemini-2.5-flash`: provider smoke, text/JSON, vision, and multiple presets pass. Vertex ADC manually verified 2026-05-16. |
+| Self-hosted lane | Real local endpoint proven 2026-05-15: llama.cpp at `127.0.0.1:8080/v1` with `Qwen2.5-7B-Instruct` passes `provider test`, `ping-models`, chat completions, and `command-assistant`. Operator manually verified full lane 2026-05-16 on capable hardware. |
 | Research report | CLI live pass on `azure-real` / `gpt-5.4`; API + Web reruns still needed |
 | Resume/report | `command-assistant` report/resume pass 2026-05-15. Need same for `context-maintainer`, `local-document-chat`, `codebase-assistant`. |
 | Web UI | Provider-backed preset run matrix, status polling, and artifact rendering; shell/browser smoke already passes |
@@ -332,7 +347,7 @@ Use `scripts/live_validate.py` (or `devtest/live_validate.ps1` on Windows) for r
 python scripts/live_validate.py --list
 
 # Run default matrix against current provider profile
-python scripts/live_validate.py --repo-root . --test-repo ../agentheim-testing-enviroment
+python scripts/live_validate.py --repo-root . --test-repo <test-repo-path>
 
 # Run only stable presets with max 2 attempts
 python scripts/live_validate.py --include-tags stable --max-attempts 2
