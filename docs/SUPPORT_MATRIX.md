@@ -46,6 +46,24 @@ This matrix records what Agentheim currently promises. A surface is not stable u
 | `research-report` | `research` | Beta | CLI, API, Web route | Unit/deep path evidence; gather-failure halt and empty-sources graceful paths covered by smoke tests | Needs clean CLI/API/Web live rerun |
 | `github-maintainer` | `github_maintenance` | Beta | CLI, API, Web route | Historical issue-summary evidence; summarize-failure halt and empty-issues graceful paths covered by smoke tests | GitHub credential/live path needs fresh proof |
 
+## Workflow Readiness Checklists (Stable Candidates)
+
+| Checklist Item | `command-assistant` | `local-document-chat` | `codebase-assistant` | `context-maintainer` |
+| --- | --- | --- | --- | --- |
+| **Structured I/O schemas** | ✅ ParsedIntent, GeneratedCommand, ValidationResult | ✅ IndexerOutput, RetrieverOutput, AnswererOutput | ✅ ImplementationPlan, PatchPlan, VerificationReport | ⚪ Delegates to AICtx; no Agentheim workflow schemas |
+| **Artifacts produced** | ✅ FinalReport (commands, validation) | ✅ Answer metadata with citations | ✅ plan.json, patch.diff, verification.json, final_report.md/json | ⚪ AICtx shards in `docs/AIprojectcontext/` |
+| **Final report** | ✅ FinalReport.status + commands | ✅ AnswererOutput parsed in metadata | ✅ FinalReport with changed_files, tests, risks | ⚪ No canonical Agentheim final report |
+| **Failure modes documented** | ✅ parse failure → failed; unsafe → safe=false | ✅ empty repo fallback | ✅ dirty repo block, planning failure, patch failure, max tasks/fix attempts, repeated failure | ⚪ No explicit runtime failure modes tested |
+| **Negative-path tests** | ✅ unsafe command propagation, parse failure | ✅ binary/dir exclusion, empty repo | ✅ rollback, repeated-failure, max-diff, no-tests skip, allow-dirty bypass | ⚪ Only import/instantiation tests |
+| **CLI path** | ✅ `start command-assistant` | ✅ `start local-document-chat` | ✅ `run`, `plan`, `start codebase-assistant` | ✅ `ctx scan/run/verify/status` |
+| **API path** | ✅ `POST /api/presets/{preset_id}/run` | ✅ `POST /api/presets/{preset_id}/run` | ✅ `POST /api/presets/{preset_id}/run` | ✅ `POST /api/ctx/*` routes |
+| **Docs** | ✅ USER_GUIDE.md, CLI-COMMANDS.md | ✅ USER_GUIDE.md | ✅ USER_GUIDE.md, CLI-COMMANDS.md | ✅ USER_GUIDE.md ctx section |
+| **Live evidence** | 🟡 Historical pass; needs current top-3 lane rerun | 🟡 Historical pass | 🟡 Historical capable-model pass | 🟡 Historical dry-run evidence |
+
+**Notes:**
+- `context-maintainer` is architecturally different: it delegates execution to the AICtx runtime rather than using Agentheim's workflow agent pipeline. Its readiness checklist reflects this boundary. Agentheim-native artifacts, final reports, and negative-path tests are gaps that must close before stable promotion.
+- All four stable candidates need fresh live evidence on the current top-3 provider lane before promotion to `stable`.
+
 ## Interfaces
 
 | Interface | State | Evidence | Known Limits |

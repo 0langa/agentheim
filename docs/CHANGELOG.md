@@ -2,6 +2,13 @@
 
 ## 2026-05-15
 
+### Phase 4 Slice — Stable Candidate Workflow Readiness Checklists
+- Added "Workflow Readiness Checklists (Stable Candidates)" table to `docs/SUPPORT_MATRIX.md`.
+- Covers 9 checklist items per workflow: structured I/O schemas, artifacts, final report, failure modes, negative tests, CLI path, API path, docs, live evidence.
+- Documents honest gaps: `context-maintainer` lacks Agentheim-native schemas, artifacts, final report, and negative-path tests because it delegates to AICtx runtime.
+- All four stable candidates marked as needing fresh live evidence before `stable` promotion.
+- Validation: `python scripts/check-agent-instructions.py` passed; directive devtest passed.
+
 ### Phase 4 Slice — Context-maintainer & Docs-maintenance Golden-Path Tests
 - Added `TestDocsMaintenanceWorkflowExecution`: end-to-end test proving public_docs_impact → detect → update → align DAG completes with `_fake_invoke`.
 - Added `TestContextMaintainerWorkflowExecution`: end-to-end test proving 7-step DAG (scan → plan → generate → write → verify → public_docs_impact → produce_report) completes; `run_context_maintainer` mocked to avoid AICtx dependency.
