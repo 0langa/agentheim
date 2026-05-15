@@ -406,6 +406,37 @@ class TestDocsMaintenanceWorkflowNegativePaths:
         assert all(r.success for r in results)
 
 
+class TestDocsMaintenanceWorkflowExecution:
+    def test_docs_maintenance_runs_end_to_end(self, mock_deps, tmp_path: Path) -> None:
+        from workflows.docs_maintenance import DocsMaintenanceWorkflow
+        from workflows.docs_maintenance.agents.base import BaseAgent
+        registry, tools, policy, ledger = mock_deps
+        with patch.object(BaseAgent, "_invoke", _fake_invoke):
+            wf = DocsMaintenanceWorkflow(registry, tools, policy, ledger)
+            results = wf.run(tmp_path, metadata={"docs_context": "readme info"})
+
+        assert len(results) == 4
+        assert all(r.success for r in results)
+        assert results[0].step_id == "public_docs_impact"
+        assert results[1].step_id == "detect"
+        assert results[2].step_id == "update"
+        assert results[3].step_id == "align"
+
+
+class TestContextMaintainerWorkflowExecution:
+    def test_context_maintainer_runs_end_to_end(self, mock_deps, tmp_path: Path) -> None:
+        from workflows.context_maintainer import ContextMaintainerWorkflow
+        from workflows.context_maintainer.runtime import run_context_maintainer
+        registry, tools, policy, ledger = mock_deps
+        with patch("workflows.context_maintainer.runtime.run_context_maintainer", return_value=None) as mock_run:
+            wf = ContextMaintainerWorkflow(registry, tools, policy, ledger)
+            results = wf.run(tmp_path, metadata={"scope": "full", "write_mode": "patch"})
+
+        assert len(results) == 7
+        assert all(r.success for r in results)
+        mock_run.assert_called_once()
+
+
 class TestGitHubMaintenanceWorkflowExecution:
     def test_github_maintenance_runs_end_to_end(self, mock_deps, tmp_path: Path) -> None:
         from workflows.github_maintenance import GitHubMaintenanceWorkflow

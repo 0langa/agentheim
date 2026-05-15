@@ -2,6 +2,12 @@
 
 ## 2026-05-15
 
+### Phase 4 Slice — Context-maintainer & Docs-maintenance Golden-Path Tests
+- Added `TestDocsMaintenanceWorkflowExecution`: end-to-end test proving public_docs_impact → detect → update → align DAG completes with `_fake_invoke`.
+- Added `TestContextMaintainerWorkflowExecution`: end-to-end test proving 7-step DAG (scan → plan → generate → write → verify → public_docs_impact → produce_report) completes; `run_context_maintainer` mocked to avoid AICtx dependency.
+- Closed roadmap drift: item #5 "Add context-maintainer to preset smoke expectations" was already implemented in `test_presets.py`; marked done and extended with workflow execution coverage.
+- Validation: `tests/smoke/test_workflow_execution.py` 25 passed.
+
 ### Phase 4 Slice — Coding Workflow Gap Closure
 - Added `TestCodingRuntimeRollback`: asserts `rollback()` called on first-task patch apply failure and on fix-loop patch apply failure.
 - Added `TestCodingRuntimeRepeatedFailure`: same verifier failure twice triggers `reason="same_failure_repeated_twice"` BLOCKED transition.

@@ -514,7 +514,7 @@ Promote these after focused gaps close:
    - 🟢 docs maintenance align/apply path (detect/update failure halt + empty stale-docs graceful propagation covered by smoke tests 2026-05-15)
    - 🟢 research API execution path (gather failure halt + empty sources graceful propagation covered by smoke tests 2026-05-15)
    - 🟢 GitHub API execution path (summarize-failure halt + empty-issues graceful propagation covered by smoke tests 2026-05-15)
-5. Add context-maintainer to preset smoke expectations.
+5. 🟢 Add context-maintainer to preset smoke expectations (already in `tests/smoke/test_presets.py`; golden-path e2e tests added for context-maintainer and docs-maintenance 2026-05-15)
 
 ### Files
 
