@@ -14,6 +14,18 @@
   `docs/SUPPORT_MATRIX.md`.
 - Validation: server health ok, all provider tests return non-empty responses.
 
+### Phase 2/6 Slice — Automate Mock-Server Lane 3 Smoke as Pytest Test
+- Added `tests/smoke/test_mock_server_providers.py` with
+  `TestMockServerProviderSmoke::test_all_local_provider_profiles_respond`.
+- Starts mock AI server in daemon thread, waits for health, then invokes all
+  17 local provider profiles through Agentheim provider registry.
+- Marked `@pytest.mark.slow` so it runs with `-m slow` but not in default lane.
+- Makes Lane 3 compatibility shim evidence reproducible in CI without manual
+  server startup.
+- Updated `live-ai-testing.md` to reference the pytest command.
+- Validation: `pytest tests/smoke/test_mock_server_providers.py -m slow` passes
+  in ~7s.
+
 ### Phase 5 Slice — Desktop UI Server Integration Test
 - Added `TestDesktopUIServerIntegration` to `tests/test_desktop_ui.py`:
   - `test_server_starts_and_health_responds`: starts `_run_server` in a daemon

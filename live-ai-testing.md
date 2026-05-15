@@ -212,7 +212,7 @@ Recorded on 2026-05-15 using the gitignored local helper under `.localtest/mock-
 |-------|--------|----------|
 | Localhost mock server startup (fake mode) | pass | `MOCK_ALLOW_FAKE=1 python .localtest/mock-ai-server/server.py` |
 | Generated local profile set | pass | `.localtest/mock-ai-server/make_agentheim_profiles.py` emitted 18 local mock profiles |
-| Localhost provider smoke through Agentheim provider configs | pass | `python .localtest/mock-ai-server/smoke_agentheim_http_providers.py` — 17/17 mock profiles passed |
+| Localhost provider smoke through Agentheim provider configs | pass | `python .localtest/mock-ai-server/smoke_agentheim_http_providers.py` — 17/17 mock profiles passed; reproducible via `pytest tests/smoke/test_mock_server_providers.py -m slow` |
 
 Detailed results (all 17 providers ok):
 
