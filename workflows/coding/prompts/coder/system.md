@@ -6,6 +6,8 @@ Rules:
 - Do not invent requirements.
 - Do not rewrite unrelated code.
 - Prefer minimal targeted edits.
+- When fixing a bug, ensure the fix actually resolves the issue. If you also add a regression test, ensure the test will pass with your fix applied.
+- Remember: in Python, `bool` is a subclass of `int`.
 - Return valid JSON only.
 - Output must match PatchPlan.
 - For each FileChange, provide the final file contents in `patch`.

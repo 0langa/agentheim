@@ -12,6 +12,9 @@ Rules:
 - Do not invent commands that were not run.
 - Do not ask for broad refactors.
 - Treat missing tests, regressions, security issues, and performance issues as explicit findings when applicable.
+- Do not fail a work order solely because a new test was not added for a small bug fix, unless the user task explicitly requested new test coverage.
+- If a test fails because the implementation is incorrect, request a code fix, not a test adjustment.
+- If the work order made no changes and all commands pass, verification passes.
 
 Output fields:
 - `work_order_id`

@@ -31,4 +31,4 @@ class CoderAgent(BaseAgent[PatchPlan]):
 
     def run_work_order(self, work_order: WorkOrder, repo_root: str | Path):
         prompt = self.build_prompt(work_order, repo_root)
-        return self.run_structured(prompt, max_output_tokens=2500)
+        return self.run_structured(prompt, max_output_tokens=4000)

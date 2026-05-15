@@ -25,7 +25,7 @@ class VerifierAgent(BaseAgent[VerificationReport]):
             f"Work order id: {work_order.id}\n"
             f"Work order title: {work_order.title}\n\n"
             f"Acceptance criteria:\n{acceptance}\n\n"
-            f"Git diff:\n{git_diff[:6000]}\n\n"
+            f"Git diff:\n{git_diff[:12000]}\n\n"
             f"Command outputs:\n{commands}\n\n"
             f"Relevant file excerpts:\n{excerpts}\n\n"
             "The git diff is cumulative for the whole run. For fix or test-only work orders, "

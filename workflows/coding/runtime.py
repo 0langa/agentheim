@@ -331,11 +331,17 @@ def _widen_work_order_scope(work_order: WorkOrder, scan: RepoScanResult) -> Work
 
 
 def _build_fix_work_order(work_order: WorkOrder, verification: VerificationReport, attempt: int) -> WorkOrder:
+    fix_items = verification.fix_requests or verification.failed_checks
+    objective = (
+        f"Resolve verifier findings for {work_order.id}: {'; '.join(fix_items)}. "
+        "If a test or command failed due to incorrect implementation, fix the implementation first. "
+        "Only adjust tests if the test assertion itself is wrong."
+    )
     return work_order.model_copy(
         update={
             "id": f"{work_order.id}-fix-{attempt}",
             "title": f"Fix: {work_order.title}",
-            "objective": f"Resolve verifier findings for {work_order.id}: {'; '.join(verification.fix_requests or verification.failed_checks)}",
+            "objective": objective,
             "required_context_excerpts": [
                 *work_order.required_context_excerpts,
                 f"Verifier failed with status={verification.status}",
@@ -495,6 +501,11 @@ def run_task(
 
                 patch_plan = PatchPlan.model_validate(coder_result.parsed_output)
                 if not patch_plan.file_changes:
+                    if task.type.value != "edit":
+                        applied = True
+                        applied_change_objects = []
+                        ledger.write_text("post_task_git_diff.patch", "")
+                        break
                     last_error = "Coder returned valid PatchPlan but file_changes is empty."
                     ledger_append(
                         ledger,
@@ -631,7 +642,7 @@ def run_task(
                     state_machine.transition(RuntimeState.BLOCKED, {"reason": "max_total_tasks_exceeded"})
                     raise ExecutionError("Maximum total task limit reached.")
                 work_order = _build_fix_work_order(work_order, verify_report, fix_attempt)
-                attempts_remaining = 1
+                attempts_remaining = 2
                 applied = False
                 while attempts_remaining > 0 and not applied:
                     patch_attempt_index += 1
