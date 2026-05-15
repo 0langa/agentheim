@@ -247,7 +247,7 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
 
 ## 🟡 Phase 2 - Provider Lanes
 
-**Status:** Partial as of 2026-05-15. Lane 1 (OpenAI-compatible/Azure) is stable for the Azure Foundry/OpenAI-compatible path: `azure-real` / `gpt-5.4` passes doctor, ping-models, planner/executor/verifier provider tests, text/JSON, vision, and `command-assistant`. Lane 2 is stable for Gemini API: `gemini-key-test` / `gemini-2.5-flash` passes provider smoke, text/JSON, vision, and multiple presets without 429s; Vertex ADC remains beta/unproven. Lane 3 (self-hosted) has localhost mock-shim evidence across all 17 provider adapter types, but still lacks a real local endpoint run.
+**Status:** Partial as of 2026-05-15. Lane 1 (OpenAI-compatible/Azure) is stable for the Azure Foundry/OpenAI-compatible path: `azure-real` / `gpt-5.4` passes doctor, ping-models, planner/executor/verifier provider tests, text/JSON, vision, and `command-assistant`. Lane 2 is stable for Gemini API: a temporary Gemini API key / `gemini-2.5-flash` passes provider smoke, text/JSON, vision, and multiple presets without 429s; Vertex ADC remains beta/unproven. Lane 3 (self-hosted) has localhost mock-shim evidence across all 17 provider adapter types, but still lacks a real local endpoint run.
 
 **Goal:** Make the top 3 provider lanes polished, documented, and empirically proven.
 
@@ -331,7 +331,7 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
    - 🟢 structured JSON
    - 🟢 Gemini vision when configured
 
-**Status note (2026-05-15):** Gemini API compatibility is stable with `gemini-key-test` / `gemini-2.5-flash`: provider smoke, text/JSON, vision, `command-assistant`, `local-document-chat`, `context-maintainer`, `file-organizer-dry-run`, `docs-maintainer-plan`, `github-maintainer`, and `research-report` pass without 429s. Vertex ADC remains unproven.
+**Status note (2026-05-15):** Gemini API compatibility is stable with a temporary Gemini API key / `gemini-2.5-flash`: provider smoke, text/JSON, vision, `command-assistant`, `local-document-chat`, `context-maintainer`, `file-organizer-dry-run`, `docs-maintainer-plan`, `github-maintainer`, and `research-report` pass without 429s. Vertex ADC remains unproven.
 
 #### Gates
 
@@ -341,7 +341,7 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
 
 #### Remaining Path
 
-1. Replace the temporary `gemini-key-test` key with a durable user key before relying on ongoing Gemini validation.
+1. The temporary Gemini API key profile was deleted 2026-05-15; use `gemini-live` (free tier) or `gemini-lane2` for ongoing Gemini validation.
 2. Separately validate Vertex ADC with project/location/permission failure guidance.
 3. Keep Gemini and Vertex support states separate until Vertex has live proof.
 

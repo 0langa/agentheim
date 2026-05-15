@@ -2,9 +2,14 @@
 
 ## 2026-05-15
 
+### Cleanup — Remove Temporary Gemini API Key Profile
+- Deleted `gemini-key-test` provider profile from local `providers.json` and removed `secret://provider/gemini-key-test/api_key` from the OS keychain.
+- Replaced all `gemini-key-test` profile name references in docs with generic "a temporary Gemini API key" language.
+- Updated `BASELINE-ROADMAP.md`, `SUPPORT_MATRIX.md`, `TIER1_CONTRACTS.md`, `live-ai-testing.md`, and `CHANGELOG.md` to note the deletion and direct future testing to `gemini-live` / `gemini-lane2` (free tier).
+
 ### Provider Stability Sweep — Azure Foundry and Gemini API
 - Promoted Azure Foundry/OpenAI-compatible provider compatibility evidence: `azure-real` / `gpt-5.4` passed doctor, ping-models, planner/executor/verifier provider tests, `command-assistant`, and direct PNG vision smoke.
-- Promoted Gemini API compatibility evidence: `gemini-key-test` / `gemini-2.5-flash` passed provider smoke, text/JSON, direct PNG vision smoke, `command-assistant`, `local-document-chat`, `context-maintainer`, `file-organizer-dry-run`, `docs-maintainer-plan`, `github-maintainer`, and `research-report` without 429s.
+- Promoted Gemini API compatibility evidence: a temporary Gemini API key / `gemini-2.5-flash` passed provider smoke, text/JSON, direct PNG vision smoke, `command-assistant`, `local-document-chat`, `context-maintainer`, `file-organizer-dry-run`, `docs-maintainer-plan`, `github-maintainer`, and `research-report` without 429s.
 - Fixed documents workflow provider map to use the shared provider registry so Gemini/Vertex-compatible providers can run `local-document-chat`.
 - Disabled Typer local-variable tracebacks in the CLI to avoid raw provider secret exposure in failure artifacts.
 - Added coding runtime metadata/output-budget hardening: `run.json` now records `workflow_id="coding"` and `preset_id="codebase-assistant"`, and coding `run_task` planning uses the same 6000-token structured-output cap as `plan_task`.

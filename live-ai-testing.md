@@ -16,16 +16,16 @@ Goal: close provider-compatibility proof with bounded, low-quota live checks. Th
 |---------|----------------|--------|----------|
 | `azure-real` | `azure_foundry` / `gpt-5.4` | pass | `.localtest/runs/20260515-194401-live-validation`: doctor, ping-models, planner/executor/verifier provider tests, and `command-assistant` all passed |
 | `azure-real` | `azure_foundry` / `gpt-5.4` | pass | Tiny generated PNG vision smoke returned `{"color":"red"}` |
-| `gemini-key-test` | `gemini` / `gemini-2.5-flash` | pass | `.localtest/runs/20260515-193551-live-validation`: doctor, ping-models, planner/executor/verifier provider tests, `context-maintainer`, and `file-organizer-dry-run` all passed |
-| `gemini-key-test` | `gemini` / `gemini-2.5-flash` | pass | `.localtest/runs/20260515-193700-live-validation`: `command-assistant`, `docs-maintainer-plan`, `github-maintainer`, and `research-report` passed |
-| `gemini-key-test` | `gemini` / `gemini-2.5-flash` | pass | `.localtest/runs/20260515-194244-live-validation`: `local-document-chat` passed after documents workflow provider-map fix |
-| `gemini-key-test` | `gemini` / `gemini-2.5-flash` | pass | Tiny generated PNG vision smoke returned `{"color":"red"}` |
+| a temporary Gemini API key | `gemini` / `gemini-2.5-flash` | pass | `.localtest/runs/20260515-193551-live-validation`: doctor, ping-models, planner/executor/verifier provider tests, `context-maintainer`, and `file-organizer-dry-run` all passed |
+| a temporary Gemini API key | `gemini` / `gemini-2.5-flash` | pass | `.localtest/runs/20260515-193700-live-validation`: `command-assistant`, `docs-maintainer-plan`, `github-maintainer`, and `research-report` passed |
+| a temporary Gemini API key | `gemini` / `gemini-2.5-flash` | pass | `.localtest/runs/20260515-194244-live-validation`: `local-document-chat` passed after documents workflow provider-map fix |
+| a temporary Gemini API key | `gemini` / `gemini-2.5-flash` | pass | Tiny generated PNG vision smoke returned `{"color":"red"}` |
 | `azure-real` | `azure_foundry` / `gpt-5.4` | fail | `.localtest/runs/20260515-194935-live-validation`: `codebase-assistant` still returned `status='blocked'`; follow-up auto run hit empty PatchPlan |
 
 **Interpretation:**
 
 - Azure Foundry/OpenAI-compatible provider compatibility is stable for text, JSON, vision, provider role smoke, and at least one stable preset path on deployed `gpt-5.4`.
-- Gemini API compatibility is stable for text, JSON, vision, provider role smoke, and multiple preset paths with the temporary `gemini-key-test` key; no 429s were observed in this sweep.
+- Gemini API compatibility is stable for text, JSON, vision, provider role smoke, and multiple preset paths with a temporary Gemini API key; no 429s were observed in this sweep. The temporary profile was deleted after testing.
 - `codebase-assistant` remains a workflow-quality blocker, not a provider-compatibility blocker.
 
 ### Azure Foundry Capable-Model Rerun — 2026-05-15
@@ -272,7 +272,7 @@ These need fresh evidence before claiming a polished baseline:
 | Gap | Needed proof |
 |-----|--------------|
 | OpenAI-compatible lane | Azure Foundry compatibility stable on `azure-real` / `gpt-5.4`: provider smoke, text/JSON, vision, and `command-assistant` pass. `codebase-assistant` still blocks as workflow quality, not provider connectivity. |
-| Google lane | Gemini API compatibility stable on `gemini-key-test` / `gemini-2.5-flash`: provider smoke, text/JSON, vision, and multiple presets pass. Vertex ADC still unproven and remains beta. |
+| Google lane | Gemini API compatibility stable on a temporary Gemini API key / `gemini-2.5-flash`: provider smoke, text/JSON, vision, and multiple presets pass. Vertex ADC still unproven and remains beta. |
 | Self-hosted lane | Run Ollama or LM Studio smoke against a real local endpoint, structured output failure handling, one local preset end to end |
 | Research report | CLI live pass on `azure-real` / `gpt-5.4`; API + Web reruns still needed |
 | Resume/report | `command-assistant` report/resume pass 2026-05-15. Need same for `context-maintainer`, `local-document-chat`, `codebase-assistant`. |
