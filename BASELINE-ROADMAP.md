@@ -752,7 +752,7 @@ powershell -ExecutionPolicy Bypass -File .\devtest\ai_test.ps1
 
 ## 🟡 Phase 7 - Troubleshooting And Operator Experience
 
-**Status:** Mostly complete as of 2026-05-14. CLI/operator guidance, troubleshooting coverage, and doctor checks now cover the main baseline failure lanes. Remaining gap: Web/Desktop still do not present the same diagnostics surface instead of raw route/server errors. Partially closed: API ctx routes now return structured diagnostic errors since 2026-05-15.
+**Status:** Mostly complete as of 2026-05-15. CLI/operator guidance, troubleshooting coverage, doctor checks, and structured API/Web error responses now cover the main baseline failure lanes. Web UI returns structured diagnostics via `_structured_error_middleware` + `_ctx_exc()` on all ctx routes. Desktop inherits the same surface via pywebview wrapper.
 
 **Goal:** Make common failures self-service.
 
@@ -813,7 +813,9 @@ python -m interfaces.cli.cli doctor --skip-connectivity
 
 ---
 
-## 🔴 Phase 8 - Advanced Subsystem Decisions
+## 🟡 Phase 8 - Advanced Subsystem Decisions
+
+**Status:** Partial as of 2026-05-15. Initial regression-guard slice complete: `tests/smoke/test_experimental_surfaces.py` verifies no experimental presets/workflows leak into registry, CLI commands don't expose experimental subsystem tokens, and API routes don't contain experimental subsystem paths. Remaining work: support labels in UI, removal from first-run path, promotion criteria per subsystem.
 
 **Goal:** Stop ambiguous semi-support for expensive subsystems.
 

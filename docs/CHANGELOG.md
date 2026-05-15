@@ -2,6 +2,19 @@
 
 ## 2026-05-15
 
+### Janitor — Roadmap Status Drift Fix
+- Fixed BASELINE-ROADMAP.md Phase 7 status paragraph: removed stale "Remaining gap: Web/Desktop still do not present..." now that structured error middleware + ctx route wrappers are implemented and tested.
+- Updated Phase 8 header from 🔴 to 🟡 with status note reflecting completed regression-guard slice.
+- Validation: directive + baseline gates pass.
+
+### Phase 8 Slice — Experimental Surface Regression Tests
+- Added `tests/smoke/test_experimental_surfaces.py` with 6 tests verifying:
+  - All presets have support_state and no experimental presets are in registry
+  - All workflows have support_state and no experimental workflows are in registry
+  - CLI commands don't contain marketplace/federation/distributed/multimodal/self-improving tokens
+  - API routes don't contain experimental subsystem paths
+- Validation: 6 passed.
+
 ### Phase 7 Slice — Web UI Structured Error Responses
 - Replaced raw exception leakage in `interfaces/web_ui/app.py` with structured diagnostics.
 - Added `_structured_error_middleware` (HTTP middleware) that catches unhandled exceptions and returns `error_summary` JSON.
