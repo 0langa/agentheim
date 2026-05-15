@@ -6,7 +6,7 @@ from unittest.mock import DEFAULT, MagicMock, patch
 import pytest
 
 from config.config import ModelRole
-from core.public_api import ExecutionError, RuntimeState
+from core.public_api import ExecutionError, PatchApplicationError, RuntimeState
 from core.repo.command_detect import DetectedCommand
 from core.repo.scanner import GitSnapshot, RepoDocument, RepoFile, RepoScanResult
 from core.schemas_runtime import (
@@ -392,3 +392,182 @@ class TestRunTask:
             if len(call.args) > 1 and isinstance(call.args[1], dict)
         }
         assert "max_fix_attempts_reached" in reasons
+
+
+class TestCodingRuntimeRollback:
+    def test_run_task_rollback_called_on_patch_apply_failure(self, run_task_mocks):
+        repo_path = run_task_mocks["repo_path"]
+        mocks = run_task_mocks["mocks"]
+        applier = run_task_mocks["applier"]
+
+        plan = _make_plan(1, "edit")
+        mocks["create_orchestrator_agent"].return_value.run_structured.return_value = MagicMock(
+            success=True, parsed_output=plan.model_dump(), raw_output="raw", error=None
+        )
+
+        patch_plan = PatchPlan(file_changes=[FileChange(path="a.py", patch="diff")])
+        mocks["create_coder_agent"].return_value.run_work_order.return_value = MagicMock(
+            success=True, parsed_output=patch_plan.model_dump(), raw_output="raw", error=None
+        )
+
+        mock_apply_result = MagicMock()
+        mock_apply_result.applied = False
+        mock_apply_result.file_changes = []
+        mock_apply_result.diff_text = ""
+        mock_apply_result.errors = ["apply failed"]
+        applier.apply_changes.return_value = mock_apply_result
+
+        mocks["create_verifier_agent"].return_value.run_verification.return_value = MagicMock(
+            success=True,
+            parsed_output=VerificationReport(work_order_id="wo", status="pass").model_dump(),
+            raw_output="raw",
+            error=None,
+        )
+
+        with pytest.raises(PatchApplicationError, match="apply failed"):
+            run_task("do thing", repo_path)
+
+        assert applier.rollback.called
+
+    def test_run_task_fix_loop_rollback_called(self, run_task_mocks):
+        repo_path = run_task_mocks["repo_path"]
+        mocks = run_task_mocks["mocks"]
+        sm = run_task_mocks["sm"]
+        applier = run_task_mocks["applier"]
+
+        plan = _make_plan(1, "edit")
+        mocks["create_orchestrator_agent"].return_value.run_structured.return_value = MagicMock(
+            success=True, parsed_output=plan.model_dump(), raw_output="raw", error=None
+        )
+
+        patch_plan = PatchPlan(file_changes=[FileChange(path="a.py", patch="diff")])
+
+        call_count = 0
+
+        def _coder_side_effect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            return MagicMock(
+                success=True,
+                parsed_output=patch_plan.model_dump(),
+                raw_output="raw",
+                error=None,
+            )
+
+        mocks["create_coder_agent"].return_value.run_work_order.side_effect = _coder_side_effect
+
+        verifier_reports = [
+            VerificationReport(work_order_id="wo-1", status="failed", failed_checks=["fail-1"]),
+        ]
+
+        def _verifier_side_effect(*args, **kwargs):
+            report = verifier_reports.pop(0)
+            return MagicMock(
+                success=True,
+                parsed_output=report.model_dump(),
+                raw_output="raw",
+                error=None,
+            )
+
+        mocks["create_verifier_agent"].return_value.run_verification.side_effect = _verifier_side_effect
+
+        apply_call_count = 0
+
+        def _apply_side_effect(*args, **kwargs):
+            nonlocal apply_call_count
+            apply_call_count += 1
+            if apply_call_count == 1:
+                return MagicMock(applied=True, file_changes=[MagicMock(path="a.py")], diff_text="diff")
+            return MagicMock(applied=False, file_changes=[], diff_text="", errors=["fix loop apply failed"])
+
+        applier.apply_changes.side_effect = _apply_side_effect
+
+        report, run_dir = run_task("do thing", repo_path, mode="auto", max_fix_attempts=1)
+        assert report.status == "blocked"
+
+        blocked = [
+            call
+            for call in sm.transition.call_args_list
+            if call.args and call.args[0] == RuntimeState.BLOCKED
+        ]
+        assert blocked
+        reasons = {
+            call.args[1].get("reason")
+            for call in blocked
+            if len(call.args) > 1 and isinstance(call.args[1], dict)
+        }
+        assert "fix_loop_patch_failed" in reasons
+        assert applier.rollback.called
+
+
+class TestCodingRuntimeRepeatedFailure:
+    def test_run_task_repeated_failure_guard_blocks(self, run_task_mocks):
+        repo_path = run_task_mocks["repo_path"]
+        mocks = run_task_mocks["mocks"]
+        sm = run_task_mocks["sm"]
+
+        plan = _make_plan(1, "edit")
+        mocks["create_orchestrator_agent"].return_value.run_structured.return_value = MagicMock(
+            success=True, parsed_output=plan.model_dump(), raw_output="raw", error=None
+        )
+
+        patch_plan = PatchPlan(file_changes=[FileChange(path="a.py", patch="diff")])
+        mocks["create_coder_agent"].return_value.run_work_order.return_value = MagicMock(
+            success=True, parsed_output=patch_plan.model_dump(), raw_output="raw", error=None
+        )
+
+        verifier_reports = [
+            VerificationReport(work_order_id="wo-1", status="failed", failed_checks=["same-error"]),
+            VerificationReport(work_order_id="wo-1-fix-1", status="failed", failed_checks=["same-error"]),
+        ]
+
+        def _verifier_side_effect(*args, **kwargs):
+            report = verifier_reports.pop(0)
+            return MagicMock(
+                success=True,
+                parsed_output=report.model_dump(),
+                raw_output="raw",
+                error=None,
+            )
+
+        mocks["create_verifier_agent"].return_value.run_verification.side_effect = _verifier_side_effect
+
+        report, run_dir = run_task("do thing", repo_path, mode="auto", max_fix_attempts=3)
+        assert report.status == "blocked"
+
+        blocked = [
+            call
+            for call in sm.transition.call_args_list
+            if call.args and call.args[0] == RuntimeState.BLOCKED
+        ]
+        assert blocked
+        reasons = {
+            call.args[1].get("reason")
+            for call in blocked
+            if len(call.args) > 1 and isinstance(call.args[1], dict)
+        }
+        assert "same_failure_repeated_twice" in reasons
+
+
+class TestBasicVerify:
+    def test_no_tests_skips_expected_commands(self, tmp_path: Path) -> None:
+        from workflows.coding.runtime import _basic_verify
+        from core.schemas_runtime import WorkOrder
+        from core.ledger import RunLedger
+
+        ledger = RunLedger.create(tmp_path, "test")
+        wo = WorkOrder(
+            id="wo-1",
+            title="Task",
+            objective="do thing",
+            relevant_files=["a.py"],
+            expected_commands=[["python", "-m", "pytest"]],
+        )
+        with patch("workflows.coding.runtime.tool_invoke", return_value=""):
+            records, commands = _basic_verify(wo, tmp_path, ledger, 120, no_tests=True)
+
+        assert commands == []
+        basic_test_record = next((r for r in records if r.name == "basic-tests"), None)
+        assert basic_test_record is not None
+        assert basic_test_record.status == "skipped"
+        assert "--no-tests passed" in basic_test_record.details

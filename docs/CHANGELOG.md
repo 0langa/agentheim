@@ -2,6 +2,14 @@
 
 ## 2026-05-15
 
+### Phase 4 Slice — Coding Workflow Gap Closure
+- Added `TestCodingRuntimeRollback`: asserts `rollback()` called on first-task patch apply failure and on fix-loop patch apply failure.
+- Added `TestCodingRuntimeRepeatedFailure`: same verifier failure twice triggers `reason="same_failure_repeated_twice"` BLOCKED transition.
+- Added `TestBasicVerify`: `no_tests=True` skips expected commands and records `status="skipped"` with `--no-tests passed` detail.
+- Added `test_run_task_allow_dirty_bypasses_block` to `TestCodingRuntimeNegative`: proves `--allow-dirty` bypasses dirty-repo block (hits planning failure instead).
+- Added `tests/core/test_patching.py` with `TestPatchApplierMaxDiff` and `TestPatchApplierRollback`: max-diff-lines rejection, rollback restores original content, rollback deletes created files.
+- Validation: `tests/test_coding_runtime.py` + `tests/test_negative_paths.py` + `tests/core/test_patching.py` 25 passed.
+
 ### Phase 4 Slice — GitHub Maintainer Workflow Negative-Path Coverage
 - Added `TestGitHubMaintenanceWorkflowExecution` end-to-end test proving summarize → draft DAG completes.
 - Added `TestGitHubMaintenanceNegativePaths` with 2 tests:

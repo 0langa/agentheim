@@ -39,7 +39,7 @@ This matrix records what Agentheim currently promises. A surface is not stable u
 | --- | --- | --- | --- | --- | --- |
 | `command-assistant` | `command_assistant` | Stable candidate | CLI, API, Web route | Smoke/unit coverage; historical live pass | Needs current top-3 lane live evidence |
 | `local-document-chat` | `documents` | Stable candidate | CLI, API, Web route | Smoke/unit coverage; historical live pass | Binary/excluded-dir and empty-repo behavior covered by smoke tests |
-| `codebase-assistant` | `coding` | Stable candidate | CLI, API, Web route | Broad tests and historical capable-model live pass | Smaller models can fail coding quality |
+| `codebase-assistant` | `coding` | Stable candidate | CLI, API, Web route | Broad tests and historical capable-model live pass; patch rollback, repeated-failure guard, max-diff-lines, dirty-repo bypass, no-tests skip covered by tests | Smaller models can fail coding quality |
 | `context-maintainer` | `context_maintainer` | Stable candidate | CLI, API/Web context routes | ContextOps tests and historical dry-run evidence | Apply/write paths remain review-first |
 | `file-organizer` | `file_organization` | Beta | CLI, API, Web route | Historical dry-run/apply evidence; missing-source, overwrite-block, and dry-run smoke tests |
 | `docs-maintainer` | `docs_maintenance` | Beta | CLI, API, Web route | Plan-mode evidence; detect-failure halt, update-failure halt, and empty-stale-docs graceful paths covered by smoke tests | Apply and aligner paths need live proof |

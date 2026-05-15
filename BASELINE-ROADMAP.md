@@ -504,10 +504,10 @@ Promote these after focused gaps close:
    - negative-path test
    - live happy path where stable/beta
 4. Close known gaps:
-   - coding dirty-repo block live evidence
-   - coding patch rollback and verifier fix loop
-   - coding max-total-tasks and max-diff guards
-   - `run --no-tests` evidence
+   - 🟢 coding dirty-repo block live evidence (allow-dirty bypass tested 2026-05-15)
+   - 🟢 coding patch rollback and verifier fix loop (rollback assertion + repeated-failure guard + fix-loop rollback tested 2026-05-15)
+   - 🟢 coding max-total-tasks and max-diff guards (max-diff-lines enforcement + existing max-tasks tests 2026-05-15)
+   - 🟢 `run --no-tests` evidence (no_tests=True skips commands and records skipped status 2026-05-15)
    - 🟢 documents binary/excluded-dir and empty-repo behavior (smoke tests added 2026-05-15)
    - 🟢 file organization missing/unsafe move reporting (explicit overwrite guard + negative tests added 2026-05-15)
    - 🟢 command assistant unsafe command returns `safe=false` (negative tests added 2026-05-15)

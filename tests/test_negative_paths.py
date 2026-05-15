@@ -101,6 +101,25 @@ class TestCodingRuntimeNegative:
             run_task("test", tmp_path)
         assert "uncommitted changes" in str(exc_info.value).lower()
 
+    def test_run_task_allow_dirty_bypasses_block(self, tmp_path: Path) -> None:
+        from workflows.coding.runtime import run_task, ExecutionError
+        import subprocess
+
+        subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True)
+        subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=tmp_path, capture_output=True)
+        (tmp_path / "dirty.txt").write_text("x")
+
+        with patch("workflows.coding.runtime.create_orchestrator_agent") as mock_create:
+            mock_agent = MagicMock()
+            mock_agent.run_structured.return_value = MagicMock(
+                success=False, parsed_output=None, error="Planning failed", raw_output=""
+            )
+            mock_create.return_value = mock_agent
+            with pytest.raises(ExecutionError, match="Planning failed"):
+                run_task("test", tmp_path, allow_dirty=True)
+
     def test_run_task_raises_on_planning_failure(self, tmp_path: Path) -> None:
         from workflows.coding.runtime import run_task, ExecutionError
         import subprocess
