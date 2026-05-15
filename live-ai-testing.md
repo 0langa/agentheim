@@ -67,6 +67,7 @@ This sweep verified docs, governance, CLI smoke, test collection, and the live v
 | Test collection | pass | `pytest --collect-only -q` collected 1230 total tests; default lane selected 1195 and deselected 35 |
 | Markdown local links | pass after docs sync | repo-wide `*.md` link scan |
 | Web UI browser smoke | pass | Root loads, API connected, provider profiles visible, presets list with Run buttons, Active Runs section with polling, 0 console errors |
+| Desktop UI server integration | pass | Server thread starts, health + presets endpoints respond; pywebview fallback paths unit-tested |
 
 ### Web UI Browser Smoke — 2026-05-15
 
@@ -81,6 +82,17 @@ Server started via `uvicorn interfaces.web_ui.app:create_app --factory --host 12
 | Console errors | pass | 0 JS errors (only favicon.ico 404, harmless) |
 
 **Note:** Full preset-run end-to-end through Web UI not tested in this slice to avoid live AI calls. Run buttons trigger `POST /api/presets/{preset_id}/run` and poll `/api/runs/{run_id}`; verified via code inspection and API test.
+
+### Desktop UI Server Integration — 2026-05-15
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| Server starts in background thread | pass | `tests/test_desktop_ui.py::TestDesktopUIServerIntegration::test_server_starts_and_health_responds` |
+| Health endpoint responds | pass | `GET /api/health` returns `{"status":"ok"}` |
+| Presets endpoint responds | pass | `GET /api/presets` returns non-empty list |
+| CLI command registered | pass | `agentheim desktop --help` shows `--port` and `--no-tray` |
+
+**Note:** Actual pywebview window launch not tested in CI; covered by unit tests for pywebview/tkinter/browser fallback paths.
 
 ---
 

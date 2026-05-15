@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -117,3 +119,29 @@ class TestDesktopUI:
         assert "Launch the Agentheim desktop UI" in result.output
         assert "--port" in result.output
         assert "--no-tray" in result.output
+
+
+class TestDesktopUIServerIntegration:
+    def test_server_starts_and_health_responds(self, tmp_path: Path) -> None:
+        from interfaces.desktop_ui.app import _run_server, _wait_for_server
+
+        port = 18765
+        server_thread = threading.Thread(
+            target=_run_server, args=(tmp_path, port), daemon=True
+        )
+        server_thread.start()
+
+        reached = _wait_for_server(port, timeout=10.0)
+        assert reached is True, "Desktop UI server did not start within timeout"
+
+        import urllib.request
+        import json
+
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health") as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            assert data["status"] == "ok"
+
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/presets") as resp:
+            presets = json.loads(resp.read().decode("utf-8"))
+            assert isinstance(presets, list)
+            assert len(presets) > 0

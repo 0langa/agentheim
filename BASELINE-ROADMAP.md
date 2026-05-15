@@ -553,7 +553,7 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
 
 ## 🟡 Phase 5 - Interface Contract Freeze
 
-**Status:** Partial as of 2026-05-15. CLI and API contracts frozen with parity tests passing. Web UI browser smoke completed: root loads, provider health visible, presets list with Run buttons, Active Runs polling, artifacts/errors visible. Desktop inherits Web UI via pywebview wrapper; no separate native shell needed. Guided TUI has basic preset selection and questionnaire flows. Remaining: full Web UI preset-run end-to-end with live AI, Desktop launch validation.
+**Status:** Partial as of 2026-05-15. CLI and API contracts frozen with parity tests passing. Web UI browser smoke completed: root loads, provider health visible, presets list with Run buttons, Active Runs polling, artifacts/errors visible. Desktop UI server integration verified: background thread starts, health/presets endpoints respond; pywebview/tkinter/browser fallback paths unit-tested. Guided TUI has basic preset selection and questionnaire flows. Remaining: full Web UI preset-run end-to-end with live AI, actual pywebview window launch in GUI environment.
 
 **Goal:** Make CLI, API, Web UI, Desktop, and Guided TUI consistent for Tier-1 journeys.
 
@@ -607,7 +607,7 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
    - preset run starts 🟢 (Run buttons added to dashboard, trigger `POST /api/presets/{preset_id}/run`)
    - polling shows completed/failed 🟢 (JS polling via `/api/runs/{run_id}` implemented)
    - artifacts/errors visible 🟢 (rendered in Active Runs card)
-   - Desktop launches Web UI and routes correctly ⚪ (inherits Web UI via pywebview; no separate native shell needed)
+   - Desktop launches Web UI and routes correctly 🟢 (server integration tested; pywebview/tkinter/browser fallback paths unit-tested)
 
 ### Files
 

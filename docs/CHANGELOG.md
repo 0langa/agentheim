@@ -2,6 +2,15 @@
 
 ## 2026-05-15
 
+### Phase 5 Slice — Desktop UI Server Integration Test
+- Added `TestDesktopUIServerIntegration` to `tests/test_desktop_ui.py`:
+  - `test_server_starts_and_health_responds`: starts `_run_server` in a daemon
+    thread, waits for health endpoint, verifies `/api/health` and `/api/presets`
+    respond correctly.
+- Desktop UI server start path now has real integration evidence.
+- Updated `live-ai-testing.md`, `BASELINE-ROADMAP.md` Phase 5 status.
+- Validation: `tests/test_desktop_ui.py` 10/10 pass; baseline gate pass.
+
 ### Phase 5 Slice — Web UI Browser Smoke: Root Load + Provider Health + Run Buttons
 - Enhanced `interfaces/web_ui/app.py` dashboard:
   - Added "Active Runs" card with run status polling.
