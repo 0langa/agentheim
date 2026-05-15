@@ -95,22 +95,48 @@ Historical model entries include `gpt-4.1`, `gpt-4.1-mini`, and `gpt-5.4`. Treat
 
 ## Google Lane Fresh Evidence
 
-Recorded on 2026-05-14 using profile `gemini-live` with model `gemini-2.5-flash`.
+### Gemini API Key Path — 2026-05-14
+
+Profile `gemini-live` with model `gemini-2.5-flash`:
 
 | Check | Result | Evidence |
 |-------|--------|----------|
-| Gemini API key path | pass | `python -m interfaces.cli.cli provider test --profile gemini-live --role planner` |
-| Gemini text connectivity | pass | `python -m interfaces.cli.cli ping-models` after `python -m interfaces.cli.cli provider use gemini-live` |
-| Gemini structured JSON-capable provider path | pass | `gemini-live` was created with `text,json` capabilities and `provider test` passed against the live endpoint |
-| Gemini stable preset end-to-end | partial / blocked | after temporarily assigning planner capability `plan`, `python -m interfaces.cli.cli start command-assistant --input "command_description=print a tiny json object with keys status and source"` progressed into workflow execution but failed with `ValueError: No model for role='executor' with capability='code_edit'`; default profile was then restored with `python -m interfaces.cli.cli provider use azure-real` |
-| Vertex ADC path | not tested | no fresh ADC-backed run in this sweep |
-| Google vision path | not tested | no fresh multimodal run in this sweep |
+| Gemini API key path | pass | `provider test --profile gemini-live --role planner` |
+| Gemini text connectivity | pass | `ping-models` after `provider use gemini-live` |
+| Gemini structured JSON-capable provider path | pass | `gemini-live` created with `text,json` capabilities; `provider test` passed |
 
-Interpretation:
+### Gemini Full Matrix — 2026-05-15
 
-- Fresh live evidence now proves the Gemini API-key path and tiny live request path.
-- This is enough to count `Gemini API key path`, `text`, and a minimal `structured JSON` provider path as freshly proven.
-- This is not yet enough to claim the full Google lane gate, because Vertex ADC, vision, and one stable preset end to end remain unproven.
+Profile `gemini-lane2` (expanded 14-role profile) with model `gemini-2.5-flash` via `scripts/live_validate.py`:
+
+| Check | Result | Duration | Evidence |
+|-------|--------|----------|----------|
+| doctor | pass | 2.5s | All checks passed |
+| ping-models | fail | 45.2s | 429 Too Many Requests on multiple roles |
+| provider-planner | fail | 5.3s | 429 Too Many Requests (2 attempts) |
+| provider-executor | pass | 2.2s | `"ok": true` |
+| provider-verifier | pass | 6.1s | `"ok": true` |
+| command-assistant | fail | 5.5s | 429 rate limit |
+| local-document-chat | fail | 2.3s | 429 rate limit |
+| codebase-assistant | fail | 6.1s | 429 rate limit |
+| context-maintainer | pass | 2.0s | `ContextRunReport` emitted |
+| file-organizer-dry-run | pass | 5.8s | `status='done'` |
+| docs-maintainer-plan | fail | 5.5s | 429 rate limit |
+| github-maintainer | fail | 5.3s | 429 rate limit |
+| research-report | fail | 5.6s | 429 rate limit |
+| report-command-assistant | skipped | — | command-assistant failed, no run_id |
+| resume-command-assistant | skipped | — | command-assistant failed, no run_id |
+| invalid-role | pass | 1.0s | rejected cleanly |
+| invalid-profile | pass | 1.5s | rejected cleanly |
+| copy-denied | pass | 1.5s | `Approval required` + `Aborted` |
+
+**Interpretation:**
+
+- Gemini provider adapter works: executor and verifier role tests pass when not rate-limited.
+- **Aggressive rate limiting:** `gemini-2.5-flash` free tier returns 429 Too Many Requests after just a few sequential calls. This blocks reliable full-matrix testing.
+- `context-maintainer` and `file-organizer-dry-run` pass because they either don't hit the Gemini endpoint or use AICtx caching.
+- Vertex ADC path: not tested. Vision path: not tested.
+- Lane 2 gate partially satisfied. Need: rate-limit mitigation (delays/backoff), clean planner test, one preset end-to-end without 429.
 
 ---
 

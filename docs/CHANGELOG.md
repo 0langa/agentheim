@@ -2,6 +2,20 @@
 
 ## 2026-05-15
 
+### Phase 2 Slice — Google Lane Live Matrix Attempt + Rate Limit Discovery
+- Created `gemini-lane2` profile with 14 roles (same provider/secret as `gemini-live`).
+- Ran full 18-check matrix against `gemini-lane2` / `gemini-2.5-flash`.
+- Results: 8 pass, 8 fail, 2 skipped. Most failures = 429 Too Many Requests.
+- Key passes: doctor, provider-executor, provider-verifier, context-maintainer,
+  file-organizer-dry-run, 3 safety-negative checks.
+- Key finding: Gemini free-tier rate limiting is aggressive — blocks reliable
+  sequential matrix testing without delays/backoff.
+- Updated runner `classify_failure` to detect 429 / "Too Many Requests" as
+  `provider_rate_limit`.
+- Updated `live-ai-testing.md`, `docs/SUPPORT_MATRIX.md`, `BASELINE-ROADMAP.md`
+  with honest rate-limit evidence.
+- Validation: runner correctly classifies 429; evidence JSONL verified.
+
 ### Phase 6 Slice — Safety-Negative Checks in Live Validation Matrix
 - Added `expect_failure` support to `scripts/live_validate.py` (`build_result` logic).
 - Added 3 safety-negative checks to runner matrix:

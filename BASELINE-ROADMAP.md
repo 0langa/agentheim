@@ -236,7 +236,7 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
 
 ## 🟡 Phase 2 - Provider Lanes
 
-**Status:** Partial as of 2026-05-15. Lane 1 (OpenAI-compatible/Azure) now has full 15-check structured live evidence via `scripts/live_validate.py` against `azure-real` profile: provider smoke (5/5 pass), stable presets (2/4 pass), beta presets (3/4 pass), report/resume followups (2/2 pass). Lane 2 (Google) has fresh Gemini API-key path evidence from 2026-05-14 and a rerun is pending with the live_validate runner. Lane 3 (self-hosted) remains partially proven via localhost compatibility shim only.
+**Status:** Partial as of 2026-05-15. Lane 1 (OpenAI-compatible/Azure) now has full 18-check structured live evidence via `scripts/live_validate.py` against `azure-real` profile: provider smoke (5/5 pass), stable presets (2/4 pass), beta presets (3/4 pass), report/resume followups (2/2 pass), safety negatives (3/3 pass). Lane 2 (Google) has fresh Gemini API-key path evidence from 2026-05-14 and full matrix attempted 2026-05-15 against `gemini-lane2` — executor/verifier pass, but aggressive 429 rate limits from `gemini-2.5-flash` block reliable full-matrix validation. Lane 3 (self-hosted) remains partially proven via localhost compatibility shim only.
 
 **Goal:** Make the top 3 provider lanes polished, documented, and empirically proven.
 

@@ -384,7 +384,7 @@ def classify_failure(stdout: str, stderr: str, exit_code: int | None, missing_pa
         return "timeout"
     if "AuthenticationError" in combined or ("auth" in combined.lower() and "fail" in combined.lower()):
         return "provider_auth"
-    if "RateLimitError" in combined or "rate limit" in combined.lower() or "quota" in combined.lower():
+    if "RateLimitError" in combined or "rate limit" in combined.lower() or "quota" in combined.lower() or "429" in combined or "too many requests" in combined.lower():
         return "provider_rate_limit"
     if "ProviderError" in combined or "provider error" in combined.lower():
         return "provider_error"
