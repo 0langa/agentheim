@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -20,6 +20,7 @@ from core.public_api import (
     build_live_run_summary,
     build_run_summary,
     build_model_registry,
+    error_summary,
     interface_policy_config,
     list_workflows as cap_list_workflows,
 )
@@ -28,6 +29,7 @@ from tools.registry import ToolRegistry, create_core_tool_registry
 
 from agentheim.context_ops_impl import AictxContextOps
 from agentheim.vendor.aictx.config import AictxConfig
+from agentheim.vendor.aictx.errors import SafetyError
 from interfaces.tool_approval import InterfaceApprovalStore
 
 
@@ -174,6 +176,19 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
         description="Web UI prototype for agent orchestration",
         version="0.1.0-prototype",
     )
+
+    @app.middleware("http")
+    async def _structured_error_middleware(request, call_next):
+        try:
+            return await call_next(request)
+        except Exception as exc:
+            summary = error_summary(exc)
+            status_code = 500
+            if isinstance(exc, ValueError):
+                status_code = 400
+            if isinstance(exc, SafetyError):
+                status_code = 409
+            return JSONResponse(status_code=status_code, content=summary)
 
     tool_registry = ToolRegistry(repo_root)
     core_tool_registry = create_core_tool_registry(repo_root)
@@ -472,79 +487,112 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
         memory_bus.write(scope, key, body.value)
         return MemoryWriteResponse(scope=scope, key=key)
 
+    def _ctx_exc(exc: Exception):
+        summary = error_summary(exc)
+        status_code = 500
+        if isinstance(exc, ValueError):
+            status_code = 400
+        if isinstance(exc, SafetyError):
+            status_code = 409
+        return JSONResponse(status_code=status_code, content=summary)
+
     @app.post("/api/ctx/init")
     def ctx_init(body: CtxInitRequest) -> dict[str, Any]:
-        ops = AictxContextOps(aictx_config)
-        ops.init(Path(body.project_path))
-        return {"ok": True}
+        try:
+            ops = AictxContextOps(aictx_config)
+            ops.init(Path(body.project_path))
+            return {"ok": True}
+        except Exception as exc:
+            return _ctx_exc(exc)
 
     @app.post("/api/ctx/scan")
     def ctx_scan(body: CtxScanRequest) -> dict[str, Any]:
-        ops = AictxContextOps(aictx_config)
-        inventory = ops.scan(Path(body.project_path))
-        return {"repo_root": inventory.repo_root, "head_commit": inventory.head_commit}
+        try:
+            ops = AictxContextOps(aictx_config)
+            inventory = ops.scan(Path(body.project_path))
+            return {"repo_root": inventory.repo_root, "head_commit": inventory.head_commit}
+        except Exception as exc:
+            return _ctx_exc(exc)
 
     @app.post("/api/ctx/run")
     def ctx_run(body: CtxRunRequest) -> dict[str, Any]:
-        ops = AictxContextOps(aictx_config)
-        report = ops.run_pipeline(
-            repo_root=Path(body.project_path),
-            run_id="webui-ctx",
-            scope=body.scope,
-            write_mode=body.write_mode,
-            allow_dirty=body.allow_dirty,
-        )
-        return {
-            "generated_files": report.generated_files,
-            "lockfile_path": report.lockfile_path,
-            "patch_text": report.patch_text,
-        }
+        try:
+            ops = AictxContextOps(aictx_config)
+            report = ops.run_pipeline(
+                repo_root=Path(body.project_path),
+                run_id="webui-ctx",
+                scope=body.scope,
+                write_mode=body.write_mode,
+                allow_dirty=body.allow_dirty,
+            )
+            return {
+                "generated_files": report.generated_files,
+                "lockfile_path": report.lockfile_path,
+                "patch_text": report.patch_text,
+            }
+        except Exception as exc:
+            return _ctx_exc(exc)
 
     @app.post("/api/ctx/verify")
     def ctx_verify(body: CtxVerifyRequest) -> dict[str, Any]:
-        ops = AictxContextOps(aictx_config)
-        result = ops.verify(Path(body.project_path), strict=body.strict)
-        return {"result": result.result, "is_pass": result.is_pass}
+        try:
+            ops = AictxContextOps(aictx_config)
+            result = ops.verify(Path(body.project_path), strict=body.strict)
+            return {"result": result.result, "is_pass": result.is_pass}
+        except Exception as exc:
+            return _ctx_exc(exc)
 
     @app.post("/api/ctx/status")
     def ctx_status(body: CtxStatusRequest) -> dict[str, Any]:
-        ops = AictxContextOps(aictx_config)
-        st = ops.status(Path(body.project_path), strict=body.strict)
-        return {
-            "is_stale": st.is_stale,
-            "stale_sources": st.stale_sources,
-            "missing_sources": st.missing_sources,
-            "missing_generated": st.missing_generated,
-            "generated_mismatches": st.generated_mismatches,
-            "public_docs_impacts": st.public_docs_impacts,
-            "next_command": st.next_command,
-        }
+        try:
+            ops = AictxContextOps(aictx_config)
+            st = ops.status(Path(body.project_path), strict=body.strict)
+            return {
+                "is_stale": st.is_stale,
+                "stale_sources": st.stale_sources,
+                "missing_sources": st.missing_sources,
+                "missing_generated": st.missing_generated,
+                "generated_mismatches": st.generated_mismatches,
+                "public_docs_impacts": st.public_docs_impacts,
+                "next_command": st.next_command,
+            }
+        except Exception as exc:
+            return _ctx_exc(exc)
 
     @app.post("/api/ctx/clean")
     def ctx_clean(body: CtxCleanRequest) -> dict[str, Any]:
-        ops = AictxContextOps(aictx_config)
-        result = ops.clean(Path(body.project_path), run_id=body.run_id, keep_runs=body.keep_runs)
-        return {
-            "removed_count": result.removed_count,
-            "kept_count": result.kept_count,
-            "removed_paths": result.removed_paths,
-        }
+        try:
+            ops = AictxContextOps(aictx_config)
+            result = ops.clean(Path(body.project_path), run_id=body.run_id, keep_runs=body.keep_runs)
+            return {
+                "removed_count": result.removed_count,
+                "kept_count": result.kept_count,
+                "removed_paths": result.removed_paths,
+            }
+        except Exception as exc:
+            return _ctx_exc(exc)
 
     @app.post("/api/ctx/public-docs/impact")
     def ctx_public_docs_impact(body: CtxPublicDocsImpactRequest) -> dict[str, Any]:
-        ops = AictxContextOps(aictx_config)
-        report = ops.public_docs_impact(Path(body.project_path), scope=body.scope)
-        return {"entries": report.entries}
+        try:
+            ops = AictxContextOps(aictx_config)
+            report = ops.public_docs_impact(Path(body.project_path), scope=body.scope)
+            return {"entries": report.entries}
+        except Exception as exc:
+            return _ctx_exc(exc)
 
     @app.post("/api/ctx/public-docs/update")
     def ctx_public_docs_update(body: CtxPublicDocsUpdateRequest) -> dict[str, Any]:
-        ops = AictxContextOps(aictx_config)
-        patch_path = ops.public_docs_update(
-            Path(body.project_path),
-            scope=body.scope,
-            write_mode=body.write_mode,
-        )
-        return {"patch_path": str(patch_path) if patch_path else None}
+        try:
+            ops = AictxContextOps(aictx_config)
+            patch_path = ops.public_docs_update(
+                Path(body.project_path),
+                scope=body.scope,
+                write_mode=body.write_mode,
+            )
+            return {"patch_path": str(patch_path) if patch_path else None}
+        except Exception as exc:
+            return _ctx_exc(exc)
 
     @app.websocket("/api/runs/{run_id}/ws")
     async def websocket_run_status(websocket: WebSocket, run_id: str):

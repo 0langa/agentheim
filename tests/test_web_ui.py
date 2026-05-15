@@ -310,3 +310,31 @@ class TestMemory:
         data = response.json()
         assert data["found"] is True
         assert data["value"] == {"message": "hello"}
+
+
+class TestStructuredErrors:
+    def test_ctx_route_returns_structured_error(self, tmp_path: Path, client: TestClient) -> None:
+        from unittest.mock import patch
+
+        with patch("interfaces.web_ui.app.AictxContextOps", side_effect=ValueError("bad path")):
+            response = client.post("/api/ctx/init", json={"project_path": str(tmp_path)})
+        assert response.status_code == 400
+        data = response.json()
+        assert data["type"] == "ValueError"
+        assert "bad path" in data["message"]
+        assert "category" in data
+        assert "next_action" in data
+        assert "troubleshooting_section" in data
+
+    def test_global_exception_handler_returns_structured_diagnostics(self, tmp_path: Path, client: TestClient) -> None:
+        from unittest.mock import patch
+
+        with patch("interfaces.web_ui.app._import_workflows", side_effect=RuntimeError("registry corrupt")):
+            response = client.get("/api/workflows")
+        assert response.status_code == 500
+        data = response.json()
+        assert data["type"] == "RuntimeError"
+        assert "registry corrupt" in data["message"]
+        assert "category" in data
+        assert "next_action" in data
+        assert "troubleshooting_section" in data

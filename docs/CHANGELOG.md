@@ -2,6 +2,13 @@
 
 ## 2026-05-15
 
+### Phase 7 Slice — Web UI Structured Error Responses
+- Replaced raw exception leakage in `interfaces/web_ui/app.py` with structured diagnostics.
+- Added `_structured_error_middleware` (HTTP middleware) that catches unhandled exceptions and returns `error_summary` JSON.
+- Wrapped all `/api/ctx/*` routes with try/except + `_ctx_exc()` returning `JSONResponse` with structured error payload.
+- Added `TestStructuredErrors` in `tests/test_web_ui.py` verifying both ctx-route and global-middleware structured error shapes.
+- Validation: `tests/test_web_ui.py` 22 passed.
+
 ### Phase 7 Slice — Fix API Server Core Boundary Violation
 - Replaced direct `core.error_classification` import with `core.public_api` in `interfaces/api_server/app.py` `_ctx_exc()`.
 - Fixes `TestInterfaceIsolation::test_no_direct_core_imports[interfaces/api_server/app.py]` which was failing with `AssertionError: interfaces/api_server/app.py imports directly from core internals: [(432, 'core.error_classification')]`.
