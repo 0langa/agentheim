@@ -783,7 +783,7 @@ powershell -ExecutionPolicy Bypass -File .\devtest\ai_test.ps1
    - 🟢 local endpoint reachability where relevant
    - 🟢 optional dependencies
    - 🟢 AICtx/ContextOps availability
-5. ⚪ Make Web/Desktop show diagnostics, not raw stack traces.
+5. 🟢 Make Web/Desktop show diagnostics, not raw stack traces. (Web UI done via `_structured_error_middleware` + `_ctx_exc()` on all ctx routes; Desktop inherits via pywebview wrapper.)
 
 ### Files
 
