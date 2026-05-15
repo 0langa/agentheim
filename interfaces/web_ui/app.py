@@ -78,12 +78,14 @@ class WorkflowListItem(BaseModel):
     workflow_id: str
     name: str
     description: str
+    support_state: str = "unknown"
 
 
 class PresetListItem(BaseModel):
     preset_id: str
     name: str
     description: str
+    support_state: str = "unknown"
 
 
 class ExecuteRequest(BaseModel):
@@ -343,6 +345,7 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
                 workflow_id=w.id,
                 name=w.id.replace("_", " ").title(),
                 description=w.metadata.get("description", "") or "",
+                support_state=w.metadata.get("support_state", "unknown"),
             )
             for w in cap_list_workflows()
         ]
@@ -380,6 +383,7 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
                 preset_id=p.preset_id,
                 name=getattr(p, "name", p.preset_id) or p.preset_id,
                 description=getattr(p, "description", "") or "",
+                support_state=getattr(p, "support_state", "unknown"),
             )
             for p in PRESET_REGISTRY.list()
         ]
@@ -789,11 +793,11 @@ async function loadAll() {
 
   const wfList = document.getElementById('workflows-list');
   if (workflows.error) { wfList.innerHTML = '<li class="error">' + workflows.error + '</li>'; }
-  else { wfList.innerHTML = workflows.map(w => '<li>' + w.workflow_id + '</li>').join(''); }
+  else { wfList.innerHTML = workflows.map(w => '<li>' + w.workflow_id + '<span class="badge state-' + w.support_state + '">' + w.support_state + '</span></li>').join(''); }
 
   const presetList = document.getElementById('presets-list');
   if (presets.error) { presetList.innerHTML = '<li class="error">' + presets.error + '</li>'; }
-  else { presetList.innerHTML = presets.map(p => '<li>' + p.preset_id + ' <button class="run-btn" data-preset-id="' + p.preset_id + '">Run</button></li>').join('');
+  else { presetList.innerHTML = presets.map(p => '<li>' + p.preset_id + '<span class="badge state-' + p.support_state + '">' + p.support_state + '</span> <button class="run-btn" data-preset-id="' + p.preset_id + '">Run</button></li>').join('');
     presetList.addEventListener('click', function(e) { if (e.target.classList.contains('run-btn')) { runPreset(e.target.dataset.presetId); } }); }
 
   const providerList = document.getElementById('providers-list');

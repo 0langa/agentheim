@@ -201,6 +201,13 @@ class TestWorkflows:
         assert "research" in workflow_ids
         assert "coding" in workflow_ids, f"Expected 'coding' in workflow list, got {workflow_ids}"
 
+    def test_list_workflows_have_support_state(self, client: TestClient) -> None:
+        response = client.get("/api/workflows")
+        data = response.json()
+        for w in data:
+            assert "support_state" in w
+            assert w["support_state"] in ("stable_candidate", "beta", "experimental", "unknown")
+
 
 class TestPresets:
     def test_list_presets(self, client: TestClient) -> None:
@@ -210,6 +217,13 @@ class TestPresets:
         assert isinstance(data, list)
         preset_ids = {p["preset_id"] for p in data}
         assert "research-report" in preset_ids
+
+    def test_list_presets_have_support_state(self, client: TestClient) -> None:
+        response = client.get("/api/presets")
+        data = response.json()
+        for p in data:
+            assert "support_state" in p
+            assert p["support_state"] in ("stable_candidate", "beta", "experimental", "unknown")
 
 
 class TestRunWebSocket:
