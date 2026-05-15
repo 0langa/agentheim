@@ -64,6 +64,20 @@ This matrix records what Agentheim currently promises. A surface is not stable u
 - `context-maintainer` is architecturally different: it delegates execution to the AICtx runtime rather than using Agentheim's workflow agent pipeline. Its readiness checklist reflects this boundary. Agentheim-native artifacts, final reports, and negative-path tests are gaps that must close before stable promotion.
 - All four stable candidates need fresh live evidence on the current top-3 provider lane before promotion to `stable`.
 
+## Workflow Readiness Checklists (Beta Candidates)
+
+| Checklist Item | `file-organizer` | `docs-maintainer` | `research-report` | `github-maintainer` |
+| --- | --- | --- | --- | --- |
+| **Structured I/O schemas** | ✅ AnalyzerResult, ProposerResult, ApplierResult | ✅ DetectionResult, UpdateResult, AlignmentResult | ✅ GatherResult, SummaryResult, ResearchReport | ✅ SummaryResult, DraftResult |
+| **Artifacts produced** | ✅ working_memory.json, moves_executed metadata | ✅ updates metadata | ✅ ResearchReport in metadata | ✅ DraftResult in metadata |
+| **Final report** | ✅ ApplierResult with moves + summary | ✅ AlignmentResult in metadata | ✅ ResearchReport in metadata | ✅ DraftResult (pr_title, pr_body, branch_name) |
+| **Failure modes documented** | ✅ missing source, destination exists | ✅ detect failure halt, update failure halt | ✅ gather failure halt | ✅ summarize failure halt |
+| **Negative-path tests** | ✅ missing source, dest exists, dry_run | ✅ detect failure halt, update failure halt, empty stale_docs | ✅ gather failure halt, empty sources | ✅ summarize failure halt, empty issues_text |
+| **CLI path** | ✅ `start file-organizer` | ✅ `start docs-maintainer` | ✅ `start research-report` | ✅ `start github-maintainer` |
+| **API path** | ✅ `POST /api/presets/{preset_id}/run` | ✅ `POST /api/presets/{preset_id}/run` | ✅ `POST /api/presets/{preset_id}/run` | ✅ `POST /api/presets/{preset_id}/run` |
+| **Docs** | ✅ USER_GUIDE.md | ✅ USER_GUIDE.md | ✅ USER_GUIDE.md | ✅ USER_GUIDE.md |
+| **Live evidence** | 🟡 Historical dry-run/apply | 🟡 Plan-mode pass; apply mode needs validation | 🟡 Mixed historical; needs clean rerun | 🟡 Historical pass; needs fresh credential proof |
+
 ## Interfaces
 
 | Interface | State | Evidence | Known Limits |

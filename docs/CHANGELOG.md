@@ -2,6 +2,13 @@
 
 ## 2026-05-15
 
+### Phase 4 Slice — Beta Candidate Workflow Readiness Checklists
+- Added "Workflow Readiness Checklists (Beta Candidates)" table to `docs/SUPPORT_MATRIX.md`.
+- Covers 9 checklist items per workflow for file-organizer, docs-maintainer, research-report, github-maintainer.
+- All beta workflows show solid structured I/O, negative-path tests, CLI/API paths, and docs coverage.
+- Live evidence remains 🟡 for all four; promotion to stable requires fresh live proof.
+- Validation: `python scripts/check-agent-instructions.py` passed; directive devtest passed.
+
 ### Phase 4 Slice — Stable Candidate Workflow Readiness Checklists
 - Added "Workflow Readiness Checklists (Stable Candidates)" table to `docs/SUPPORT_MATRIX.md`.
 - Covers 9 checklist items per workflow: structured I/O schemas, artifacts, final report, failure modes, negative tests, CLI path, API path, docs, live evidence.
