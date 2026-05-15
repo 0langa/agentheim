@@ -2,6 +2,16 @@
 
 ## 2026-05-15
 
+### Phase 6 Slice — Safety-Negative Checks in Live Validation Matrix
+- Added `expect_failure` support to `scripts/live_validate.py` (`build_result` logic).
+- Added 3 safety-negative checks to runner matrix:
+  - `invalid-role`: `provider test --role nonexistent-role` → rejected cleanly
+  - `invalid-profile`: `provider test --profile nonexistent-profile` → rejected cleanly
+  - `copy-denied`: `copy` outside workspace without approval → `Aborted`
+- All 3 safety-negative tests pass against `azure-real`.
+- Updated `live-ai-testing.md`, `BASELINE-ROADMAP.md` with safety-negative evidence.
+- Validation: safety-negative subset pass; existing doctor/command-assistant/report subset still pass.
+
 ### Phase 2/6 Slice — Full Live Validation Matrix + Report/Resume Closure
 - Ran `scripts/live_validate.py --profile azure-real` full matrix (15 checks).
 - Results: 11 pass, 4 fail. New passes: `file-organizer-dry-run`, `docs-maintainer-plan`, `github-maintainer`, `resume-command-assistant`.

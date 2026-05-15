@@ -37,7 +37,19 @@ Profile `azure-real` (provider_type `azure_foundry`, model `gpt-5.4-mini`) via `
 - Stable presets: 2/4 pass (`command-assistant`, `context-maintainer`). `local-document-chat` and `codebase-assistant` fail on `gpt-5.4-mini` — model capability limitation, not code bug.
 - Beta presets: 3/4 pass (`file-organizer-dry-run`, `docs-maintainer-plan`, `github-maintainer`). `research-report` fails with exit code 1 (known-failing).
 - Followup paths: `report-command-assistant` and `resume-command-assistant` both pass. Report/resume gap now closed for `command-assistant`.
-- Lane gate partially satisfied. Missing: `local-document-chat`, `codebase-assistant`, `research-report` green runs; Web/Desktop interface smoke; safety negatives; vision.
+- Lane gate partially satisfied. Missing: `local-document-chat`, `codebase-assistant`, `research-report` green runs; Web/Desktop interface smoke; vision.
+
+### Safety-Negative Checks — 2026-05-15
+
+Profile `azure-real` via `scripts/live_validate.py` with `expect_failure` flag:
+
+| Check | Result | Duration | Evidence |
+|-------|--------|----------|----------|
+| invalid-role | pass | 1.1s | `provider test --role nonexistent-role` rejected with `nonexistent-role is not one of` |
+| invalid-profile | pass | 1.4s | `provider test --profile nonexistent-profile` rejected with `Unknown profile` |
+| copy-denied | pass | 1.4s | `copy /etc/passwd C:\temp\...` aborted with `Approval required` + `Aborted` |
+
+**Interpretation:** Safety-negative CLI paths fail cleanly with actionable errors. Runner now supports `expect_failure` tests.
 
 ## Current Drift Sweep
 
@@ -149,7 +161,7 @@ These need fresh evidence before claiming a polished baseline:
 | Web UI | Provider-backed preset run matrix, status polling, and artifact rendering |
 | Desktop UI | Launch, route to local web UI, run one preset, close cleanly |
 | Tools/adapters | Browser, HTTP, local DB, MCP, WebResearchAdapter, GitHubCliAdapter, MCPClientAdapter |
-| Safety negatives | Missing secret, invalid model, auth failure, rate limit, timeout, malformed JSON, unsafe patch, path escape |
+| Safety negatives | CLI input validation (invalid role/profile) and approval-required path proven 2026-05-15. Remaining: auth failure, rate limit, timeout, malformed JSON, unsafe patch, path escape. |
 | Vision | Vision-capable provider path and non-vision rejection path |
 
 ---

@@ -647,7 +647,7 @@ python -m interfaces.cli.cli copy --help
 
 ## 🟡 Phase 6 - Live Validation Program
 
-**Status:** Partial as of 2026-05-15. Foundation slice complete: `scripts/live_validate.py` provides a repeatable, bounded live validation runner with built-in matrix, structured evidence output (JSONL + summary JSON/Markdown), provider/profile/model detection, failure category classification, and configurable max attempts (default 2) with 120-second timeout per attempt. Full matrix run completed against Lane 1 (azure-real): 15 checks, 11 pass, 4 fail. Remaining work: run full matrix against Lane 2 (Google) and Lane 3 (self-hosted), add safety-negative and vision checks to matrix, archive contradictory historical results.
+**Status:** Partial as of 2026-05-15. Foundation slice complete: `scripts/live_validate.py` provides a repeatable, bounded live validation runner with built-in matrix, structured evidence output (JSONL + summary JSON/Markdown), provider/profile/model detection, failure category classification, and configurable max attempts (default 2) with 120-second timeout per attempt. Full matrix run completed against Lane 1 (azure-real): 18 checks, 14 pass, 4 fail. Safety-negative checks added (`invalid-role`, `invalid-profile`, `copy-denied`) with `expect_failure` support. Remaining work: run full matrix against Lane 2 (Google) and Lane 3 (self-hosted), add vision checks to matrix, archive contradictory historical results.
 
 **Goal:** Make live evidence repeatable, bounded, and safe.
 

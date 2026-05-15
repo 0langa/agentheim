@@ -215,6 +215,44 @@ DEFAULT_MATRIX: dict[str, Any] = {
             "timeout_seconds": 60,
             "tags": ["followup", "cli", "known-failing"],
         },
+        {
+            "id": "invalid-role",
+            "description": "Provider test rejects invalid role",
+            "command": [
+                "{python}", "-m", "{cli_module}", "provider", "test",
+                "--role", "nonexistent-role",
+            ],
+            "expect_failure": True,
+            "must_contain": ["'nonexistent-role' is not one of"],
+            "timeout_seconds": 30,
+            "tags": ["safety-negative", "cli"],
+        },
+        {
+            "id": "invalid-profile",
+            "description": "Provider test rejects unknown profile",
+            "command": [
+                "{python}", "-m", "{cli_module}", "provider", "test",
+                "--profile", "nonexistent-profile-12345",
+                "--role", "planner",
+            ],
+            "expect_failure": True,
+            "must_contain": ["Unknown profile"],
+            "timeout_seconds": 30,
+            "tags": ["safety-negative", "cli"],
+        },
+        {
+            "id": "copy-denied",
+            "description": "Filesystem copy outside workspace requires approval and aborts without stdin",
+            "command": [
+                "{python}", "-m", "{cli_module}", "copy",
+                "/etc/passwd",
+                "C:\\temp\\live_validate_denied_test.txt",
+            ],
+            "expect_failure": True,
+            "must_contain": ["Approval required", "Aborted"],
+            "timeout_seconds": 30,
+            "tags": ["safety-negative", "cli"],
+        },
     ],
 }
 
@@ -414,7 +452,11 @@ def build_result(
         for pattern in [str(item) for item in test.get("must_contain", [])]
         if pattern not in combined
     ]
-    status = "passed" if exit_code == 0 and not missing_patterns else "failed"
+    expect_failure = test.get("expect_failure", False)
+    if expect_failure:
+        status = "passed" if not missing_patterns else "failed"
+    else:
+        status = "passed" if exit_code == 0 and not missing_patterns else "failed"
     if error is None and exit_code not in (0, None):
         error = f"exit code {exit_code}"
     elif error is None and missing_patterns:
