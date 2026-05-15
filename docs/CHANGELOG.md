@@ -2,6 +2,15 @@
 
 ## 2026-05-15
 
+### Phase 4 Slice — GitHub Maintainer Workflow Negative-Path Coverage
+- Added `TestGitHubMaintenanceWorkflowExecution` end-to-end test proving summarize → draft DAG completes.
+- Added `TestGitHubMaintenanceNegativePaths` with 2 tests:
+  1. `test_summarize_failure_halts_before_draft` — invalid summarizer output halts DAG before draft.
+  2. `test_empty_issues_text_graceful` — empty `issues_text` propagates through summarize → draft without crashing.
+- Added `DraftResult` response to `_fake_invoke` fixture.
+- Updated `docs/SUPPORT_MATRIX.md` `github-maintainer` known limits to reflect stronger coverage.
+- Validation: `tests/smoke/test_workflow_execution.py` 21 passed.
+
 ### Phase 4 Slice — Docs Maintenance Workflow Apply/Aligner Path Coverage
 - Added `TestDocsMaintenanceWorkflowNegativePaths` with 3 tests:
   1. `test_detect_failure_halts_before_update` — invalid detector output halts DAG before update/align.

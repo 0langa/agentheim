@@ -513,7 +513,7 @@ Promote these after focused gaps close:
    - 🟢 command assistant unsafe command returns `safe=false` (negative tests added 2026-05-15)
    - 🟢 docs maintenance align/apply path (detect/update failure halt + empty stale-docs graceful propagation covered by smoke tests 2026-05-15)
    - 🟢 research API execution path (gather failure halt + empty sources graceful propagation covered by smoke tests 2026-05-15)
-   - GitHub API execution path
+   - 🟢 GitHub API execution path (summarize-failure halt + empty-issues graceful propagation covered by smoke tests 2026-05-15)
 5. Add context-maintainer to preset smoke expectations.
 
 ### Files

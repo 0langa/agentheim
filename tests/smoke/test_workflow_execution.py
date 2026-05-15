@@ -87,6 +87,7 @@ def _fake_invoke(self: Any, user_prompt: str, max_output_tokens: int | None = No
         "DetectionResult": json.dumps({"stale_docs": [{"path": "README.md", "reason": "outdated"}]}),
         "UpdateResult": json.dumps({"updates": [{"path": "README.md", "new_content": "# Updated"}]}),
         "AlignmentResult": json.dumps({"aligned": True, "issues": []}),
+        "DraftResult": json.dumps({"pr_title": "Fix bug", "pr_body": "This PR fixes the bug.", "branch_name": "fix/bug"}),
         "IndexerOutput": json.dumps({"chunks": [{"id": "c1", "text": "hello", "metadata": {}}]}),
         "RetrieverOutput": json.dumps({"results": [{"chunk_id": "c1", "score": 0.9, "text": "hello"}]}),
         "AnswererOutput": json.dumps({"answer": "It works", "citations": ["c1"], "confidence": "high"}),
@@ -402,4 +403,56 @@ class TestDocsMaintenanceWorkflowNegativePaths:
             results = wf.run(tmp_path, metadata={"docs_context": "readme info"})
 
         assert len(results) == 4
+        assert all(r.success for r in results)
+
+
+class TestGitHubMaintenanceWorkflowExecution:
+    def test_github_maintenance_runs_end_to_end(self, mock_deps, tmp_path: Path) -> None:
+        from workflows.github_maintenance import GitHubMaintenanceWorkflow
+        from workflows.github_maintenance.agents.base import BaseAgent
+        registry, tools, policy, ledger = mock_deps
+        with patch.object(BaseAgent, "_invoke", _fake_invoke):
+            wf = GitHubMaintenanceWorkflow(registry, tools, policy, ledger)
+            results = wf.run(tmp_path, metadata={"issues_text": "#1 bug report"})
+
+        assert len(results) == 2
+        assert all(r.success for r in results)
+        assert results[0].step_id == "summarize"
+        assert results[1].step_id == "draft"
+
+
+class TestGitHubMaintenanceNegativePaths:
+    def test_summarize_failure_halts_before_draft(self, mock_deps, tmp_path: Path) -> None:
+        from workflows.github_maintenance import GitHubMaintenanceWorkflow
+        from workflows.github_maintenance.agents.base import BaseAgent
+        registry, tools, policy, ledger = mock_deps
+
+        def _bad_summarize(self, user_prompt: str, max_output_tokens: int | None = None) -> str:
+            if self.output_schema.__name__ == "SummaryResult":
+                return "not valid json"
+            return _fake_invoke(self, user_prompt, max_output_tokens)
+
+        with patch.object(BaseAgent, "_invoke", _bad_summarize):
+            wf = GitHubMaintenanceWorkflow(registry, tools, policy, ledger)
+            results = wf.run(tmp_path, metadata={"issues_text": "#1 bug report"})
+
+        assert len(results) == 1
+        assert results[0].step_id == "summarize"
+        assert not results[0].success
+
+    def test_empty_issues_text_graceful(self, mock_deps, tmp_path: Path) -> None:
+        from workflows.github_maintenance import GitHubMaintenanceWorkflow
+        from workflows.github_maintenance.agents.base import BaseAgent
+        registry, tools, policy, ledger = mock_deps
+
+        def _empty_summary(self, user_prompt: str, max_output_tokens: int | None = None) -> str:
+            if self.output_schema.__name__ == "SummaryResult":
+                return json.dumps({"issues": []})
+            return _fake_invoke(self, user_prompt, max_output_tokens)
+
+        with patch.object(BaseAgent, "_invoke", _empty_summary):
+            wf = GitHubMaintenanceWorkflow(registry, tools, policy, ledger)
+            results = wf.run(tmp_path, metadata={"issues_text": ""})
+
+        assert len(results) == 2
         assert all(r.success for r in results)

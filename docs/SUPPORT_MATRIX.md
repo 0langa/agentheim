@@ -44,7 +44,7 @@ This matrix records what Agentheim currently promises. A surface is not stable u
 | `file-organizer` | `file_organization` | Beta | CLI, API, Web route | Historical dry-run/apply evidence; missing-source, overwrite-block, and dry-run smoke tests |
 | `docs-maintainer` | `docs_maintenance` | Beta | CLI, API, Web route | Plan-mode evidence; detect-failure halt, update-failure halt, and empty-stale-docs graceful paths covered by smoke tests | Apply and aligner paths need live proof |
 | `research-report` | `research` | Beta | CLI, API, Web route | Unit/deep path evidence; gather-failure halt and empty-sources graceful paths covered by smoke tests | Needs clean CLI/API/Web live rerun |
-| `github-maintainer` | `github_maintenance` | Beta | CLI, API, Web route | Historical issue-summary evidence | GitHub credential/live path needs fresh proof |
+| `github-maintainer` | `github_maintenance` | Beta | CLI, API, Web route | Historical issue-summary evidence; summarize-failure halt and empty-issues graceful paths covered by smoke tests | GitHub credential/live path needs fresh proof |
 
 ## Interfaces
 
