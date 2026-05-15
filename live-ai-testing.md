@@ -21,7 +21,18 @@ Profile `azure-real` (provider_type `azure_foundry`, model `gpt-5.4-mini`) via `
 | provider-verifier | pass | 3.6s | `"ok": true` |
 | command-assistant | pass | 7.0s | `status='done'`; run_id `20260515-181130-command-assistant-run` |
 
-**Interpretation:** OpenAI-compatible/Azure lane now has current structured live evidence for provider smoke, role connectivity, and one stable preset end-to-end. Lane gate partially satisfied; additional stable preset runs (local-document-chat, codebase-assistant, context-maintainer) would strengthen the claim before `stable` promotion.
+### Stable Preset Live Evidence — 2026-05-15
+
+Profile `azure-real` (provider_type `azure_foundry`, model `gpt-5.4-mini`) via `scripts/live_validate.py`:
+
+| Preset | Result | Duration | Notes |
+|--------|--------|----------|-------|
+| command-assistant | pass | 7.0s | `status='done'` from earlier Azure gate run |
+| local-document-chat | fail | 16.4s | Workflow exited 0 but returned `status='failed'` with empty answer against test repo |
+| codebase-assistant | fail | 18.5s | Workflow exited 0 but returned `status='failed'` against test repo (2 attempts) |
+| context-maintainer | pass | 2.2s | `ContextRunReport` emitted successfully |
+
+**Interpretation:** OpenAI-compatible/Azure lane now has current structured live evidence for provider smoke, role connectivity, and one stable preset end-to-end. Lane gate partially satisfied. Stable preset promotion is blocked for `local-document-chat` and `codebase-assistant` until fresh live passes are achieved. `context-maintainer` now has current live evidence.
 
 ## Current Drift Sweep
 

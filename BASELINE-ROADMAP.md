@@ -461,7 +461,7 @@ python -m interfaces.cli.cli list-runs --repo .
 
 ## 🟡 Phase 4 - Stable Workflow And Preset Set
 
-**Status:** Partial as of 2026-05-15. Preset and workflow support-state metadata is now embedded in the `Preset` dataclass, `Workflow` base class, and capability registry. All 8 presets and 8 workflows carry `stable_candidate` or `beta` labels matching `SUPPORT_MATRIX.md`. `context-maintainer` is now included in preset smoke expectations. Readiness checklists for all 8 workflows added to `SUPPORT_MATRIX.md`. Remaining gap: live evidence for stable promotion gates.
+**Status:** Partial as of 2026-05-15. Preset and workflow support-state metadata is now embedded in the `Preset` dataclass, `Workflow` base class, and capability registry. All 8 presets and 8 workflows carry `stable_candidate` or `beta` labels matching `SUPPORT_MATRIX.md`. `context-maintainer` is now included in preset smoke expectations. Readiness checklists for all 8 workflows added to `SUPPORT_MATRIX.md`. Fresh live evidence collected via `scripts/live_validate.py`: `command-assistant` and `context-maintainer` passed against `azure-real`; `local-document-chat` and `codebase-assistant` returned `status='failed'` against test repo and remain blocked for stable promotion.
 
 **Goal:** Promote a small, proven set of workflows/presets to stable and label the rest honestly.
 

@@ -2,6 +2,14 @@
 
 ## 2026-05-15
 
+### Phase 4 Slice — Stable Preset Live Promotion Evidence
+- Ran `scripts/live_validate.py --profile azure-real --only local-document-chat,codebase-assistant,context-maintainer`.
+- `context-maintainer` passed (2.2s). `local-document-chat` and `codebase-assistant` returned `status='failed'` against test repo.
+- Updated `live-ai-testing.md` with stable preset evidence table.
+- Updated `docs/SUPPORT_MATRIX.md` stable candidate rows with honest fresh evidence.
+- Updated `BASELINE-ROADMAP.md` Phase 4 status.
+- Validation: runner exit code 1 (2 failed, 1 passed); evidence JSONL verified.
+
 ### Phase 2 Slice — Azure Foundry Live Lane Evidence
 - Ran `scripts/live_validate.py --profile azure-real --only doctor,ping-models,provider-planner,provider-executor,provider-verifier,command-assistant`.
 - All 6 checks passed against `azure-real` profile (`azure_foundry` provider, `gpt-5.4-mini` model).
