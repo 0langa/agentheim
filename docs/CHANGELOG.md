@@ -4,10 +4,10 @@
 
 ### Self-Hosted Local Endpoint — llama.cpp
 - Added `.localtest/llama.cpp/` with llama.cpp b9165 win-cpu-x64 binaries, `start-server.ps1`, `stop-server.ps1`, and `README.md`.
-- Downloaded `Qwen2.5-0.5B-Instruct-Q4_K_M.gguf` (~380 MB) as the local test model.
+- Downloaded `Qwen2.5-3B-Instruct-Q4_K_M.gguf` (~1.9 GB) as the local test model (kept 0.5B as fallback).
 - Added `llama-local` provider profile (`openai_compatible`, `http://127.0.0.1:8080/v1`, no auth).
 - Verified `provider test` passes against the local endpoint.
-- 3B model could not load due to host RAM constraints (~500 MB free); 0.5B model verifies provider lane wiring.
+- 3B model initially blocked by RAM (~500 MB free); freed ~6 GB by killing leaked MCP servers, pausing AV, and stopping WARP, then loaded 3B successfully.
 - Updated `BASELINE-ROADMAP.md`, `SUPPORT_MATRIX.md`, `live-ai-testing.md` with Lane 3 real endpoint evidence.
 
 ### Cleanup — Remove Temporary Gemini API Key Profile

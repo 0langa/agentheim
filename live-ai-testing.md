@@ -14,15 +14,15 @@ Real local endpoint smoke using llama.cpp server in `.localtest/llama.cpp/`.
 
 | Profile | Provider/model | Result | Evidence |
 |---------|----------------|--------|----------|
-| `llama-local` | `openai_compatible` / `qwen2.5-0.5b` | pass | `provider test` planner role passes; chat completions API responds with valid JSON |
+| `llama-local` | `openai_compatible` / `qwen2.5-3b` | pass | `provider test` planner role passes; chat completions API responds with valid JSON |
 
 **Setup:**
 - Binary: llama.cpp b9165 win-cpu-x64 from GitHub releases
-- Model: `Qwen2.5-0.5B-Instruct-Q4_K_M.gguf` (~380 MB)
+- Model: `Qwen2.5-3B-Instruct-Q4_K_M.gguf` (~1.9 GB)
 - Endpoint: `http://127.0.0.1:8080/v1`
 - Scripts: `start-server.ps1` / `stop-server.ps1` in `.localtest/llama.cpp/`
 
-**Note:** A 3B model could not load due to host RAM constraints (~500 MB free). The 0.5B model verifies provider lane wiring. Upgrade to 1B–3B when RAM is available.
+**Note:** 3B model loaded after RAM cleanup (killed leaked MCP servers, paused AV, stopped WARP). Preset-quality validation still pending.
 
 ### Provider Stability Sweep — Azure `gpt-5.4` and Gemini Key Test — 2026-05-15
 
