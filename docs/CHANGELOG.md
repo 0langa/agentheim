@@ -2,6 +2,16 @@
 
 ## 2026-05-15
 
+### Phase 2/6 Slice — Full Live Validation Matrix + Report/Resume Closure
+- Ran `scripts/live_validate.py --profile azure-real` full matrix (15 checks).
+- Results: 11 pass, 4 fail. New passes: `file-organizer-dry-run`, `docs-maintainer-plan`, `github-maintainer`, `resume-command-assistant`.
+- Fixed `report-command-assistant` `must_contain` pattern in runner matrix (`Status: done` → `"status": "completed"` to match JSON output).
+- Re-ran `report-command-assistant` → pass.
+- Updated `live-ai-testing.md` with full 15-check evidence table.
+- Updated `docs/SUPPORT_MATRIX.md` beta preset rows with fresh evidence.
+- Updated `BASELINE-ROADMAP.md` Phase 2 and Phase 6 status.
+- Validation: runner exit code 1 (4 known failures); evidence JSONL verified; report fix re-run pass.
+
 ### Phase 4 Slice — Stable Preset Live Promotion Evidence
 - Ran `scripts/live_validate.py --profile azure-real --only local-document-chat,codebase-assistant,context-maintainer`.
 - `context-maintainer` passed (2.2s). `local-document-chat` and `codebase-assistant` returned `status='failed'` against test repo.

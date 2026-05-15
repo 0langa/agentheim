@@ -236,7 +236,7 @@ powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode targete
 
 ## 🟡 Phase 2 - Provider Lanes
 
-**Status:** Partial as of 2026-05-15. Lane 1 (OpenAI-compatible/Azure) now has fresh structured live evidence via `scripts/live_validate.py` against `azure-real` profile: doctor, ping-models, planner/executor/verifier provider tests, and command-assistant preset all passed. Lane 2 (Google) has fresh Gemini API-key path evidence from 2026-05-14 and a rerun is pending with the live_validate runner. Lane 3 (self-hosted) remains partially proven via localhost compatibility shim only.
+**Status:** Partial as of 2026-05-15. Lane 1 (OpenAI-compatible/Azure) now has full 15-check structured live evidence via `scripts/live_validate.py` against `azure-real` profile: provider smoke (5/5 pass), stable presets (2/4 pass), beta presets (3/4 pass), report/resume followups (2/2 pass). Lane 2 (Google) has fresh Gemini API-key path evidence from 2026-05-14 and a rerun is pending with the live_validate runner. Lane 3 (self-hosted) remains partially proven via localhost compatibility shim only.
 
 **Goal:** Make the top 3 provider lanes polished, documented, and empirically proven.
 
@@ -647,7 +647,7 @@ python -m interfaces.cli.cli copy --help
 
 ## 🟡 Phase 6 - Live Validation Program
 
-**Status:** Partial as of 2026-05-15. Foundation slice complete: `scripts/live_validate.py` provides a repeatable, bounded live validation runner with built-in matrix, structured evidence output (JSONL + summary JSON/Markdown), provider/profile/model detection, failure category classification, and configurable max attempts (default 2) with 120-second timeout per attempt. Remaining work: define explicit live gate categories (provider lanes, stable presets, tools, safety negatives, interfaces, vision), run the full matrix against each top-3 provider lane, and archive contradictory historical results.
+**Status:** Partial as of 2026-05-15. Foundation slice complete: `scripts/live_validate.py` provides a repeatable, bounded live validation runner with built-in matrix, structured evidence output (JSONL + summary JSON/Markdown), provider/profile/model detection, failure category classification, and configurable max attempts (default 2) with 120-second timeout per attempt. Full matrix run completed against Lane 1 (azure-real): 15 checks, 11 pass, 4 fail. Remaining work: run full matrix against Lane 2 (Google) and Lane 3 (self-hosted), add safety-negative and vision checks to matrix, archive contradictory historical results.
 
 **Goal:** Make live evidence repeatable, bounded, and safe.
 

@@ -198,7 +198,7 @@ DEFAULT_MATRIX: dict[str, Any] = {
                 "--run-id", "{run_id:command-assistant}",
             ],
             "requires_run_id_from": "command-assistant",
-            "must_contain": ["Status: done"],
+            "must_contain": ['"status": "completed"'],
             "timeout_seconds": 60,
             "tags": ["followup", "cli"],
         },

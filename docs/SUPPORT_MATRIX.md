@@ -41,10 +41,10 @@ This matrix records what Agentheim currently promises. A surface is not stable u
 | `local-document-chat` | `documents` | Stable candidate | CLI, API, Web route | Smoke/unit coverage; fresh live run on 2026-05-15 via azure-real / gpt-5.4-mini returned `status='failed'` with empty answer against test repo | Binary/excluded-dir and empty-repo behavior covered by smoke tests; live RAG quality gap against test repo |
 | `codebase-assistant` | `coding` | Stable candidate | CLI, API, Web route | Broad tests and historical capable-model live pass; patch rollback, repeated-failure guard, max-diff-lines, dirty-repo bypass, no-tests skip covered by tests; fresh live run on 2026-05-15 via azure-real / gpt-5.4-mini returned `status='failed'` against test repo | Smaller models can fail coding quality; gpt-5.4-mini may not reliably complete coding workflow end-to-end |
 | `context-maintainer` | `context_maintainer` | Stable candidate | CLI, API/Web context routes | ContextOps tests and historical dry-run evidence; golden-path e2e workflow execution test added; fresh live pass on 2026-05-15 via azure-real / gpt-5.4-mini | Apply/write paths remain review-first |
-| `file-organizer` | `file_organization` | Beta | CLI, API, Web route | Historical dry-run/apply evidence; missing-source, overwrite-block, and dry-run smoke tests |
-| `docs-maintainer` | `docs_maintenance` | Beta | CLI, API, Web route | Plan-mode evidence; golden-path e2e test added; detect-failure halt, update-failure halt, and empty-stale-docs graceful paths covered by smoke tests | Apply and aligner paths need live proof |
-| `research-report` | `research` | Beta | CLI, API, Web route | Unit/deep path evidence; gather-failure halt and empty-sources graceful paths covered by smoke tests | Needs clean CLI/API/Web live rerun |
-| `github-maintainer` | `github_maintenance` | Beta | CLI, API, Web route | Historical issue-summary evidence; summarize-failure halt and empty-issues graceful paths covered by smoke tests | GitHub credential/live path needs fresh proof |
+| `file-organizer` | `file_organization` | Beta | CLI, API, Web route | Fresh live pass 2026-05-15 (dry-run via azure-real / gpt-5.4-mini); missing-source, overwrite-block, and dry-run smoke tests |
+| `docs-maintainer` | `docs_maintenance` | Beta | CLI, API, Web route | Fresh live pass 2026-05-15 (plan mode via azure-real / gpt-5.4-mini); golden-path e2e test added; detect-failure halt, update-failure halt, and empty-stale-docs graceful paths covered by smoke tests | Apply and aligner paths need live proof |
+| `research-report` | `research` | Beta | CLI, API, Web route | Unit/deep path evidence; gather-failure halt and empty-sources graceful paths covered by smoke tests | Live run fails exit code 1 on azure-real / gpt-5.4-mini (2026-05-15); needs clean rerun |
+| `github-maintainer` | `github_maintenance` | Beta | CLI, API, Web route | Fresh live pass 2026-05-15 (issue summary + PR draft via azure-real / gpt-5.4-mini); summarize-failure halt and empty-issues graceful paths covered by smoke tests | |
 
 ## Workflow Readiness Checklists (Stable Candidates)
 
@@ -76,7 +76,7 @@ This matrix records what Agentheim currently promises. A surface is not stable u
 | **CLI path** | ✅ `start file-organizer` | ✅ `start docs-maintainer` | ✅ `start research-report` | ✅ `start github-maintainer` |
 | **API path** | ✅ `POST /api/presets/{preset_id}/run` | ✅ `POST /api/presets/{preset_id}/run` | ✅ `POST /api/presets/{preset_id}/run` | ✅ `POST /api/presets/{preset_id}/run` |
 | **Docs** | ✅ USER_GUIDE.md | ✅ USER_GUIDE.md | ✅ USER_GUIDE.md | ✅ USER_GUIDE.md |
-| **Live evidence** | 🟡 Historical dry-run/apply | 🟡 Plan-mode pass; apply mode needs validation | 🟡 Mixed historical; needs clean rerun | 🟡 Historical pass; needs fresh credential proof |
+| **Live evidence** | 🟢 Pass 2026-05-15 (dry-run) | 🟢 Pass 2026-05-15 (plan mode) | 🔴 Fail 2026-05-15 (exit 1) | 🟢 Pass 2026-05-15 (issue summary + PR draft) |
 
 ## Interfaces
 
@@ -114,11 +114,11 @@ This matrix records what Agentheim currently promises. A surface is not stable u
 
 ## Current Validation Evidence
 
-Last docs baseline sweep on 2026-05-14:
+Last docs baseline sweep on 2026-05-15:
 
 - `python scripts/check-agent-instructions.py` passed.
 - `powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode directive -NoPrompt` passed.
+- `powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode baseline -NoPrompt` passed.
 - Markdown local link scan passed across 94 repo docs.
-- `pytest --collect-only -q` collected 1133 total tests; default lane selected 1098 and deselected 35.
-
-Full pytest execution and live AI provider matrix were not rerun in that sweep.
+- `pytest --collect-only -q` collected 1230 total tests; default lane selected 1195 and deselected 35.
+- Full live validation matrix (15 checks) run against azure-real / gpt-5.4-mini: 11 pass, 4 fail.

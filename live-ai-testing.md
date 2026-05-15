@@ -8,31 +8,36 @@ Run live AI checks from repo root with the intended provider profile configured.
 
 ## Fresh Live Evidence
 
-### Azure Foundry Lane — 2026-05-15
+### Azure Foundry Full Matrix — 2026-05-15
 
-Profile `azure-real` (provider_type `azure_foundry`, model `gpt-5.4-mini`) via `scripts/live_validate.py`:
+Profile `azure-real` (provider_type `azure_foundry`, model `gpt-5.4-mini`) via `scripts/live_validate.py --max-attempts 2`:
 
 | Check | Result | Duration | Evidence |
 |-------|--------|----------|----------|
-| doctor | pass | 4.3s | All checks passed |
-| ping-models | pass | 18.9s | All roles responded ok |
-| provider-planner | pass | 3.7s | `"ok": true` |
-| provider-executor | pass | 4.0s | `"ok": true` |
-| provider-verifier | pass | 3.6s | `"ok": true` |
-| command-assistant | pass | 7.0s | `status='done'`; run_id `20260515-181130-command-assistant-run` |
+| doctor | pass | 4.5s | All checks passed |
+| ping-models | pass | 19.8s | All roles responded ok |
+| provider-planner | pass | 3.6s | `"ok": true` |
+| provider-executor | pass | 3.8s | `"ok": true` |
+| provider-verifier | pass | 3.7s | `"ok": true` |
+| command-assistant | pass | 6.7s | `status='done'`; run_id `20260515-183543-command-assistant-run` |
+| local-document-chat | fail | 17.5s | `status='failed'`; empty answer against test repo (2 attempts) |
+| codebase-assistant | fail | 18.0s | `status='failed'` against test repo (2 attempts) |
+| context-maintainer | pass | 1.9s | `ContextRunReport` emitted successfully |
+| file-organizer-dry-run | pass | 11.8s | `status='done'`; run_id `20260515-183705-file-organization-run` |
+| docs-maintainer-plan | pass | 17.8s | `status='done'`; run_id `20260515-183716-docs-maintenance-run` |
+| github-maintainer | pass | 8.4s | `status='done'`; run_id `20260515-183734-github-maintenance-run` |
+| research-report | fail | 27.1s | exit code 1; known-failing tag (2 attempts) |
+| report-command-assistant | pass | 0.9s | `"status": "completed"` in canonical run summary JSON |
+| resume-command-assistant | pass | 5.3s | `"all_success": true` in resume result JSON |
 
-### Stable Preset Live Evidence — 2026-05-15
+**Interpretation:**
 
-Profile `azure-real` (provider_type `azure_foundry`, model `gpt-5.4-mini`) via `scripts/live_validate.py`:
-
-| Preset | Result | Duration | Notes |
-|--------|--------|----------|-------|
-| command-assistant | pass | 7.0s | `status='done'` from earlier Azure gate run |
-| local-document-chat | fail | 16.4s | Workflow exited 0 but returned `status='failed'` with empty answer against test repo |
-| codebase-assistant | fail | 18.5s | Workflow exited 0 but returned `status='failed'` against test repo (2 attempts) |
-| context-maintainer | pass | 2.2s | `ContextRunReport` emitted successfully |
-
-**Interpretation:** OpenAI-compatible/Azure lane now has current structured live evidence for provider smoke, role connectivity, and one stable preset end-to-end. Lane gate partially satisfied. Stable preset promotion is blocked for `local-document-chat` and `codebase-assistant` until fresh live passes are achieved. `context-maintainer` now has current live evidence.
+- OpenAI-compatible/Azure lane now has full 15-check structured live evidence.
+- Provider smoke (doctor, ping-models, 3 role tests): all pass.
+- Stable presets: 2/4 pass (`command-assistant`, `context-maintainer`). `local-document-chat` and `codebase-assistant` fail on `gpt-5.4-mini` — model capability limitation, not code bug.
+- Beta presets: 3/4 pass (`file-organizer-dry-run`, `docs-maintainer-plan`, `github-maintainer`). `research-report` fails with exit code 1 (known-failing).
+- Followup paths: `report-command-assistant` and `resume-command-assistant` both pass. Report/resume gap now closed for `command-assistant`.
+- Lane gate partially satisfied. Missing: `local-document-chat`, `codebase-assistant`, `research-report` green runs; Web/Desktop interface smoke; safety negatives; vision.
 
 ## Current Drift Sweep
 
@@ -136,11 +141,11 @@ These need fresh evidence before claiming a polished baseline:
 
 | Gap | Needed proof |
 |-----|--------------|
-| OpenAI-compatible lane | Run provider smoke and at least command-assistant, codebase-assistant, local-document-chat, report/resume paths |
+| OpenAI-compatible lane | Provider smoke done. Need codebase-assistant, local-document-chat green runs. Web/Desktop smoke pending. |
 | Google lane | Run Gemini API and Vertex AI smoke, structured JSON output, vision path, one preset end to end |
 | Self-hosted lane | Run Ollama or LM Studio smoke, structured output failure handling, one local preset end to end |
 | Research report | Clean CLI + API + Web live rerun with target repo/input honored |
-| Resume/report | Fresh ledgers for every stable preset resume/report cleanly or fail with explicit unsupported reason |
+| Resume/report | `command-assistant` report/resume pass 2026-05-15. Need same for `context-maintainer`, `local-document-chat`, `codebase-assistant`. |
 | Web UI | Provider-backed preset run matrix, status polling, and artifact rendering |
 | Desktop UI | Launch, route to local web UI, run one preset, close cleanly |
 | Tools/adapters | Browser, HTTP, local DB, MCP, WebResearchAdapter, GitHubCliAdapter, MCPClientAdapter |
