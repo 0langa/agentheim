@@ -2,6 +2,28 @@
 
 ## 2026-05-15
 
+### Phase 6 Safety-Negative Expansion — Patch Outside Allowed Scope Test
+- Added `TestPatchApplierAllowedFiles` to `tests/core/test_patching.py`.
+- `test_allowed_files_blocks_outside_scope`: verifies `PatchApplier.apply_changes`
+  rejects files not in `allowed_files` with `"outside work order scope"` error,
+  while still applying allowed changes.
+- `test_allowed_files_allows_all_when_none`: verifies `allowed_files=None` does
+  not block any file.
+- Closes Phase 6 gap: "patch-outside-allowed" negative path now covered by unit
+  test (dirty-repo already covered in `tests/test_negative_paths.py`).
+- Validation: `pytest -q tests/core/test_patching.py` 6 pass.
+
+### Phase 8 Slice — Promotion Criteria Docs + Roadmap Sprint Update
+- Added `Support States and Promotion Criteria` section to `docs/ARCHITECTURE.md`.
+- Documents four states (stable, beta, experimental, internal), promotion gates,
+  and per-subsystem criteria: owner, entrypoints, security model, docs, tests,
+  live evidence, known limits.
+- Added first-run path protection rule: experimental surfaces hidden from default
+  CLI/Web/API views.
+- Updated `BASELINE-ROADMAP.md` `Immediate Next Sprint` to reflect actual
+  2026-05-15 state instead of stale pre-baseline tasks.
+- Validation: `python scripts/check-agent-instructions.py` pass.
+
 ### Phase 2/6 Slice — Self-Hosted Lane Mock-Server Provider Smoke (17/17 pass)
 - Ran `.localtest/mock-ai-server/server.py` in `MOCK_ALLOW_FAKE=1` mode against
   all 17 generated local provider profiles.

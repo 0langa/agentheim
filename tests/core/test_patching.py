@@ -28,6 +28,31 @@ class TestPatchApplierMaxDiff:
         assert not result.errors
 
 
+class TestPatchApplierAllowedFiles:
+    def test_allowed_files_blocks_outside_scope(self, tmp_path: Path) -> None:
+        applier = PatchApplier(tmp_path)
+        (tmp_path / "allowed.txt").write_text("allowed", encoding="utf-8")
+        (tmp_path / "blocked.txt").write_text("blocked", encoding="utf-8")
+        file_changes = [
+            {"path": "allowed.txt", "change_type": "edit", "patch": "allowed-modified"},
+            {"path": "blocked.txt", "change_type": "edit", "patch": "blocked-modified"},
+        ]
+        result = applier.apply_changes(file_changes, allowed_files=["allowed.txt"])
+        assert not result.applied
+        assert any("outside work order scope" in e for e in result.errors)
+        assert (tmp_path / "allowed.txt").read_text(encoding="utf-8") == "allowed-modified"
+        assert (tmp_path / "blocked.txt").read_text(encoding="utf-8") == "blocked"
+
+    def test_allowed_files_allows_all_when_none(self, tmp_path: Path) -> None:
+        applier = PatchApplier(tmp_path)
+        (tmp_path / "file.txt").write_text("original", encoding="utf-8")
+        file_changes = [{"path": "file.txt", "change_type": "edit", "patch": "modified"}]
+        result = applier.apply_changes(file_changes, allowed_files=None)
+        assert result.applied
+        assert not result.errors
+        assert (tmp_path / "file.txt").read_text(encoding="utf-8") == "modified"
+
+
 class TestPatchApplierRollback:
     def test_rollback_restores_original_content(self, tmp_path: Path) -> None:
         applier = PatchApplier(tmp_path)
