@@ -52,16 +52,18 @@ Ensure the Python Scripts directory is on your PATH, or use:
 python -m interfaces.cli.cli --help
 ```
 
-### Tests fail with `ImportError`
+### Import path problems when running repo-local modules
 
-Set `PYTHONPATH` to include the repo root:
+Use the installed CLI entrypoint when possible:
 
 ```bash
-# Windows — pytest auto-detects with pythonpath in pyproject.toml
-pytest tests\ -q
+agentheim --help
+```
 
-# Linux/Mac
-PYTHONPATH="." pytest tests/ -q
+If you need to run a repo-local module directly, run it from the repository root:
+
+```bash
+python -m interfaces.cli.cli --help
 ```
 
 ---
@@ -379,10 +381,6 @@ Local workflows continue even when external integrations are unavailable:
 
 ## Environment Notes
 
-### Windows: `pytest` temp cleanup warnings
-
-These are harmless Windows-specific warnings from pytest's temp directory cleanup. They do not affect test results.
-
 ### Windows: Desktop UI fallback
 
 The desktop UI prefers `pywebview`, falls back to `tkinter`, and finally falls back to opening a browser window.
@@ -397,4 +395,4 @@ A warning may appear around lock validation in tests. This is non-blocking and d
 
 - [User Guide](USER_GUIDE.md) — installation and configuration
 - [Safety & Security](SAFETY.md) — privacy modes and approval gates
-- [Repository Boundary](REPOSITORY_BOUNDARY.md) — which docs are product-facing versus maintainer-only
+- [CLI Commands](CLI-COMMANDS.md) — available command surface

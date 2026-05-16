@@ -317,8 +317,6 @@ agentheim mcp-call filesystem_search --arg query="*.py"
 
 ## Presets
 
-Support states are tracked in [Support Matrix](SUPPORT_MATRIX.md). Stable candidates are the baseline paths being hardened first; beta presets are usable with documented limits until their current live and interface evidence is complete.
-
 | Preset | What it does | CLI Shortcut |
 |--------|-------------|-------------|
 | **Codebase Assistant** | Inspects → plans → patches → tests → reports on your code | `agentheim start codebase-assistant` |
@@ -402,4 +400,4 @@ The exact artifact set depends on the workflow/runtime. Do not assume every run 
 - [Architecture Overview](ARCHITECTURE.md) — deep dive into system design
 - [API Reference](API_REFERENCE.md) — REST API and programmatic usage
 - [Troubleshooting](TROUBLESHOOTING.md) — common issues and fixes
-- [Repository Boundary](REPOSITORY_BOUNDARY.md) — product surface versus maintainer-only material
+- [Safety & Security](SAFETY.md) — privacy modes and approval gates

@@ -78,7 +78,24 @@ Agent-Team/
 # Local skill/memory scratch + planning notes
 .github/skills/
 .github/mcp.json
+.github/ISSUE_TEMPLATE/
+.github/PULL_REQUEST_TEMPLATE.md
 .kimi/
 skills/
+tests/
+devtest/
+scripts/
+AGENTS.md
+CONTRIBUTING.md
+.github/agents/
+.github/instructions/
+docs/AGENT_OPERATIONS.md
+docs/CONTRIBUTING.md
+docs/DEV_TESTING.md
+docs/REPOSITORY_BOUNDARY.md
+docs/SUPPORT_MATRIX.md
+docs/TIER1_CONTRACTS.md
+docs/adr/
+docs/superpowers/
 NEXT-DEVELOPMENT-STEPS.md
 .roo/

@@ -1,5 +1,7 @@
 # Changelog
 
+> Historical entries may reference internal development files, tests, or maintainer-only docs that are not published in the public product branch.
+
 ## 2026-05-16
 
 ### Provider Lane State Promotions — Vertex AI and Self-Hosted

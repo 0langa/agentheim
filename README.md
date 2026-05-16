@@ -1,53 +1,38 @@
 # Agentheim
 
-[![Tests](https://img.shields.io/badge/tests-1256%20collected-blue)](https://github.com/0langa/agentheim/actions)
 [![Architecture](https://img.shields.io/badge/architecture-local_first-blue)](docs/ARCHITECTURE.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-unified-blue)](docs/README.md)
 
 **A local-first, preset-driven AI automation platform.**
 
-> *Simple on the surface. Serious underneath. Extensible when needed. Safe by default. Local-first by default.*
+Agentheim lets you run multi-agent workflows on your own machine with policy-gated tools, append-only run ledgers, and interchangeable model providers.
 
-Agentheim lets you run multi-agent workflows entirely on your own machine. Your data never leaves your box unless you explicitly allow it. Pick a preset, answer three questions, and watch a team of specialized AI agents code, research, organize, or maintain your projects.
-
----
-
-## ✨ What it does
+## What it does
 
 | Preset | What happens |
 |--------|-------------|
-| **Codebase Assistant** | Inspects → plans → patches → tests → reports on your code |
-| **Research Report** | Gathers sources → summarizes → compares → writes a report |
-| **Local Document Chat** | Indexes your documents → answers questions with citations |
-| **File Organizer** | Analyzes → proposes → previews → applies file organization |
-| **Docs Maintainer** | Detects stale documentation → updates or aligns it |
-| **GitHub Maintainer** | Summarizes issues → drafts PR descriptions |
-| **Command Assistant** | Parses natural language → generates safe shell commands |
+| **Codebase Assistant** | Inspects, plans, patches, tests, and reports on your code |
+| **Research Report** | Gathers sources, summarizes, compares, and writes a report |
+| **Local Document Chat** | Indexes your documents and answers questions with citations |
+| **File Organizer** | Analyzes, proposes, previews, and applies file organization |
+| **Docs Maintainer** | Detects stale documentation and aligns it |
+| **GitHub Maintainer** | Summarizes issues and drafts PR descriptions |
+| **Command Assistant** | Parses natural language and generates safe shell commands |
 
-All workflows run through the same core engine: a **generic, provider-agnostic orchestration runtime** with event-sourced ledgers, policy-gated tools, and capability-based model resolution.
-
----
-
-## 📚 Documentation
-
-Full documentation is available in the [`docs/`](docs/README.md) directory:
+## Documentation
 
 | Document | Description |
 |----------|-------------|
-| [User Guide](docs/USER_GUIDE.md) | Install, configure, run presets |
+| [User Guide](docs/USER_GUIDE.md) | Install, configure, and run presets |
 | [CLI Commands](docs/CLI-COMMANDS.md) | Current CLI command surface derived from code |
-| [Architecture](docs/ARCHITECTURE.md) | System design, modules, boundaries, and current exceptions |
-| [API Reference](docs/API_REFERENCE.md) | REST API, WebSocket, SDK usage |
-| [Safety & Security](docs/SAFETY.md) | Privacy modes, approval gates, vulnerabilities |
-| [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and fixes |
+| [Architecture](docs/ARCHITECTURE.md) | System design, modules, and boundaries |
+| [API Reference](docs/API_REFERENCE.md) | REST API and streaming routes |
+| [Safety & Security](docs/SAFETY.md) | Privacy modes, approval gates, and security model |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and recovery steps |
 | [Changelog](docs/CHANGELOG.md) | Release history |
 
-Maintainer-only surfaces such as agent instructions, development workflow docs, tests, and `devtest/` are part of repository development, not part of the end-user product surface.
-
----
-
-## 🚀 Quick start
+## Quick start
 
 ### Install
 
@@ -57,8 +42,6 @@ pip install -e .
 
 ### Configure
 
-Configure providers via the CLI (secrets stored in OS keychain):
-
 ```powershell
 agentheim provider add openai --template openai_v1 --model gpt-4o-mini --role planner
 ```
@@ -66,10 +49,7 @@ agentheim provider add openai --template openai_v1 --model gpt-4o-mini --role pl
 ### Run a preset
 
 ```powershell
-# Interactive preset picker
 agentheim guided
-
-# Or run a specific preset directly
 agentheim start codebase-assistant --input repo=./my-project --input task="Review code"
 ```
 
@@ -82,75 +62,22 @@ agentheim list-runs --repo .
 agentheim resume --repo . --run-id <run-id>
 ```
 
----
+## Repository layout
 
-## 🏗️ Architecture
-
-Agentheim serves three user layers from the same runtime:
-
-```
-Beginner (Presets)        →  Pick intent, system handles the rest
-    ↓
-Power-User (CLI/Config)   →  Override models, privacy modes, approval rules
-    ↓
-Developer (Extensible)    →  Add workflow packs, providers, tools — no core changes
-    ↓
-Core Runtime (Generic)    →  DAG execution, policy engine, ledger, model registry
-```
-
-**Key design principles:**
-- **Core ignorance** — `core/` stays generic, with a small bootstrapping exception in `core/model_registry.py`
-- **Local-first** — zero external services required; privacy modes enforced in code
-- **Safety by default** — destructive ops require approval; policies are code, not prompts
-- **Fully auditable** — every run produces an append-only event ledger
-- **Provider-agnostic** — swap Grok, OpenAI, Azure, Ollama, LM Studio without code changes
-
----
-
-## 🧪 Test suite
-
-```powershell
-pytest tests\ -v
-```
-
-Current local collection: **1256 total tests collected**. The default `pytest -q` lane selects 1220 tests and deselects 36 slow/e2e/lint tests via configured markers.
-
----
-
-## 📂 Repository layout
-
-```
+```text
 agentheim/
-├── core/               # Generic runtime engine (provider/workflow/tool agnostic)
-├── providers/          # Lazy-loaded provider adapters (OpenAI, Azure, Ollama, ...)
-├── workflows/          # Workflow packs (coding, research, documents, ...)
-├── tools/              # Mediated tools with policy gating (filesystem, shell, git, browser, MCP)
-├── memory/             # Three-tier memory system (working, episodic, semantic, global)
-├── interfaces/         # CLI, TUI, Web UI, API server, Desktop UI
-├── presets/            # Beginner-friendly preset definitions
-├── config/             # Configuration schemas and loader
-├── tests/              # Full test suite
-├── docs/               # Unified documentation
-└── .github/            # Agent, instruction, workflow, and issue templates
+├── core/         # Generic runtime engine
+├── providers/    # Lazy-loaded provider adapters
+├── workflows/    # Workflow packs
+├── tools/        # Mediated tools with policy gating
+├── memory/       # Memory subsystem
+├── interfaces/   # CLI, API server, Web UI, Desktop UI
+├── presets/      # Preset definitions
+├── config/       # Configuration schemas and loader
+├── agents/       # Runtime self-improving hook subsystem
+└── docs/         # Public documentation
 ```
 
----
-
-## 📄 Documentation
-
-- [Docs Index](docs/README.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Safety & Security](docs/SAFETY.md)
-- [Repository Boundary](docs/REPOSITORY_BOUNDARY.md)
-
----
-
-## 🤝 Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, architecture rules, and governed development workflow.
-
----
-
-## 📜 License
+## License
 
 MIT — see [LICENSE](LICENSE).

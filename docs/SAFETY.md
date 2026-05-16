@@ -257,4 +257,4 @@ Agentheim is currently in active development. Only the latest commit on `main` r
 
 - [User Guide](USER_GUIDE.md) — privacy mode usage in daily operation
 - [Architecture](ARCHITECTURE.md) — policy engine and enforcement details
-- [Working Rules](../.github/instructions/02-forbidden-behaviors.md) — repo-level editing and verification baseline
+- [Troubleshooting](TROUBLESHOOTING.md) — recovery steps for provider and run issues
