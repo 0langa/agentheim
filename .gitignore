@@ -81,6 +81,7 @@ Agent-Team/
 .github/ISSUE_TEMPLATE/
 .github/PULL_REQUEST_TEMPLATE.md
 .kimi/
+.local-maintainer/
 skills/
 tests/
 devtest/

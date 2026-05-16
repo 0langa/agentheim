@@ -337,7 +337,7 @@ Agentheim serves three user layers from the same runtime:
 ```
 Beginner (Presets)        →  Pick intent, system handles the rest
     ↓
-Power-User (CLI/Config)   →  Override models, privacy modes, approval rules
+Power-User (CLI/Config)   →  Override models, config, and approval rules
     ↓
 Developer (Extensible)    →  Add workflow packs, providers, tools — no core changes
     ↓
@@ -345,7 +345,7 @@ Core Runtime (Generic)    →  DAG execution, policy engine, ledger, model regis
 ```
 
 **Key design principles:**
-- **Core ignorance** — `core/` knows no provider, model, or workflow names
+- **Core ignorance** — `core/` stays generic, with a small bootstrapping exception in `core/model_registry.py`
 - **Local-first** — zero external services required; privacy modes enforced in code
 - **Safety by default** — destructive ops require approval; policies are code, not prompts
 - **Fully auditable** — every run produces an append-only event ledger

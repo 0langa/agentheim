@@ -19,6 +19,7 @@ Agentheim lets you run multi-agent workflows on your own machine with policy-gat
 | **Docs Maintainer** | Detects stale documentation and aligns it |
 | **GitHub Maintainer** | Summarizes issues and drafts PR descriptions |
 | **Command Assistant** | Parses natural language and generates safe shell commands |
+| **Context Maintainer** | Scans a repository and runs the context pipeline for generated context artifacts |
 
 ## Documentation
 
