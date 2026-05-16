@@ -1,25 +1,8 @@
 # API Reference
 
-> Agentheim exposes a FastAPI-based REST API with WebSocket streaming for external integrations.
+Agentheim exposes a FastAPI API server in `interfaces/api_server/app.py`. The repository also contains a separate Web UI FastAPI app in `interfaces/web_ui/app.py` with a similar but not identical route surface.
 
----
-
-## Table of Contents
-
-- [Starting the API Server](#starting-the-api-server)
-- [Authentication](#authentication)
-- [Rate Limiting](#rate-limiting)
-- [Endpoints](#endpoints)
-- [WebSocket Streaming](#websocket-streaming)
-- [OpenAPI / Interactive Docs](#openapi--interactive-docs)
-- [Error Codes](#error-codes)
-- [Web UI](#web-ui)
-- [Desktop UI](#desktop-ui)
-- [Programmatic Usage](#programmatic-usage)
-
----
-
-## Starting the API Server
+## Starting The API Server
 
 ```python
 from interfaces.api_server import create_api_app
@@ -29,459 +12,211 @@ app = create_api_app(".")
 uvicorn.run(app, host="127.0.0.1", port=8000)
 ```
 
-Or from the command line:
+Repo-local command:
 
 ```bash
-python -c "from interfaces.api_server import create_api_app; import uvicorn; uvicorn.run(create_api_app('.'), host='0.0.0.0', port=8000)"
+python -c "from interfaces.api_server import create_api_app; import uvicorn; uvicorn.run(create_api_app('.'), host='127.0.0.1', port=8000)"
 ```
-
----
 
 ## Authentication
 
-Execution and write endpoints require an API key header:
+Write and execution routes depend on the `X-API-Key` header through `verify_api_key`.
 
-```
+```http
 X-API-Key: <your-api-key>
 ```
 
-In the current implementation, read-oriented endpoints such as `/api/health`, `/api/tools`, `/api/workflows`, `/api/presets`, `/api/models`, and `/api/providers` are accessible without the header.
+Configured API keys are loaded from `AI_TEAM_API_KEYS`.
 
-Configured keys are loaded from the `AI_TEAM_API_KEYS` environment variable.
+Provider secrets are separate from API-server auth. Provider secrets are stored through Agentheim profiles and secret refs, not loaded from `.env` at runtime.
 
-AI provider API keys are not loaded from `.env`. They are stored through Agentheim provider profiles and secret refs.
+## Read Routes Without API Key
 
----
+The current code exposes these read-oriented routes without `X-API-Key`:
+
+- `GET /api/health`
+- `GET /api/health/oci`
+- `GET /api/tools`
+- `GET /api/workflows`
+- `GET /api/workflows/{workflow_id}`
+- `GET /api/presets`
+- `GET /api/memory/{scope}/{key}`
+- `GET /api/models`
+- `GET /api/providers`
+- `GET /api/providers/templates`
+- `GET /api/runs/{run_id}`
+- `GET /api/runs/{run_id}/stream`
+- `GET /api/metrics`
 
 ## Rate Limiting
 
-- 60 requests per minute per IP
-- Returns `429 Too Many Requests` when exceeded
+Mutating API routes are wrapped with the repository `RateLimiter`. See `interfaces/api_server/rate_limit.py` for the exact behavior.
 
----
-
-## Endpoints
+## Routes
 
 ### Health
 
-```
-GET /api/health
-```
-
-No auth required. Returns `{"status": "ok"}`.
+- `GET /api/health`
+- `GET /api/health/oci`
 
 ### Tools
 
-#### List Tools
-```
-GET /api/tools
-```
+- `GET /api/tools`
+- `POST /api/tools/{tool_id}/invoke`
+- `POST /api/tools/approvals/{request_id}/grant`
+- `POST /api/tools/approvals/{request_id}/deny`
 
-Returns all registered tools with schemas and risk levels.
+Tool invocation body:
 
-#### Invoke Tool
-```
-POST /api/tools/{tool_id}/invoke
-```
-
-Body: tool parameters as JSON.
-
-**Safety:** API tool calls route through the centralized tool invocation service. LOW/NONE operations may execute. MEDIUM operations return `409` with an approval-required payload until you explicitly grant or deny the request. HIGH and CRITICAL operations return `403`.
-
-Tool invocation responses include:
-
-| Field | Meaning |
-| --- | --- |
-| `success` | Whether the tool executed successfully |
-| `data` | Tool result data when execution occurred |
-| `error` | Error string or `approval_required` |
-| `metadata` | Tool or approval metadata |
-| `requires_approval` | `true` when policy returned `ask` |
-| `policy` | Redacted policy decision metadata |
-| `approval_request` | Pending approval object including `request_id` for continuation routes |
-
-#### Grant Tool Approval
-```
-POST /api/tools/approvals/{request_id}/grant
+```json
+{
+  "params": {
+    "...": "tool-specific values"
+  }
+}
 ```
 
-Requires `X-API-Key`. Approves the pending request, executes the tool, and returns the final tool result.
+Current behavior:
 
-#### Deny Tool Approval
-```
-POST /api/tools/approvals/{request_id}/deny
-```
-
-Requires `X-API-Key`. Denies the pending request, records the denial in the ledger, and returns a denial payload.
+- medium-risk operations can return `409` with an approval payload
+- denied policy decisions return `403`
+- successful execution returns the tool result plus policy metadata
 
 ### Workflows
 
-#### List Workflows
-```
-GET /api/workflows
-```
+- `GET /api/workflows`
+- `GET /api/workflows/{workflow_id}`
+- `POST /api/workflows/{workflow_id}/execute`
 
-Returns all registered workflow packs.
+Workflow execute body:
 
-#### Get Workflow Detail
+```json
+{
+  "params": {
+    "...": "workflow-specific values"
+  }
+}
 ```
-GET /api/workflows/{workflow_id}
-```
-
-Returns workflow metadata including required agents and tools.
-
-#### Execute Workflow
-```
-POST /api/workflows/{workflow_id}/execute
-```
-
-Execute a workflow pack with the given input parameters.
 
 ### Presets
 
-#### List Presets
-```
-GET /api/presets
-```
+- `GET /api/presets`
+- `POST /api/presets/{preset_id}/run`
 
-Returns all available presets with descriptions.
+Preset run body:
 
-#### Run Preset
-```
-POST /api/presets/{preset_id}/run
-```
-
-Run a preset with the provided inputs.
-
-### Providers
-
-#### List Provider Adapters
-```
-GET /api/providers
+```json
+{
+  "inputs": {
+    "...": "preset-specific values"
+  }
+}
 ```
 
-Returns supported provider adapter ids and import/configuration status.
-
-#### List Provider Templates
-```
-GET /api/providers/templates
-```
-
-Returns provider setup templates, auth modes, endpoints, capability defaults, and source documentation URLs.
-
-#### Add Provider
-```
-POST /api/providers
-```
-
-Requires `X-API-Key`. Body: `provider_id`, `template`, `model`, `role`, optional `endpoint`, optional `api_key`, optional `capabilities`. Secrets are written to the configured secret backend and are never returned.
-
-#### Assign Provider Model
-```
-POST /api/providers/assign
-```
-
-Requires `X-API-Key`. Body: `profile`, `role`, `provider_id`, `model`, `capabilities`.
+Both workflow execution and preset execution are asynchronous and return an executor `run_id`.
 
 ### Memory
 
-#### Read Memory
-```
-GET /api/memory/{scope}/{key}
-```
+- `GET /api/memory/{scope}/{key}`
+- `POST /api/memory/{scope}/{key}`
 
-Scopes: `global`, `run`, `repository`
+The route passes the path `scope` through to `MemoryBus`. The common public usage in current examples is `global`.
 
-The `MemoryBus` supports scopes (`global`, `run`, `repository`). The API routes expose the scope name in the path. Run-scoped and repository-scoped reads are handled by the bus internally.
+Write body:
 
-#### Write Memory
-```
-POST /api/memory/{scope}/{key}
-```
-
-Body: `{"value": <any JSON-serializable value>}`
-
-Requires `X-API-Key` header.
-
-### Models & Providers
-
-#### List Models
-```
-GET /api/models
+```json
+{
+  "value": {
+    "...": "json-serializable data"
+  }
+}
 ```
 
-Returns resolved model bindings per role.
+### Models And Providers
 
-#### List Providers
-```
-GET /api/providers
+- `GET /api/models`
+- `GET /api/providers`
+- `GET /api/providers/templates`
+- `POST /api/providers`
+- `POST /api/providers/assign`
+
+`POST /api/providers` body:
+
+```json
+{
+  "provider_id": "openai",
+  "template": "openai_v1",
+  "model": "gpt-4o-mini",
+  "role": "planner",
+  "profile": "default",
+  "endpoint": null,
+  "api_key": "secret",
+  "capabilities": ["text", "json"]
+}
 ```
 
-Returns provider health entries for the built-in provider adapters.
+`POST /api/providers/assign` body:
+
+```json
+{
+  "profile": "default",
+  "role": "executor",
+  "provider_id": "openai",
+  "model": "gpt-4o-mini",
+  "capabilities": ["text", "json"]
+}
+```
 
 ### Runs
 
-#### Get Run
-```
-GET /api/runs/{run_id}
-```
+- `GET /api/runs/{run_id}`
+- `GET /api/runs/{run_id}/stream`
+- `WS /api/runs/{run_id}/ws`
 
-Returns the canonical run summary assembled from persisted run artifacts and ledger events when available. The response includes:
+The canonical run summary is built from in-memory executor state when available, then from persisted run artifacts.
 
-- `run_id`
-- `tracking_run_id` when the request came through an async executor id that resolved to a persisted run id
-- `workflow_id` / `preset_id`
-- `status`
-- `summary`
-- `started_at`, `finished_at`, `duration_seconds`
-- `repo_root` (redacted when the stored artifact was redacted)
-- `provider_models_by_role`
-- `state_transitions`
-- `tool_counts`
-- `policy_decisions`
-- `approvals`
-- `verification`
-- `artifacts`
-- `error`
-- `next_recommended_action`
-- `final_report`
+### Context Operations
 
-#### Stream Run Events (SSE)
-```
-GET /api/runs/{run_id}/stream
+- `POST /api/ctx/init`
+- `POST /api/ctx/scan`
+- `POST /api/ctx/run`
+- `POST /api/ctx/verify`
+- `POST /api/ctx/status`
+- `POST /api/ctx/clean`
+- `POST /api/ctx/public-docs/impact`
+- `POST /api/ctx/public-docs/update`
+
+Current API-server request bodies use the `project` field name, not `project_path`.
+
+Examples:
+
+```json
+{ "project": "." }
 ```
 
-Server-Sent Events stream of run progress. Initial payload and final payload use the same canonical run summary shape as `GET /api/runs/{run_id}`.
-
-#### WebSocket Run Events
-```
-WS /api/runs/{run_id}/ws
+```json
+{ "project": ".", "scope": "changed", "write_mode": "patch", "allow_dirty": false }
 ```
 
-WebSocket stream for real-time run events. Initial payload and final payload use the same canonical run summary shape as `GET /api/runs/{run_id}`.
+## Web UI Differences
 
-### Context (AICtx)
+The Web UI app exposes a similar browser-facing surface, but there are important route differences in the current code:
 
-#### Initialize Repository
-```
-POST /api/ctx/init
-```
-
-Body: `{"project": "."}` — initializes the target repository for context processing.
-
-#### Scan Repository
-```
-POST /api/ctx/scan
-```
-
-Body: `{"project": "."}` — scans the repository and returns an inventory summary.
-
-Returns: `repo_root`, `head_commit`, `branch`, `dirty_state`, `file_count`, `manifest_count`.
-
-#### Run Context Pipeline
-```
-POST /api/ctx/run
-```
-
-Body: `{"project": ".", "scope": "full", "write_mode": "patch", "allow_dirty": false}` — runs the full context generation pipeline.
-
-Returns: `run_id`, `generated_files`, `patch_text`, `timing`, `entropy`.
-
-#### Verify Context
-```
-POST /api/ctx/verify
-```
-
-Body: `{"project": ".", "strict": false}` — verifies the context lock against the repository state.
-
-Returns: `result`, `is_pass`.
-
-#### Context Status
-```
-POST /api/ctx/status
-```
-
-Body: `{"project": ".", "strict": false}` — shows stale-context detection status.
-
-Returns: `is_stale`, `stale_sources`, `missing_sources`, `next_command`.
-
-#### Clean Context Artifacts
-```
-POST /api/ctx/clean
-```
-
-Body: `{"project": ".", "run_id": null, "keep_runs": null}` — removes generated run artifacts.
-
-Returns: `removed_count`, `kept_count`, `removed_paths`.
-
-#### Public Docs Impact
-```
-POST /api/ctx/public-docs/impact
-```
-
-Body: `{"project": ".", "scope": "full"}` — maps source changes to impacted public docs.
-
-Returns: `entries`.
-
-#### Public Docs Update
-```
-POST /api/ctx/public-docs/update
-```
-
-Body: `{"project": ".", "scope": "changed", "write_mode": "patch"}` — generates patches for impacted public docs.
-
-Returns: `patch_path`.
-
-### Metrics
-
-```
-GET /api/metrics
-```
-
-Prometheus-format metrics (if monitoring is enabled).
-
----
-
-## WebSocket Streaming
-
-Agentheim supports WebSocket connections for real-time run event streaming:
-
-```javascript
-const ws = new WebSocket('ws://localhost:8000/api/runs/{run_id}/ws');
-
-ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log('Run event:', data);
-};
-```
-
-The WebSocket bridge syncs `RunExecutor` notifications to async handlers via `asyncio.Queue`. Connections close cleanly for already-completed runs.
-
----
-
-## OpenAPI / Interactive Docs
-
-```
-GET /openapi.json    # Raw OpenAPI spec
-GET /docs            # Swagger UI
-```
-
-Interactive API documentation is available at `/docs` when the server is running.
-
----
-
-## Error Codes
-
-| Status | Meaning |
-|--------|---------|
-| `200` | Success |
-| `401` | Missing API key header |
-| `403` | Invalid API key or blocked operation |
-| `429` | Rate limit exceeded |
-| `404` | Tool/workflow/run not found |
-| `422` | Invalid parameters |
-
----
-
-## Web UI
-
-Agentheim also includes a prototype web dashboard:
-
-```python
-from interfaces.web_ui import create_app
-import uvicorn
-
-app = create_app(".")
-uvicorn.run(app, host="127.0.0.1", port=8080)
-```
-
-Provides HTML pages for browsing tools, workflows, and presets in a browser.
-
----
+- tool invocation is `POST /api/tools/invoke`
+- context request bodies use `project_path`
+- Web UI routes return Web-specific models such as support-state-decorated workflow and preset listings
 
 ## Desktop UI
 
-A PyQt6 desktop wrapper is available:
+The desktop UI in `interfaces/desktop_ui/app.py` starts the Web UI server locally, then prefers `pywebview`, falls back to `tkinter`, and finally falls back to the system browser.
 
-```python
-from interfaces.desktop_ui import run_desktop_app
-run_desktop_app()
-```
+## Error Handling
 
-Falls back to tkinter if PyQt6 is not installed, then to opening a browser window.
+The API server uses structured FastAPI/HTTP exceptions plus route-specific handling for:
 
----
+- configuration errors
+- policy denials
+- approval-required responses
+- ContextOps safety and verification failures
 
-## Programmatic Usage
-
-### Python SDK (Core Public API)
-
-All public API symbols are exported through `core.public_api`:
-
-```python
-from core.public_api import (
-    WorkflowRunner,
-    RunLedger,
-    PolicyEngine,
-    ToolRegistry,
-    ModelRegistry,
-    CapabilityRegistry,
-    Event,
-    AgentRequest,
-    AgentResponse,
-    AgentContext,
-    ContextPacker,
-    ArtifactStore,
-    ErrorCategory,
-    RetryEngine,
-    StepBudgetEnforcer,
-    ToolContext,
-    ToolResult,
-    ToolSchema,
-    BaseTool,
-    AsyncBaseTool,
-)
-```
-
-### Creating a Custom Preset
-
-```python
-from presets.base import Preset
-
-class MyPreset(Preset):
-    def __init__(self) -> None:
-        super().__init__(
-            preset_id="my-preset",
-            workflow_id="command_assistant",
-            name="My Custom Preset",
-            description="Does something useful",
-        )
-
-    def run(self, inputs: dict) -> dict:
-        return {"task": inputs["task"]}
-```
-
-### Running a Workflow Programmatically
-
-```python
-from core.public_api import WorkflowRunner
-from pathlib import Path
-
-runner = WorkflowRunner()
-
-results = runner.run(
-    workflow=my_workflow,
-    repo_root=Path("."),
-    metadata={"task": "Review code"}
-)
-```
-
----
-
-## See Also
-
-- [User Guide](USER_GUIDE.md) — CLI commands and preset usage
-- [Architecture](ARCHITECTURE.md) — core runtime and subsystem details
-- [Development & Testing](DEV_TESTING.md) — running tests
-- [Support Matrix](SUPPORT_MATRIX.md) — current support states
-- [Tier-1 Contracts](TIER1_CONTRACTS.md) — baseline journey contracts
+For exact response payload shapes, use the FastAPI schema generated by the current app instance.

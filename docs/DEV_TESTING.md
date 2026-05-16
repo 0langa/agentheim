@@ -1,5 +1,7 @@
 # Development & Testing
 
+Maintainer-only document. This file describes repository verification workflow and is not a product feature contract.
+
 > Complete reference for running tests, smoke checks, and the devtest runner.
 
 ---
@@ -216,7 +218,7 @@ Use these after editing root docs, `docs/`, `.github/agents/`, `.github/instruct
 
 ```powershell
 python -c "from pathlib import Path; files=sorted(Path('.github/instructions').glob('*.md')); assert files and all(f.read_text(encoding='utf-8').strip() for f in files); print('instruction files ok:', [f.name for f in files])"
-python -c "from pathlib import Path; p=Path('.github/agents/agentheim-autonomous-engineer.agent.md'); text=p.read_text(encoding='utf-8'); required=['00-instruction-priority.md','01-doctrine.md','02-forbidden-behaviors.md','03-traceability.md','04-AICtx-integration.md','05-documentation-integrity.md','06-tooling-and-verification.md','07-chat-output.md']; missing=[item for item in required if item not in text]; assert not missing, missing; print('agent references ok')"
+python -c "from pathlib import Path; p=Path('.github/agents/agentheim-autonomous-engineer.agent.md'); text=p.read_text(encoding='utf-8'); required=['README.md','00-instruction-priority.md','01-doctrine.md','02-forbidden-behaviors.md']; missing=[item for item in required if item not in text]; assert not missing, missing; print('agent references ok')"
 ```
 
 Confirms binding `.github/instructions/*.md` files are present, non-empty, and referenced by the main autonomous engineer agent.

@@ -1,180 +1,142 @@
 # CLI Commands Reference
 
-> **Entry points**
-> - Global install: `agentheim <command> [options]`
-> - Repo-local (development): `python -m interfaces.cli.cli <command> [options]`
+> Entry points:
+> - installed script: `agentheim <command> [options]`
+> - repo-local: `python -m interfaces.cli.cli <command> [options]`
 
-The Agentheim CLI is built with [Typer](https://typer.tiangolo.com/). All commands exit with code `0` on success and non-zero on failure.
+The CLI is built with Typer. The lists below are derived from the current command registrations in `interfaces/cli/cli.py`, `interfaces/cli/ctx_commands.py`, `interfaces/cli/provider_commands.py`, and `interfaces/cli/oci_commands.py`.
 
 ---
 
-## Root Commands (`agentheim`)
+## Root Commands
 
 | Command | Description | Key Options / Arguments |
-|---------|-------------|------------------------|
-| `config-dump` | Print loaded config as JSON. | `--redacted` / `--raw` (default: redacted) |
-| `ping-models` | Ping every configured model with a tiny deterministic request. | — |
-| `inspect` | Inspect a repo and produce a compact context summary. | `--repo` *(required)*, `--json`, `--write-ledger` |
-| `plan` | Build a structured implementation plan **without** editing files. | `TASK_TEXT`, `--repo` *(required)*, `--write-ledger`, `--out <file>` |
-| `run` | Plan and apply bounded work orders (no auto-commit). | `TASK_TEXT`, `--repo` *(required)*, `--mode` (default: `apply`), `--allow-dirty`, `--max-fix-attempts` (default: `3`), `--max-diff-lines` (default: `1200`), `--command-timeout` (default: `120`), `--no-tests` |
-| `list-runs` | List all runs stored in a repository. | `--repo` *(required)* |
-| `report` | Show the full report for a completed run. | `--repo` *(required)*, `--run-id` *(required)* |
-| `resume` | Resume a blocked or incomplete run from its ledger. | `--repo` *(required)*, `--run-id` *(required)* |
-| `presets` | List all available presets. | — |
-| `start` | Run a preset with the given inputs. | `PRESET_ID`, `--input key=value` *(repeatable)* |
-| `guided` | Launch the interactive TUI preset picker. | — |
-| `memory` | Interact with global memory (Tier 3). | `ACTION` (`get` \| `set` \| `history` \| `profile`), `--key`, `--value`, `--model-id` |
-| `doctor` | Diagnose common configuration and environment issues. | `--skip-connectivity`, `--oci` |
-| `mcp-list` | List MCP tools from configured servers. | `--config` (default: `.ai-team/mcp.json`) |
-| `mcp-call` | Invoke an MCP tool directly. | `TOOL_NAME`, `--arg key=value` *(repeatable)*, `--config` |
-| `copy` | Copy a file or directory within the workspace. | `SOURCE`, `DESTINATION` |
-| `desktop` | Launch the Agentheim desktop UI. | — |
+| --- | --- | --- |
+| `config-dump` | Print loaded config as JSON. | `--redacted` / `--raw` |
+| `ping-models` | Ping configured models with a deterministic request. | none |
+| `inspect` | Inspect a repo and produce a compact context summary. | `--repo`, `--json`, `--write-ledger` |
+| `plan` | Build a structured implementation plan without editing files. | `TASK_TEXT`, `--repo`, `--write-ledger`, `--out` |
+| `run` | Plan and apply bounded work orders without auto-commit. | `TASK_TEXT`, `--repo`, `--mode`, `--allow-dirty`, `--max-fix-attempts`, `--max-diff-lines`, `--command-timeout`, `--no-tests` |
+| `list-runs` | List persisted runs under the repository. | `--repo` |
+| `report` | Emit canonical run summary JSON for a run. | `--repo`, `--run-id` |
+| `resume` | Resume a run from its ledger. | `--repo`, `--run-id` |
+| `presets` | List all available presets. | none |
+| `start` | Run a preset with the given inputs. | `PRESET_ID`, `--input key=value` |
+| `guided` | Launch the guided TUI preset picker. | none |
+| `memory` | Interact with global memory. | `ACTION` = `get|set|history|profile`, `--key`, `--value`, `--model-id` |
+| `doctor` | Diagnose configuration and environment issues. | `--skip-connectivity`, `--oci` |
+| `mcp-list` | List tools from configured MCP servers. | `--config` |
+| `mcp-call` | Invoke an MCP tool directly. | `TOOL_NAME`, `--arg key=value`, `--config` |
+| `desktop` | Launch the desktop UI wrapper. | `--port`, `--no-tray` |
+| `copy` | Copy a file or directory within the workspace through the filesystem tool. | `SOURCE`, `DESTINATION` |
 
 ---
 
-## Context Operations (`agentheim ctx`)
+## Provider Commands
 
-| Command | Description | Key Options |
-|---------|-------------|-------------|
-| `ctx init` | Initialize a repo for context processing. | `--project` (default: `.`) |
-| `ctx scan` | Scan repository and print an inventory summary. | `--project` (default: `.`) |
-| `ctx run` | Run the full context-generation pipeline. | `--project` (default: `.`), `--scope` (default: `full`), `--write` (default: `patch`), `--allow-dirty` |
-| `ctx verify` | Verify the context lock against the repository state. | `--project` (default: `.`), `--strict` |
-| `ctx status` | Show stale-context detection status. | `--project` (default: `.`), `--strict` |
-| `ctx clean` | Remove generated run artifacts. | `--project` (default: `.`), `--run-id`, `--keep-runs` |
+| Command | Description |
+| --- | --- |
+| `provider templates` | List provider setup templates. |
+| `provider add` | Add a provider profile entry and initial role binding. |
+| `provider list` | List providers and role bindings in a profile. |
+| `provider use` | Set the default profile or write the project profile pointer. |
+| `provider assign` | Bind a team role to a provider/model. |
+| `provider rotate-secret` | Rotate a provider secret. |
+| `provider remove` | Remove a provider and its role bindings. |
+| `provider test` | Invoke the configured provider for a role with a small test request. |
+| `provider import-env` | One-time migration from legacy environment variables. |
 
-### Public Docs Impact (`agentheim ctx public-docs`)
+Notable options from current help:
 
-| Command | Description | Key Options |
-|---------|-------------|-------------|
-| `ctx public-docs impact` | Map source changes to impacted public documentation. | `--project` (default: `.`), `--scope` (default: `full`) |
-| `ctx public-docs update` | Generate patches for impacted public docs. | `--project` (default: `.`), `--scope` (default: `changed`), `--write` (default: `patch`) |
-
-### OCI Diagnostics (`agentheim ctx oci`)
-
-> Requires `pip install agentheim[oci]`.
-
-| Command | Description | Key Options |
-|---------|-------------|-------------|
-| `ctx oci doctor` | Run OCI readiness checks. | `--project` (default: `.`) |
-| `ctx oci snapshot create` | Create a deterministic snapshot. | `--project` (default: `.`), `--run-id` *(optional)* |
-| `ctx oci snapshot verify` | Verify snapshot integrity. | `--project` (default: `.`) |
-| `ctx oci bundle create` | Create a result bundle for a run. | `--project` (default: `.`), `--run-id` *(required)* |
-| `ctx oci bundle verify` | Verify result bundle integrity. | `--project` (default: `.`), `--run-id` *(required)* |
+- `provider add` supports `--template`, `--model`, `--role`, `--profile`, `--endpoint`, `--auth-mode`, `--api-key`, `--capability`
+- `provider assign` supports `ROLE`, `--provider`, `--model`, `--profile`, `--capability`
+- `provider test` supports `--role`, `--profile`
 
 ---
 
-## Provider Management (`agentheim provider`)
+## Context Commands
 
-| Command | Description | Key Options / Arguments |
-|---------|-------------|------------------------|
-| `provider templates` | List supported provider setup templates. | — |
-| `provider add` | Add a provider and store its secret securely. | `PROVIDER_ID`, `--template` / `-t` *(required)*, `--model` *(required)*, `--role` (default: `planner`), `--profile` (default: `default`), `--endpoint`, `--auth-mode`, `--api-key`, `--capability` / `-c` (default: `text`, `json`) |
-| `provider list` | List providers and role bindings in a profile. | `--profile` |
-| `provider use` | Set the default or project profile pointer. | `PROFILE`, `--project` *(flag)* |
-| `provider assign` | Bind a team role to a model. | `ROLE`, `--provider` *(required)*, `--model` *(required)*, `--profile` (default: `default`), `--capability` / `-c` (default: `text`, `json`) |
-| `provider rotate-secret` | Rotate a provider's stored secret. | `PROVIDER_ID`, `--profile` (default: `default`), `--api-key` |
-| `provider remove` | Remove a provider and delete its secret. | `PROVIDER_ID`, `--profile` (default: `default`) |
-| `provider test` | Test provider connectivity for a role. | `--role` (default: `planner`), `--profile` (default: `default`) |
-| `provider import-env` | One-time migration from legacy provider env vars. | `--profile` (default: `default`) |
+| Command | Description | Key Options |
+| --- | --- | --- |
+| `ctx init` | Initialize repo for context processing. | `--project` |
+| `ctx scan` | Scan repository and print inventory summary. | `--project` |
+| `ctx run` | Run the full context generation pipeline. | `--project`, `--scope`, `--write`, `--allow-dirty` |
+| `ctx verify` | Verify context lock against repository state. | `--project`, `--strict` |
+| `ctx status` | Show stale-context detection status. | `--project`, `--strict` |
+| `ctx clean` | Remove generated run artifacts. | `--project`, `--run-id`, `--keep-runs` |
+| `ctx public-docs impact` | Map source changes to impacted public docs. | `--project`, `--scope` |
+| `ctx public-docs update` | Generate patches for impacted public docs. | `--project`, `--scope`, `--write` |
+
+### OCI Subcommands
+
+The `ctx oci` subtree is registered from `interfaces/cli/oci_commands.py`. Use `python -m interfaces.cli.cli ctx oci --help` for the current command set.
 
 ---
 
 ## Run Modes
 
-Used with `agentheim run --mode <mode>`.
+`agentheim run --mode` currently accepts:
 
-| Mode | Behavior |
-|------|----------|
-| `apply` | **(default)** Plan, review, and apply changes. Stops for human approval on risky operations. |
-| `auto` | Fully autonomous. Applies changes and runs verification without human intervention. |
-| `ci` | Non-interactive, optimized for CI pipelines. Fails fast on any policy violation or test failure. |
+| Mode | Meaning |
+| --- | --- |
+| `apply` | default path |
+| `auto` | less interactive execution path |
+| `ci` | non-interactive CI-oriented path |
+
+The CLI validates only these three mode names.
 
 ---
 
-## Privacy Modes
+## Privacy And Safety
 
-Agentheim enforces privacy through structured modes (defined in `core/privacy_enforcer.py`).
+Privacy and policy concepts exist in code, but the public CLI in this checkout does not expose a top-level privacy-mode selector.
 
-| Mode | Behavior |
-|------|----------|
-| `standard` | Default. Standard operation with no extra restrictions. |
-| `local_only` | Blocks all network tools (e.g., `http.*`, `git.push`, `git.clone`). |
-| `strict_private` | Blocks access to sensitive file paths (keys, certs, env files, secrets, tokens). |
-| `encrypted` | Blocks sensitive paths **and** forces redaction of all parameters in logs and audits. |
+Current user-visible safety behavior includes:
+
+- policy-routed tool invocation
+- approval prompts for medium-risk filesystem operations such as `copy`
+- denial of high-risk operations through constrained interface paths
 
 ---
 
 ## Artifacts
 
-Every run produces artifacts under `.ai-team/runs/<run-id>/` inside the target repository:
+Runs write under `.ai-team/runs/<run-id>/`, but the exact artifact set depends on the workflow/runtime. Common files visible in the current repository include:
 
-| Artifact | Description |
-|----------|-------------|
-| `run.json` | Run metadata |
-| `ledger.jsonl` | Append-only event log |
-| `ledger.hash` | SHA-256 hash chain for tamper detection |
-| `config.redacted.json` | Configuration (secrets redacted) |
-| `context_bundle.md` | Human-readable context snapshot |
-| `plan.md` | Execution plan |
-| `tool_calls.jsonl` | All tool invocations |
-| `policy_decisions.jsonl` | Policy evaluation results |
-| `patch.diff` | File changes (if applicable) |
-| `verification.json` | Verification results |
-| `final_report.md` | Human-readable final report |
+- `run.json`
+- `ledger.jsonl`
+- `ledger.hash`
+- `tool_calls.jsonl`
+- `state_transitions.jsonl`
+- `final_report.md`
+- `final_report.json`
+- workflow-specific diagnostics or summary files
+
+Do not assume every run produces the same artifact inventory.
 
 ---
 
 ## Quick Examples
 
 ```bash
-# Dump current config (redacted)
-agentheim config-dump
+# CLI help
+python -m interfaces.cli.cli --help
 
 # Inspect a repo
-agentheim inspect --repo ./my-project --write-ledger
+python -m interfaces.cli.cli inspect --repo .
 
-# Plan a task without touching files
-agentheim plan "Add rate limiting middleware" --repo ./my-project
+# Plan work
+python -m interfaces.cli.cli plan "Add rate limiting middleware" --repo .
 
-# Run a task in apply mode (default)
-agentheim run "Refactor auth module" --repo ./my-project --mode apply
+# Run work
+python -m interfaces.cli.cli run "Refactor auth module" --repo . --mode apply
 
-# Run in CI mode with no tests
-agentheim run "Fix lint errors" --repo ./my-project --mode ci --no-tests
+# Provider setup
+python -m interfaces.cli.cli provider templates
+python -m interfaces.cli.cli provider add openai --template openai_v1 --model gpt-4o-mini --role planner
+python -m interfaces.cli.cli provider test --role planner
 
-# List runs and view a report
-agentheim list-runs --repo ./my-project
-agentheim report --repo ./my-project --run-id 20260115-120000
-
-# Resume a blocked run
-agentheim resume --repo ./my-project --run-id 20260115-120000
-
-# Initialize and run context pipeline
-agentheim ctx init --project ./my-project
-agentheim ctx run --project ./my-project --scope changed --write apply
-
-# Check context status
-agentheim ctx status --project ./my-project --strict
-
-# Add an OpenAI provider
-agentheim provider add openai -t openai_v1 --model gpt-4o-mini --role planner
-
-# List providers
-agentheim provider list
-
-# Test connectivity
-agentheim provider test --role executor
-
-# Run a preset
-agentheim start codebase-assistant --input repo=./my-project --input task="Review code"
-
-# Check environment health
-agentheim doctor --oci
-
-# List MCP tools
-agentheim mcp-list --config .ai-team/mcp.json
-
-# Call an MCP tool
-agentheim mcp-call filesystem.read --arg path=./README.md
+# Context operations
+python -m interfaces.cli.cli ctx status --project . --strict
+python -m interfaces.cli.cli ctx run --project . --scope changed --write patch
 ```

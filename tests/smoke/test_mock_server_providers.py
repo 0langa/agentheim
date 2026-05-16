@@ -1,9 +1,7 @@
 """Smoke test verifying all provider adapters work through localhost-shaped configs.
 
 Starts the mock AI server in a background thread and runs provider smoke
-against every generated local profile. This automates the manual check
-documented in live-ai-testing.md under 'Self-Hosted Localhost Compatibility
-Shim Evidence'.
+against every generated local profile.
 """
 
 from __future__ import annotations

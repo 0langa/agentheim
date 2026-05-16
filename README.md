@@ -1,6 +1,6 @@
 # Agentheim
 
-[![Tests](https://img.shields.io/badge/tests-1133%20collected-blue)](https://github.com/0langa/agentheim/actions)
+[![Tests](https://img.shields.io/badge/tests-1256%20collected-blue)](https://github.com/0langa/agentheim/actions)
 [![Architecture](https://img.shields.io/badge/architecture-local_first-blue)](docs/ARCHITECTURE.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-unified-blue)](docs/README.md)
@@ -36,14 +36,14 @@ Full documentation is available in the [`docs/`](docs/README.md) directory:
 | Document | Description |
 |----------|-------------|
 | [User Guide](docs/USER_GUIDE.md) | Install, configure, run presets |
-| [Architecture](docs/ARCHITECTURE.md) | System design, modules, boundaries |
+| [CLI Commands](docs/CLI-COMMANDS.md) | Current CLI command surface derived from code |
+| [Architecture](docs/ARCHITECTURE.md) | System design, modules, boundaries, and current exceptions |
 | [API Reference](docs/API_REFERENCE.md) | REST API, WebSocket, SDK usage |
-| [Contributing](docs/CONTRIBUTING.md) | Setup, standards, PR workflow |
 | [Safety & Security](docs/SAFETY.md) | Privacy modes, approval gates, vulnerabilities |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and fixes |
-| [Development & Testing](docs/DEV_TESTING.md) | Test commands and runner reference |
-| [Agent Operations](docs/AGENT_OPERATIONS.md) | Agent instructions, skills, validation, and future MCP guidance |
 | [Changelog](docs/CHANGELOG.md) | Release history |
+
+Maintainer-only surfaces such as agent instructions, development workflow docs, tests, and `devtest/` are part of repository development, not part of the end-user product surface.
 
 ---
 
@@ -99,7 +99,7 @@ Core Runtime (Generic)    →  DAG execution, policy engine, ledger, model regis
 ```
 
 **Key design principles:**
-- **Core ignorance** — `core/` knows no provider, model, or workflow names
+- **Core ignorance** — `core/` stays generic, with a small bootstrapping exception in `core/model_registry.py`
 - **Local-first** — zero external services required; privacy modes enforced in code
 - **Safety by default** — destructive ops require approval; policies are code, not prompts
 - **Fully auditable** — every run produces an append-only event ledger
@@ -141,7 +141,7 @@ agentheim/
 - [Docs Index](docs/README.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Safety & Security](docs/SAFETY.md)
-- [Agent Instructions](AGENTS.md)
+- [Repository Boundary](docs/REPOSITORY_BOUNDARY.md)
 
 ---
 

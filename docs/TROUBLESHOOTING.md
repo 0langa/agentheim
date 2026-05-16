@@ -138,7 +138,7 @@ Recovery:
 1. Run `gcloud auth application-default login`.
 2. Ensure the provider metadata includes `project_id` and `location`.
 3. Confirm the ADC principal can invoke Vertex AI models in that project and region.
-4. Retry with `agentheim provider test --profile <profile> --role planner`.
+4. Retry with `agentheim provider test --role planner --profile <profile>`.
 
 ### Local provider not running
 
@@ -310,22 +310,17 @@ Recovery:
 
 ### Viewing run artifacts
 
-Run artifacts are stored under `.ai-team/runs/<run-id>/` in the target repository:
+Run artifacts are stored under `.ai-team/runs/<run-id>/` in the target repository. Common files in the current tree include:
 
-```
-.ai-team/runs/<run-id>/
-├── run.json                  # Run metadata
-├── ledger.jsonl              # Event log
-├── ledger.hash               # Hash chain (tamper verification)
-├── config.redacted.json      # Configuration snapshot
-├── context_bundle.md         # Context snapshot
-├── plan.md                   # Execution plan
-├── tool_calls.jsonl          # All tool invocations
-├── policy_decisions.jsonl    # Policy decisions
-├── patch.diff                # Changes made
-├── verification.json         # Verification results
-└── final_report.md           # Final output
-```
+- `run.json`
+- `ledger.jsonl`
+- `ledger.hash`
+- `tool_calls.jsonl`
+- `state_transitions.jsonl`
+- `final_report.md` / `final_report.json`
+- workflow-specific files such as diagnostics, command stdout/stderr captures, context artifacts, or summaries
+
+Do not assume every run writes `context_bundle.md`, `plan.md`, `policy_decisions.jsonl`, `patch.diff`, or `verification.json`.
 
 ### Verifying ledger integrity
 
@@ -390,7 +385,7 @@ These are harmless Windows-specific warnings from pytest's temp directory cleanu
 
 ### Windows: Desktop UI fallback
 
-If PyQt6 is not installed, the desktop UI falls back to tkinter, then to opening a browser window.
+The desktop UI prefers `pywebview`, falls back to `tkinter`, and finally falls back to opening a browser window.
 
 ### Pydantic `ArbitraryTypeWarning`
 
@@ -401,5 +396,5 @@ A warning may appear around lock validation in tests. This is non-blocking and d
 ## See Also
 
 - [User Guide](USER_GUIDE.md) — installation and configuration
-- [Development & Testing](DEV_TESTING.md) — running the test suite
 - [Safety & Security](SAFETY.md) — privacy modes and approval gates
+- [Repository Boundary](REPOSITORY_BOUNDARY.md) — which docs are product-facing versus maintainer-only

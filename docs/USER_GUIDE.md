@@ -163,7 +163,7 @@ Quality guidance:
 
 | Type | Description | Example Endpoint |
 |------|-------------|-----------------|
-| `openai_compatible` | Any OpenAI-compatible API | `https://api.openai.com/v1` |
+| `openai_compatible` | Any OpenAI-compatible API | `https://example.com/v1` |
 | `openai_v1` | OpenAI API | `https://api.openai.com/v1` |
 | `azure_foundry` | Azure OpenAI Service | `https://your-resource.openai.azure.com/` |
 | `aws_bedrock` | AWS Bedrock (uses boto3) | — |
@@ -267,6 +267,8 @@ agentheim presets             # List available presets
 | `agentheim presets` | List all available presets |
 | `agentheim memory get --key <key>` | Read a value from global memory |
 | `agentheim memory set --key <key> --value <value>` | Store a value in global memory |
+| `agentheim memory history` | Show approval history stored in global memory |
+| `agentheim memory profile --model-id <id>` | Show model profile metadata from global memory |
 | `agentheim mcp-list` | List tools provided by configured MCP servers |
 | `agentheim mcp-call <tool> --arg key=value` | Call an MCP tool directly |
 | `agentheim ctx init` | Initialize repo for context processing |
@@ -380,22 +382,18 @@ These mode names come from `core/privacy_enforcer.py`. The current CLI surface d
 
 ## Ledger & Artifacts
 
-Every run produces artifacts under `.ai-team/runs/<run-id>/` inside the target repository:
+Runs write artifacts under `.ai-team/runs/<run-id>/` inside the target repository. Common files in the current tree include:
 
 | Artifact | Description |
 |----------|-------------|
 | `run.json` | Run metadata |
 | `ledger.jsonl` | Append-only event log |
 | `ledger.hash` | SHA-256 hash chain for tamper detection |
-| `config.redacted.json` | Configuration (secrets redacted) |
-| `context_bundle.md` | Human-readable context snapshot |
-| `plan.md` | Execution plan |
 | `tool_calls.jsonl` | All tool invocations |
-| `policy_decisions.jsonl` | Policy evaluation results |
-| `patch.diff` | File changes (if applicable) |
-| `verification.json` | Verification results |
 | `final_report.md` | Human-readable final report |
 | `final_report.json` | Workflow-specific structured final report |
+
+The exact artifact set depends on the workflow/runtime. Do not assume every run produces `context_bundle.md`, `plan.md`, `policy_decisions.jsonl`, `patch.diff`, or `verification.json`.
 
 ---
 
@@ -404,4 +402,4 @@ Every run produces artifacts under `.ai-team/runs/<run-id>/` inside the target r
 - [Architecture Overview](ARCHITECTURE.md) — deep dive into system design
 - [API Reference](API_REFERENCE.md) — REST API and programmatic usage
 - [Troubleshooting](TROUBLESHOOTING.md) — common issues and fixes
-- [Development & Testing](DEV_TESTING.md) — running tests and contributing
+- [Repository Boundary](REPOSITORY_BOUNDARY.md) — product surface versus maintainer-only material

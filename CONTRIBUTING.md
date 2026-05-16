@@ -69,8 +69,8 @@ If you want to understand the system deeply:
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Structure and boundaries
 - [`docs/SAFETY.md`](docs/SAFETY.md) — Safety and privacy model
-- [`AGENTS.md`](AGENTS.md) — Agent entrypoint and binding instruction files
-- [`.github/instructions/01-doctrine.md`](.github/instructions/01-doctrine.md) — Core principles and laws
+- [`AGENTS.md`](AGENTS.md) — Minimal agent entrypoint
+- [`.github/instructions/01-doctrine.md`](.github/instructions/01-doctrine.md) — Repo boundaries
 
 ## License
 

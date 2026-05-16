@@ -1,127 +1,116 @@
 # Support Matrix
 
-This matrix records what Agentheim currently promises. A surface is not stable unless the current repository has docs, tests, and live or smoke evidence for the promised path.
+Maintainer-only document. This matrix is a repository classification aid, not a user-facing feature promise by itself.
+
+This matrix is grounded in the current repository tree. It records what surfaces exist in code and what kinds of local test evidence are present. It does not make external live-provider claims unless that evidence is part of the repository and explicitly referenced.
 
 ## States
 
-| State | Meaning | Promotion Gate |
+| State | Meaning |
+| --- | --- |
+| Stable | Default path with strong code and test backing in the current repository |
+| Stable candidate | Code-declared support state used by workflows/presets that are intended to harden further |
+| Beta | Implemented and tested, but with known limits or thinner guarantees |
+| Experimental | Present in code, but not a hardened baseline path |
+| Internal | Implementation detail |
+
+## Providers
+
+### Adapter-backed provider types
+
+Implemented in `core/model_registry.py` and `providers/`:
+
+- `openai_compatible`
+- `openai_v1`
+- `azure_foundry`
+- `oci_genai`
+- `aws_bedrock`
+- `anthropic`
+- `gemini`
+- `vertex_ai`
+- `cohere`
+- `perplexity`
+- `ollama_cloud`
+
+### Template-backed compatible endpoints
+
+Configured in `config/config.py` and routed through the compatible adapter path where applicable:
+
+- `xai_grok`
+- `kimi_moonshot`
+- `mistral`
+- `groq`
+- `deepseek`
+- `openrouter`
+- `together`
+- `ollama`
+- `lm_studio`
+- `vllm`
+- `tgi`
+- `llama_cpp`
+
+### Provider Status
+
+| Surface | State | Evidence |
 | --- | --- | --- |
-| Stable | Default path for new users | Unit tests, smoke tests, docs, current validation evidence, troubleshooting coverage |
-| Beta | Intended for real use with known limits | Unit tests, docs, at least one smoke/live path, documented limits |
-| Experimental | Useful but not baseline-critical | Import/unit coverage and explicit limits |
-| Internal | Implementation detail | Owner subsystem tests only |
+| Provider templates | Beta | `config/config.py`, provider template tests, CLI/API/Web listing routes |
+| Adapter loading | Beta | `tests/core/test_model_registry.py`, provider adapter tests |
+| Secret-backed profiles | Beta | config/profile tests and provider CLI/API paths |
+| Hosted compatible vendors | Experimental | template presence and shared compatible adapter path |
+| Self-hosted compatible vendors | Beta | template presence, generic compatible adapter path, CLI/API surfaces |
 
-## Provider Lanes
+## Workflows And Presets
 
-| Lane | State | Owner | Entry Points | Evidence | Known Limits |
-| --- | --- | --- | --- | --- | --- |
-| OpenAI-compatible, including Azure OpenAI/Foundry-compatible endpoints | Stable for Azure Foundry/OpenAI-compatible path | Providers | CLI provider commands, API provider routes | Provider templates load; `azure-real` / `gpt-5.4` live evidence on 2026-05-15: doctor, ping-models, planner/executor/verifier provider tests, `command-assistant`, text/JSON, and vision pass | Broader hosted compatible vendors remain advanced until separately proven; `codebase-assistant` remains a workflow blocker, not a provider blocker |
-| Google AI services: Gemini API and Vertex AI | Stable | Providers | CLI provider commands, API provider routes | Templates/adapters load; Gemini API live evidence on 2026-05-15 (temporary key / `gemini-2.5-flash`); Vertex AI manually verified 2026-05-16: doctor, ping-models, provider tests, text/JSON, vision, and preset passes | — |
-| Self-hosted OSS through OpenAI-compatible endpoints | Stable | Providers | CLI provider commands | Ollama, LM Studio, vLLM, TGI, llama.cpp server, and generic compatible templates exist; localhost compatibility shim smoke passed on 2026-05-15 — all 17 provider adapter types verified through localhost-shaped configs; real local endpoint proven 2026-05-15: llama.cpp at `127.0.0.1:8080/v1` with `Qwen2.5-7B-Instruct` passes `provider test`, `ping-models`, chat completions, and `command-assistant` end-to-end; operator manually verified full self-hosted lane 2026-05-16 on capable hardware | Smaller OSS models (3B) may fail structured JSON; large-document workflows need capable hardware (GPU/Apple Silicon) for acceptable latency on big prompts |
-| Other integrated providers | Experimental | Providers | CLI provider commands | Templates/adapters exist for current registry | Functional in theory; not polished/proven like top 3 lanes |
-
-## Provider Adapters
-
-| Provider | State | Evidence | Notes |
-| --- | --- | --- | --- |
-| `openai_v1` | Beta | Template, adapter, provider tests | Promote with fresh OpenAI live smoke |
-| `openai_compatible` | Stable | Template and shared compatible path | Includes many hosted/local gateways; lane proven via Azure Foundry and self-hosted live evidence |
-| `azure_foundry` | Stable | Template, adapter, fresh live evidence on 2026-05-15 via live_validate runner and direct vision smoke | Main dev lane; provider smoke, text/JSON, vision, and command-assistant preset passed on `gpt-5.4` |
-| `gemini` | Stable | Template, adapter, provider tests, fresh live evidence on 2026-05-15 via a temporary Gemini API key: provider smoke, text/JSON, vision, and multiple presets pass | Temp key profile deleted 2026-05-15; future free-tier testing uses a Gemini API profile |
-| `vertex_ai` | Stable | Template, adapter, provider tests | Manually verified 2026-05-16 |
-| `ollama`, `lm_studio`, `vllm`, `tgi`, `llama_cpp` | Stable | Templates via compatible path | Self-hosted lane manually verified 2026-05-16 |
-| `anthropic`, `aws_bedrock`, `oci_genai`, `cohere`, `perplexity`, `ollama_cloud` | Experimental | Templates/adapters/tests vary by provider | Keep available; do not present as first-run path |
-| `groq`, `openrouter`, `together`, `mistral`, `deepseek`, `kimi_moonshot`, `xai_grok` | Experimental | OpenAI-compatible templates | Advanced compatible endpoints until live scorecards exist |
-
-## Presets
-
-| Preset | Workflow | State | Entry Points | Evidence | Known Limits |
-| --- | --- | --- | --- | --- | --- |
-| `command-assistant` | `command_assistant` | Stable candidate | CLI, API, Web route | Smoke/unit coverage; unsafe-command propagation and parse-failure negative tests added; fresh live pass on 2026-05-15 via azure-real / gpt-5.4 and a temporary Gemini API key / gemini-2.5-flash | Needs report/resume and non-CLI evidence before `stable` |
-| `local-document-chat` | `documents` | Stable candidate | CLI, API, Web route | Smoke/unit coverage; fresh live pass on 2026-05-15 via azure-real / gpt-5.4 and a temporary Gemini API key / gemini-2.5-flash after provider-map fix | Needs report/resume and non-CLI evidence before `stable` |
-| `codebase-assistant` | `coding` | Stable candidate | CLI, API, Web route | Broad tests and historical capable-model live pass; patch rollback, repeated-failure guard, max-diff-lines, dirty-repo bypass, no-tests skip, and allowed-files guard covered by tests; fresh live runs on 2026-05-15 via azure-real / gpt-5.4 still returned `status='blocked'` or empty PatchPlan | Still blocks on coding workflow repair-loop/verifier behavior; not stable-ready |
-| `context-maintainer` | `context_maintainer` | Stable candidate | CLI, API/Web context routes | ContextOps tests and historical dry-run evidence; golden-path e2e workflow execution test added; fresh live pass on 2026-05-15 via azure-real / gpt-5.4-mini | Apply/write paths remain review-first; needs stable-promotion report/resume evidence |
-| `file-organizer` | `file_organization` | Beta | CLI, API, Web route | Fresh live pass 2026-05-15 (dry-run via azure-real / gpt-5.4-mini); missing-source, overwrite-block, and dry-run smoke tests |
-| `docs-maintainer` | `docs_maintenance` | Beta | CLI, API, Web route | Fresh live pass 2026-05-15 (plan mode via azure-real / gpt-5.4-mini); golden-path e2e test added; detect-failure halt, update-failure halt, and empty-stale-docs graceful paths covered by smoke tests | Apply and aligner paths need live proof |
-| `research-report` | `research` | Beta | CLI, API, Web route | Unit/deep path evidence; gather-failure halt and empty-sources graceful paths covered by smoke tests; fresh CLI live pass on 2026-05-15 via azure-real / gpt-5.4 | API/Web live reruns still needed |
-| `github-maintainer` | `github_maintenance` | Beta | CLI, API, Web route | Fresh live pass 2026-05-15 (issue summary + PR draft via azure-real / gpt-5.4-mini); summarize-failure halt and empty-issues graceful paths covered by smoke tests | |
-
-## Workflow Readiness Checklists (Stable Candidates)
-
-| Checklist Item | `command-assistant` | `local-document-chat` | `codebase-assistant` | `context-maintainer` |
+| Preset | Workflow | Code Support State | Entry Points | Evidence |
 | --- | --- | --- | --- | --- |
-| **Structured I/O schemas** | ✅ ParsedIntent, GeneratedCommand, ValidationResult | ✅ IndexerOutput, RetrieverOutput, AnswererOutput | ✅ ImplementationPlan, PatchPlan, VerificationReport | ⚪ Delegates to AICtx; no Agentheim workflow schemas |
-| **Artifacts produced** | ✅ FinalReport (commands, validation) | ✅ Answer metadata with citations | ✅ plan.json, patch.diff, verification.json, final_report.md/json | ⚪ AICtx shards in `docs/AIprojectcontext/` |
-| **Final report** | ✅ FinalReport.status + commands | ✅ AnswererOutput parsed in metadata | ✅ FinalReport with changed_files, tests, risks | ⚪ No canonical Agentheim final report |
-| **Failure modes documented** | ✅ parse failure → failed; unsafe → safe=false | ✅ empty repo fallback | ✅ dirty repo block, planning failure, patch failure, max tasks/fix attempts, repeated failure | ⚪ No explicit runtime failure modes tested |
-| **Negative-path tests** | ✅ unsafe command propagation, parse failure | ✅ binary/dir exclusion, empty repo | ✅ rollback, repeated-failure, max-diff, no-tests skip, allow-dirty bypass | ⚪ Only import/instantiation tests |
-| **CLI path** | ✅ `start command-assistant` | ✅ `start local-document-chat` | ✅ `run`, `plan`, `start codebase-assistant` | ✅ `ctx scan/run/verify/status` |
-| **API path** | ✅ `POST /api/presets/{preset_id}/run` | ✅ `POST /api/presets/{preset_id}/run` | ✅ `POST /api/presets/{preset_id}/run` | ✅ `POST /api/ctx/*` routes |
-| **Docs** | ✅ USER_GUIDE.md, CLI-COMMANDS.md | ✅ USER_GUIDE.md | ✅ USER_GUIDE.md, CLI-COMMANDS.md | ✅ USER_GUIDE.md ctx section |
-| **Live evidence** | 🟢 Fresh pass on azure-real / gpt-5.4 and Gemini | 🟢 Fresh pass on azure-real / gpt-5.4 and Gemini | 🔴 Fresh gpt-5.4 run blocked on verifier/repair-loop outcome | 🟢 Fresh pass on azure-real / gpt-5.4-mini and Gemini |
-
-**Notes:**
-- `context-maintainer` is architecturally different: it delegates execution to the AICtx runtime rather than using Agentheim's workflow agent pipeline. Its readiness checklist reflects this boundary. Agentheim-native artifacts, final reports, and negative-path tests are gaps that must close before stable promotion.
-- Provider compatibility evidence is now strong for Azure Foundry and Gemini API. Preset promotion still needs report/resume and non-CLI evidence, and `codebase-assistant` still needs green live repair-loop behavior.
-
-## Workflow Readiness Checklists (Beta Candidates)
-
-| Checklist Item | `file-organizer` | `docs-maintainer` | `research-report` | `github-maintainer` |
-| --- | --- | --- | --- | --- |
-| **Structured I/O schemas** | ✅ AnalyzerResult, ProposerResult, ApplierResult | ✅ DetectionResult, UpdateResult, AlignmentResult | ✅ GatherResult, SummaryResult, ResearchReport | ✅ SummaryResult, DraftResult |
-| **Artifacts produced** | ✅ working_memory.json, moves_executed metadata | ✅ updates metadata | ✅ ResearchReport in metadata | ✅ DraftResult in metadata |
-| **Final report** | ✅ ApplierResult with moves + summary | ✅ AlignmentResult in metadata | ✅ ResearchReport in metadata | ✅ DraftResult (pr_title, pr_body, branch_name) |
-| **Failure modes documented** | ✅ missing source, destination exists | ✅ detect failure halt, update failure halt | ✅ gather failure halt | ✅ summarize failure halt |
-| **Negative-path tests** | ✅ missing source, dest exists, dry_run | ✅ detect failure halt, update failure halt, empty stale_docs | ✅ gather failure halt, empty sources | ✅ summarize failure halt, empty issues_text |
-| **CLI path** | ✅ `start file-organizer` | ✅ `start docs-maintainer` | ✅ `start research-report` | ✅ `start github-maintainer` |
-| **API path** | ✅ `POST /api/presets/{preset_id}/run` | ✅ `POST /api/presets/{preset_id}/run` | ✅ `POST /api/presets/{preset_id}/run` | ✅ `POST /api/presets/{preset_id}/run` |
-| **Docs** | ✅ USER_GUIDE.md | ✅ USER_GUIDE.md | ✅ USER_GUIDE.md | ✅ USER_GUIDE.md |
-| **Live evidence** | 🟢 Pass 2026-05-15 (dry-run) | 🟢 Pass 2026-05-15 (plan mode) | 🔴 Fail 2026-05-15 (exit 1) | 🟢 Pass 2026-05-15 (issue summary + PR draft) |
+| `codebase-assistant` | `coding` | `stable_candidate` | CLI, API, Web | coding runtime/workflow tests, patching tests, run-path tests |
+| `command-assistant` | `command_assistant` | `stable_candidate` | CLI, API, Web | workflow registration tests, smoke tests, route tests |
+| `local-document-chat` | `documents` | `stable_candidate` | CLI, API, Web | documents workflow tests, registration tests, route tests |
+| `context-maintainer` | `context_maintainer` | `stable_candidate` | CLI, API ctx routes, Web ctx routes | ctx command tests, ctx API tests, workflow/runtime import tests |
+| `file-organizer` | `file_organization` | `beta` | CLI, API, Web | workflow and agent tests |
+| `docs-maintainer` | `docs_maintenance` | `beta` | CLI, API, Web | workflow and agent tests |
+| `research-report` | `research` | `beta` | CLI, API, Web | workflow and agent tests |
+| `github-maintainer` | `github_maintenance` | `beta` | CLI, API, Web | workflow and agent tests |
 
 ## Interfaces
 
-| Interface | State | Evidence | Known Limits |
+| Interface | State | Evidence | Notes |
 | --- | --- | --- | --- |
-| CLI | Beta | Smoke tests, directive/baseline gates, docs | Commands grouped into `Getting Started`, `Repository Work`, `Presets`, `Context`, `Advanced` panels since 2026-05-15 |
-| API server | Beta | TestClient tests and OpenAPI route tests | Tool approval UX returns approval payload; explicit `/api/tools/approvals/{request_id}/grant` and `/deny` continuation routes exist and are tested |
-| Web UI | Beta | TestClient tests + browser smoke 2026-05-15 | Root loads, provider health visible, presets with Run buttons, Active Runs polling, artifacts/errors visible; full provider-backed preset-run end-to-end not yet complete |
-| Guided TUI | Beta | Unit tests and historical scripted live run | Interactive flow needs current live pass for stable |
-| Desktop UI | Beta | Unit tests + server integration test 2026-05-15 | Inherits Web UI via pywebview wrapper; server thread start verified; pywebview/tkinter/browser fallback paths tested; actual window launch needs GUI environment |
+| CLI | Beta | command registration, help output, smoke tests | primary user-facing surface |
+| API server | Beta | route tests, run-status tests, tool approval tests | FastAPI app in `interfaces/api_server/app.py` |
+| Web UI | Beta | route tests, WebSocket tests, tool approval tests | separate FastAPI app with similar but not identical route shapes |
+| Guided TUI | Beta | unit tests | registered under `guided` |
+| Desktop UI | Beta | unit/server-start tests | wraps Web UI via `pywebview`, with `tkinter` and browser fallback |
 
 ## Tools
 
-| Tool | State | Risk | Evidence | Notes |
-| --- | --- | --- | --- | --- |
-| `filesystem` | Beta | Operation-level: read/list/stat none, write/copy medium | Tool tests, API/Web approval-flow tests, centralized invoker tests | Medium operations now return approval-required in API/Web and can be granted/denied explicitly |
-| `git` | Beta | none currently declared | Tool tests | Mutating git operations need operation-level risk follow-up |
-| `shell.execute` | Beta | high | Tool tests, policy tests | API/Web deny high-risk path |
-| `browser` | Experimental | high | Unit tests | Live browser evidence incomplete |
-| `http.request` | Beta | high | HTTP tests | Network policy remains strict by default |
-| `local_db` | Experimental | medium | Local DB tests | Requires configured DB for meaningful use |
-| `memory` | Beta | low | Memory and Web/API tests | Advanced consistency matrix remains future work |
-| MCP tools | Experimental | varies | MCP list/call tests | Must remain policy-routed |
+| Tool Surface | State | Evidence | Notes |
+| --- | --- | --- | --- |
+| Filesystem | Beta | tool tests, API/Web approval-path tests | operation-level behavior matters more than top-level tool id |
+| Shell | Beta | shell tool tests, policy tests | exposed as `shell.execute` |
+| Git | Beta | git tool tests | mutating operations are implemented in the same tool |
+| Browser | Experimental | unit tests | async and sync surfaces exist |
+| HTTP | Beta | HTTP tests | gated by policy |
+| Local DB | Experimental | local DB tests | meaningful use depends on target DB |
+| Memory | Beta | memory tests, API/Web coverage | shared through `MemoryBus` |
+| MCP | Experimental | MCP tests and config/adapter code | route and CLI support present |
 
 ## Advanced Subsystems
 
-| Subsystem | State | Reason |
+| Subsystem | State | Evidence |
 | --- | --- | --- |
-| Marketplace | Experimental | Needs install/load/signature UX, threat model, live smoke |
-| Federation | Experimental | Needs cross-machine auth, transport security, and failure recovery proof |
-| Distributed workflows | Experimental | Scheduler/worker lifecycle and resume semantics not baseline-proven |
-| OCI/remote context | Beta | Optional AICtx/OCI path; advanced opt-in |
-| Multimodal | Beta for proven provider lanes, experimental otherwise | Needs current vision live matrix |
-| Self-improving agents | Internal | Needs governance, rollback, and audit model before exposure |
+| AICtx / ContextOps integration | Beta | ctx routes, ctx CLI, ContextOps code/tests, ADR + module map |
+| Federation | Experimental | federation tests and transport code |
+| Distributed workflows | Experimental | distributed scheduler/server code and tests |
+| Marketplace | Experimental | marketplace code and tests |
+| Monitoring | Beta | monitoring code and tests |
+| Multimodal | Beta | multimodal code and tests |
+| Self-improving agents | Internal | agent feedback loop code and tests |
 
-## Current Validation Evidence
+## Current Code-Based Validation Snapshot
 
-Last docs baseline sweep on 2026-05-15:
-
-- `python scripts/check-agent-instructions.py` passed.
-- `powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode directive -NoPrompt` passed.
-- `powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode baseline -NoPrompt` passed.
-- Markdown local link scan passed across 94 repo docs.
-- `pytest --collect-only -q` collected 1256 total tests; default lane selected 1220 and deselected 36.
-- Full live validation matrix plus safety negatives (18 checks) run against azure-real / gpt-5.4-mini: 14 pass, 4 fail.
-- Focused capable-model rerun against azure-real / gpt-5.4: provider smoke, `command-assistant`, `local-document-chat`, `research-report`, and vision pass; `codebase-assistant` remains blocked.
-- Gemini API rerun against a temporary Gemini API key / `gemini-2.5-flash`: provider smoke, text/JSON, vision, `command-assistant`, `local-document-chat`, `context-maintainer`, `file-organizer-dry-run`, `docs-maintainer-plan`, `github-maintainer`, and `research-report` pass.
-- Localhost mock-shim provider smoke passed across 17 provider adapter types; this is wiring evidence, not real local model-quality evidence.
+- `pytest --collect-only -q` currently collects 1256 total tests, with 1220 selected and 36 deselected by default markers.
+- CLI help and command grouping are exercised by CLI/smoke tests.
+- API route coverage exists for tools, providers, runs, memory, and ctx surfaces.
+- Web UI route coverage includes tool approval flows and run WebSocket streaming.
+- Workflow registration/import coverage exists for all built-in workflows.

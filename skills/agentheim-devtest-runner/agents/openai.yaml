@@ -1,4 +1,0 @@
-interface:
-  display_name: "Agentheim DevTest Runner"
-  short_description: "Run the right Agentheim test slice quickly."
-  default_prompt: "Use $agentheim-devtest-runner to pick and run the correct test mode for my current change."

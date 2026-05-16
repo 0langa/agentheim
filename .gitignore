@@ -77,6 +77,8 @@ Agent-Team/
 
 # Local skill/memory scratch + planning notes
 .github/skills/
+.github/mcp.json
+.kimi/
+skills/
 NEXT-DEVELOPMENT-STEPS.md
-.kimi/memory.jsonl
 .roo/

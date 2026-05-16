@@ -11,16 +11,10 @@ INSTRUCTIONS = ROOT / ".github" / "instructions"
 AGENT_FILE = ROOT / ".github" / "agents" / "agentheim-autonomous-engineer.agent.md"
 CHANGELOG = ROOT / "docs" / "CHANGELOG.md"
 REQUIRED_INSTRUCTIONS = [
-    "00-instruction-priority.md",
     "README.md",
+    "00-instruction-priority.md",
     "01-doctrine.md",
     "02-forbidden-behaviors.md",
-    "03-traceability.md",
-    "04-AICtx-integration.md",
-    "05-documentation-integrity.md",
-    "06-tooling-and-verification.md",
-    "07-chat-output.md",
-    "08-roadmap-execution.md",
 ]
 
 
@@ -74,6 +68,8 @@ LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 def check_markdown_links() -> None:
     broken: list[str] = []
     for path in markdown_files():
+        if path == CHANGELOG:
+            continue
         text = read(path)
         for raw_target in LINK_RE.findall(text):
             target = raw_target.strip()
@@ -124,6 +120,28 @@ def check_aictx_state() -> None:
         fail("AICtx/ local reference copy must be removed; use editable install from ../AICtx")
 
 
+def check_no_tracked_internal_scaffolding() -> None:
+    tracked = subprocess.run(
+        ["git", "ls-files"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.splitlines()
+    forbidden_prefixes = (".kimi/", "skills/", ".github/skills/")
+    forbidden_exact = {".github/mcp.json"}
+    offenders = [
+        path
+        for path in tracked
+        if (ROOT / path).exists() and (path in forbidden_exact or path.startswith(forbidden_prefixes))
+    ]
+    if offenders:
+        fail(
+            "tracked maintainer-only scaffolding must not remain in the repository tree:\n"
+            + "\n".join(offenders)
+        )
+
+
 def main() -> int:
     check_required_instruction_files()
     check_agent_references()
@@ -131,6 +149,7 @@ def main() -> int:
     check_no_active_roadmap_links()
     check_changelog_policy()
     check_aictx_state()
+    check_no_tracked_internal_scaffolding()
     print("agent instruction checks ok")
     return 0
 

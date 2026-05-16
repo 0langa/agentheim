@@ -1,80 +1,37 @@
 # Agent Operations
 
-This document explains how agents should operate in Agentheim. Binding rules live in `.github/instructions/`; this file provides rationale, workflow guidance, and examples.
+Maintainer-only document. This file describes repository workflow and agent governance. It does not define product features.
 
-## Directive System
+This repo now keeps agent guidance intentionally small. The goal is to reduce inherited behavior and keep agents anchored to current code.
 
-Agentheim uses a layered directive system:
+## Active Surfaces
 
-- `AGENTS.md` is the GitHub-facing entry point.
-- `.github/agents/agentheim-autonomous-engineer.agent.md` is the main autonomous engineering agent.
-- `.github/instructions/*.md` contains binding project rules.
-- `skills/` contains task-specific operational helpers.
-- `docs/` contains human-readable project documentation.
-- `devtest/` contains local validation command references.
-- `docs/SUPPORT_MATRIX.md` records stable, beta, experimental, and internal support states.
-- `docs/TIER1_CONTRACTS.md` maps baseline user journeys to CLI/API/docs/tests.
-- `BASELINE-ROADMAP.md` is the active baseline implementation blueprint.
+- `AGENTS.md` is the top-level entry point.
+- `.github/agents/agentheim-autonomous-engineer.agent.md` is the GitHub agent definition.
+- `.github/instructions/` contains the minimal standing rules.
+- `docs/` is human-facing explanation, not a second instruction stack.
+- repo-local skills are not part of the baseline contract and may be absent.
 
-Agents must read `.github/instructions/README.md` and every binding instruction file before planning or editing.
+## Baseline Approach
 
-## Instruction Priority
+Agents working here should:
 
-The active priority order is:
+- inspect code before editing
+- prefer simple, local changes over adding process
+- keep `core/` generic and push concrete behavior to the right subsystem
+- update docs when public behavior changes
+- use focused verification instead of ritual full-suite runs by default
 
-1. current user request
-2. repository `AGENTS.md`
-3. `.github/instructions/*.md`
-4. `.github/agents/*.agent.md`
-5. repository docs
-6. skills
+## AICtx Note
 
-If a conflict appears, the agent must stop, cite the conflicting files or rules, and ask for direction.
-
-## Documentation Enforcement
-
-Documentation is part of the implementation. If behavior, commands, paths, configuration, CI, safety, workflow registration, or integration rules change, update the affected docs in the same change.
-
-Historical entries in `docs/CHANGELOG.md` are exempt from stale-link cleanup because they preserve repository history.
-
-## AICtx Workspace Project
-
-AICtx lives in the co-developed workspace project at `../AICtx` and is installed as an editable package (`pip install -e ../AICtx`).
-
-Agents may inspect `../AICtx/src/aictx/` for parity and implementation details, but must route all integration through the ContextOps boundary.
+AICtx still lives in the workspace project at `../AICtx`. It is implementation context, not a binding source of repo behavior. Use it as reference material when needed and keep integration behind current ContextOps-related boundaries.
 
 ## Validation
 
-For directive, docs, GitHub template, or skill changes, run:
+When changing agent files, instructions, or validation docs/scripts, run:
 
 ```powershell
 python scripts/check-agent-instructions.py
-powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode directive -NoPrompt
 ```
 
-For runtime code changes, combine directive checks with focused pytest or devtest modes that match the risk surface.
-
-For roadmap-entry baseline checks, run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\devtest\run-devtest.ps1 -Mode baseline -NoPrompt
-```
-
-## Roadmap Implementation
-
-Agents implementing roadmap work must read `BASELINE-ROADMAP.md`, `docs/SUPPORT_MATRIX.md`, `docs/TIER1_CONTRACTS.md`, `docs/DEV_TESTING.md`, and `live-ai-testing.md` before planning. Work in small batches with explicit success gates.
-
-Provider hardening priority is OpenAI-compatible/Azure-compatible first, Google AI services second, and self-hosted OSS via localhost or cloud VM third. Other integrated providers should stay functional but must not be described as polished without same-change evidence.
-
-Support-state promotions require tests, docs, support matrix updates, Tier-1 contract updates when applicable, changelog, memory update, and live evidence when the claim depends on real provider connectivity.
-
-`scripts/roadmap-check.py` and `phase7` devtest mode are legacy validation paths. Use them only for roadmap-era investigation or explicit user requests.
-
-## Future MCP
-
-MCP support should follow the same governance model:
-
-- MCP instructions belong in `.github/instructions/` when binding.
-- MCP usage examples belong in docs.
-- MCP validation commands belong in `devtest/`.
-- MCP tools must still respect Agentheim policy, approval, privacy, redaction, and traceability rules.
+For code changes, add the smallest relevant pytest or `devtest` command from [DEV_TESTING.md](DEV_TESTING.md).

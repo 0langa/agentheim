@@ -120,7 +120,7 @@ Use these after editing root docs, `docs/`, `.github/agents/`, `.github/instruct
 
 ```powershell
 python -c "from pathlib import Path; files=sorted(Path('.github/instructions').glob('*.md')); assert files and all(f.read_text(encoding='utf-8').strip() for f in files); print('instruction files ok:', [f.name for f in files])"
-python -c "from pathlib import Path; p=Path('.github/agents/agentheim-autonomous-engineer.agent.md'); text=p.read_text(encoding='utf-8'); required=['00-instruction-priority.md','01-doctrine.md','02-forbidden-behaviors.md','03-traceability.md','04-AICtx-integration.md','05-documentation-integrity.md','06-tooling-and-verification.md','07-chat-output.md']; missing=[item for item in required if item not in text]; assert not missing, missing; print('agent references ok')"
+python -c "from pathlib import Path; p=Path('.github/agents/agentheim-autonomous-engineer.agent.md'); text=p.read_text(encoding='utf-8'); required=['README.md','00-instruction-priority.md','01-doctrine.md','02-forbidden-behaviors.md']; missing=[item for item in required if item not in text]; assert not missing, missing; print('agent references ok')"
 ```
 
 ## Workflow Smoke Tests
@@ -273,10 +273,3 @@ pytest -q tests/test_resume.py -v
 pytest -q tests/test_replay_engine.py -v
 ```
 
-## Project Skills Validation
-
-```powershell
-python C:\Users\juliu\.codex\skills\.system\skill-creator\scripts\quick_validate.py .\skills\agentheim-devtest-runner
-python C:\Users\juliu\.codex\skills\.system\skill-creator\scripts\quick_validate.py .\skills\agentheim-roadmap-guard
-python C:\Users\juliu\.codex\skills\.system\skill-creator\scripts\quick_validate.py .\skills\agentheim-release-hygiene
-```

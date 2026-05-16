@@ -67,7 +67,7 @@ agentheim/
 │   ├── ledger.py              # Append-only event log with hash chain
 │   ├── artifact_store.py      # Per-run artifact management
 │   ├── capability_registry.py # Provider/tool capability declarations
-│   ├── context_packer.py      # Repository snapshot for agents
+│   ├── context_packer.py      # Legacy context packer (deprecated in favor of ContextOps/AICtx)
 │   ├── events.py              # Structured event schema
 │   ├── error_classification.py # Failure taxonomy
 │   ├── retry_engine.py        # Bounded retry with backoff
@@ -123,7 +123,7 @@ agentheim/
 │   ├── cli/                   # Command-line interface
 │   ├── api_server/            # FastAPI REST server
 │   ├── web_ui/                # Web dashboard
-│   ├── desktop_ui/            # PyQt6/tkinter desktop app
+│   ├── desktop_ui/            # pywebview desktop wrapper with tkinter/browser fallback
 │   └── guided_tui/            # Interactive terminal UI
 │
 ├── presets/                   # Beginner-friendly preset definitions
@@ -144,7 +144,7 @@ agentheim/
 ├── tests/                     # Full test suite
 ├── docs/                      # Documentation (you are here)
 ├── scripts/                   # Tooling (directive checks, validation helpers, legacy checks)
-└── skills/                    # Copilot agent skill definitions
+└── skills/                    # Optional local helpers; not part of the repo baseline
 ```
 
 ---
@@ -171,7 +171,7 @@ AI provider setup is owned by `config/` and consumed by the generic model regist
 `core/model_registry.py` stays generic. It receives resolved `AgentModelConfig` objects and lazy-loads provider adapters by descriptor.
 | **Event** | `events.py` | Structured event schema (20+ types) with UUID, sequence, hash |
 | **ArtifactStore** | `artifact_store.py` | Produces and validates 15+ run artifacts |
-| **ContextPacker** | `context_packer.py` | Prepares repository context for agent consumption |
+| **ContextPacker** | `context_packer.py` | Legacy context packer kept for compatibility; ContextOps/AICtx is the active path |
 | **RetryEngine** | `retry_engine.py` | Bounded retry with exponential backoff per error category |
 | **StepBudgetEnforcer** | `step_budget.py` | Enforces token, time, and iteration budgets |
 | **CascadingRouter** | `cascading_router.py` | Model failover with health tracking |
@@ -180,16 +180,12 @@ AI provider setup is owned by `config/` and consumed by the generic model regist
 
 ### Runtime Phases
 
-Every run proceeds through these phases:
+The generic runtime defines phases in `core/state_machine.py`, but not every production path uses that abstract phase list directly. In particular:
 
-```
-INIT → LOAD_CONFIG → PREPARE_WORKSPACE → SCAN_REPOSITORY →
-BUILD_CONTEXT_PACK → PLAN → EXECUTE_TASK → BASIC_VERIFY →
-VERIFY_TASK → FIX_LOOP → FINAL_VERIFY → FINAL_REPORT →
-RESUME_AVAILABLE → DONE
-```
+- `workflows/coding/workflows/coding.py` delegates real execution to `workflows/coding/runtime.py`
+- `workflows/context_maintainer/workflow.py` delegates to `workflows/context_maintainer/runtime.py`
 
-Phases are managed by the state machine in `core/state_machine.py`.
+Treat the state machine as the generic runtime model and the dedicated runtimes as the concrete execution paths for those workflows.
 
 ---
 
@@ -199,10 +195,15 @@ Phases are managed by the state machine in `core/state_machine.py`.
 
 Provider adapters are lazy-loaded and interchangeable. They implement the abstract `ModelProvider` protocol and are never imported eagerly — the registry loads them via `importlib` only when a configured model needs one.
 
-**Current providers:**
+**Current adapter implementations in code:**
 - `openai_v1` — OpenAI and all OpenAI-compatible APIs (Grok, Ollama, LM Studio, etc.)
 - `azure_foundry` — Azure AI Foundry / Azure OpenAI
 - `aws_bedrock` — AWS Bedrock
+- `anthropic` — Anthropic Messages API
+- `gemini` / `vertex_ai` — Google Gemini API and Vertex AI
+- `cohere` — Cohere
+- `perplexity` — Perplexity
+- `ollama_cloud` — Ollama Cloud
 - `oci_genai` — Oracle Cloud Infrastructure GenAI
 
 ### Tool Layer (`tools/`)
@@ -216,7 +217,7 @@ All tools are mediated through `ToolRegistry.invoke()`, which routes through the
 
 ### Workflow Layer (`workflows/`)
 
-Workflow packs define agent roles, step DAGs, prompts, policies, and verification logic. They are self-contained and import from `core.public_api` only.
+Workflow packs define agent roles, step DAGs, prompts, policies, and verification logic. Most workflow-facing code stays behind `core.public_api`, but that boundary is not perfectly enforced across the whole repository. Some interface and runtime modules still import selected lower-level modules directly.
 
 ### Memory Layer (`memory/`)
 
@@ -233,26 +234,16 @@ Multiple interfaces all backed by the same core runtime:
 - **CLI** (`interfaces/cli/`) — Primary user surface via `agentheim` command
 - **API Server** (`interfaces/api_server/`) — FastAPI REST + WebSocket
 - **Web UI** (`interfaces/web_ui/`) — Browser dashboard
-- **Desktop UI** (`interfaces/desktop_ui/`) — PyQt6/tkinter wrapper
+- **Desktop UI** (`interfaces/desktop_ui/`) — pywebview wrapper over the Web UI with tkinter and browser fallback
 - **Guided TUI** (`interfaces/guided_tui/`) — Interactive prompt-based wizard
 
 ---
 
 ## Architectural Laws
 
-The project is governed by **7 Immutable Laws** defined in the [Project Doctrine](../.github/instructions/01-doctrine.md):
+The active repository baseline is intentionally smaller than earlier doctrine stacks. The core architectural rule is still the same: keep `core/` generic and keep concrete provider, workflow, and tool behavior in their own layers.
 
-| # | Law | One-Line Rule |
-|---|-----|---------------|
-| 1 | **Core Ignorance** | `core/` knows NO provider, workflow, tool, or model names* |
-
-\* One intentional exception: `core/model_registry.py` holds `DEFAULT_PROVIDER_MAP` as a convenience default. The `ModelRegistry` class accepts any `provider_map` parameter and remains generic.
-| 2 | **Pack Autonomy** | Workflow packs don't import providers or mutate core state |
-| 3 | **Provider Swap** | All providers are lazy-loaded, interchangeable adapters |
-| 4 | **Disclosure** | Beginner gets presets. Power-user gets config. Dev gets APIs. |
-| 5 | **Event Truth** | All state from append-only ledger. No mutable run state. |
-| 6 | **Local-First** | Zero external services by default. Privacy modes enforced. |
-| 7 | **Safety Default** | All destructive ops require approval. Policies are code. |
+One intentional exception remains: `core/model_registry.py` contains a `DEFAULT_PROVIDER_MAP` convenience default. The `ModelRegistry` class itself still accepts any `provider_map` and remains generic.
 
 ---
 
@@ -262,11 +253,11 @@ The project is governed by **7 Immutable Laws** defined in the [Project Doctrine
 
 | Module | May Import From | May NOT Import From |
 |--------|----------------|-------------------|
-| `core/` | `core.*`, `providers.base`, `tools.base`, `workflows.base`, `memory.base` | Any concrete implementation |
-| `workflows/` | `core.public_api`, `workflows.base` | `core.*` internals, provider implementations |
-| `providers/` | `providers.base`, `core.types` | Other provider adapters |
-| `tools/` | `core.public_api`, `tools.base` | Other tool implementations |
-| `interfaces/` | `core.public_api` ONLY | Any `core.*` internal module |
+| `core/` | `core.*`, `providers.base`, `workflows.base` | Concrete provider adapters, workflow packs, tool implementations, AICtx implementation logic |
+| `workflows/` | `core.public_api`, `workflows.base` | Concrete provider adapters |
+| `providers/` | `providers.base` | Unnecessary coupling to sibling provider adapters |
+| `tools/` | `core.tool_protocol`, `core.public_api` | Unreviewed cross-tool coupling |
+| `interfaces/` | Prefer `core.public_api`; current code still has targeted direct imports in maintained paths | New direct dependencies on unstable `core.*` internals without justification |
 
 ### Forbidden Patterns
 
@@ -340,7 +331,5 @@ They may remain available under `Advanced` panels, `--all` flags, or explicit op
 
 ## See Also
 
-- [Project Doctrine](../.github/instructions/01-doctrine.md) — binding project laws
-- [Forbidden Behaviors](../.github/instructions/02-forbidden-behaviors.md) — hard rejection rules
-- [Traceability](../.github/instructions/03-traceability.md) — evidence and verification expectations
-- [AICtx Integration Rules](../.github/instructions/04-AICtx-integration.md) — integration-specific rules
+- [Repository Baseline](../.github/instructions/01-doctrine.md) — binding architectural boundaries
+- [Working Rules](../.github/instructions/02-forbidden-behaviors.md) — editing and verification expectations

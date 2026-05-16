@@ -15,12 +15,26 @@
 | [Troubleshooting](TROUBLESHOOTING.md) | Common issues, diagnostics, and recovery steps |
 | [Safety & Security](SAFETY.md) | Privacy modes, approval gates, threat model, and reporting |
 
-### 🏗️ For Developers
+### 🧩 Public Product Docs
+
+These are the product-facing documents that describe actual end-user or integration behavior:
 
 | Document | What you'll find |
 |----------|-----------------|
-| [Architecture](ARCHITECTURE.md) | System design, module overview, runtime phases, boundary rules |
-| [API Reference](API_REFERENCE.md) | REST API endpoints, SDK usage, WebSocket streaming |
+| [User Guide](USER_GUIDE.md) | Installation, configuration, presets, and daily usage |
+| [CLI Commands](CLI-COMMANDS.md) | Current command surface grounded in the code |
+| [API Reference](API_REFERENCE.md) | REST API endpoints, request shapes, and streaming routes |
+| [Safety & Security](SAFETY.md) | Privacy modes, approval gates, threat model, and reporting |
+| [Troubleshooting](TROUBLESHOOTING.md) | Common issues, diagnostics, and recovery steps |
+| [Architecture](ARCHITECTURE.md) | High-level system design and code boundaries |
+
+### 🛠️ Maintainer Docs
+
+These documents are for repository maintenance and development process. They are not product features and should not be treated as user-facing guarantees.
+
+| Document | What you'll find |
+|----------|-----------------|
+| [Repository Boundary](REPOSITORY_BOUNDARY.md) | What should be public product surface versus maintainer-only material |
 | [Support Matrix](SUPPORT_MATRIX.md) | Stable, beta, experimental, and internal support states |
 | [Tier-1 Contracts](TIER1_CONTRACTS.md) | Baseline user journeys mapped to CLI/API/docs/tests |
 | [Contributing](CONTRIBUTING.md) | Setup, coding standards, PR workflow, and governance |
@@ -30,16 +44,15 @@
 
 ### 🤖 Agent And Governance Rules
 
-The active agent governance surface is in the repository root and `.github/`:
+The active agent governance surface is in the repository root and `.github/`. It is development-only and must not be confused with product behavior:
 
 | Document | Purpose |
 |----------|---------|
 | [Agent Instructions](../AGENTS.md) | GitHub-facing agent entrypoint |
 | [Autonomous Engineer Agent](../.github/agents/agentheim-autonomous-engineer.agent.md) | Main project agent definition |
-| [Project Doctrine](../.github/instructions/01-doctrine.md) | Binding project laws |
-| [Forbidden Behaviors](../.github/instructions/02-forbidden-behaviors.md) | Rejection-level anti-patterns |
-| [Traceability](../.github/instructions/03-traceability.md) | Required evidence and reporting |
-| [AICtx Integration Rules](../.github/instructions/04-AICtx-integration.md) | Binding rules for AICtx integration work |
+| [Instruction Baseline](../.github/instructions/README.md) | Minimal standing instruction set |
+| [Repository Baseline](../.github/instructions/01-doctrine.md) | Code-grounded architectural boundaries |
+| [Working Rules](../.github/instructions/02-forbidden-behaviors.md) | Minimal editing and verification rules |
 
 ---
 
@@ -49,8 +62,10 @@ The active agent governance surface is in the repository root and `.github/`:
 docs/
 ├── README.md              ← You are here
 ├── USER_GUIDE.md          # Install, configure, use the CLI and presets
+├── CLI-COMMANDS.md        # Current CLI command surface
 ├── ARCHITECTURE.md        # System design, modules, boundaries
 ├── API_REFERENCE.md       # REST API endpoints and integration
+├── REPOSITORY_BOUNDARY.md # Public-vs-maintainer repo classification
 ├── SUPPORT_MATRIX.md      # Current support-state promises
 ├── TIER1_CONTRACTS.md     # Baseline journey contracts
 ├── CONTRIBUTING.md        # Developer setup and contribution workflow

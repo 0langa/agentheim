@@ -205,7 +205,7 @@ SUBPROCESS_EXEMPTIONS = [
 # ─── Checkers ────────────────────────────────────────────────────────────────
 
 class ArchitectureChecker:
-    """Enforces the 7 Immutable Laws."""
+    """Enforces legacy architecture checks used by roadmap-era validation."""
 
     def __init__(self, root: Path, current_phase: int = 0):
         self.root = root

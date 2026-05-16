@@ -1,46 +1,44 @@
 # Tier-1 Journey Contracts
 
-Tier-1 journeys are the baseline user promises. Each row maps the user action to the current CLI/API/UI surface, output contract, docs, and evidence state.
+Maintainer-only document. This file maps internal quality targets to code and tests; it is not the primary end-user feature list.
 
-| Journey | CLI | API | Web/Desktop | Output Contract | Docs | Evidence State |
-| --- | --- | --- | --- | --- | --- | --- |
-| Install and run diagnostics | `agentheim doctor`, `agentheim doctor --skip-connectivity` | `GET /api/health` | Web `/api/health`; Desktop launch experimental | Diagnostic table or JSON health response | `README.md`, `USER_GUIDE.md`, `DEV_TESTING.md` | Baseline/directive smoke passes skip-connectivity |
-| Add provider and ping models | `provider templates`, `provider add`, `provider assign`, `provider test`, `ping-models` | `GET /api/providers`, `GET /api/providers/templates`, `POST /api/providers`, `POST /api/providers/assign`, `GET /api/models` | Web provider profile/template views with support-state badges | Redacted provider/profile state; no raw secrets | `USER_GUIDE.md`, `API_REFERENCE.md`, `TROUBLESHOOTING.md` | Azure `azure-real` / `gpt-5.4` and a temporary Gemini API key / `gemini-2.5-flash` provider smoke passed 2026-05-15; Vertex AI and self-hosted lane manually verified 2026-05-16; self-hosted mock-shim 17/17 wiring pass |
-| Inspect repository | `inspect --repo <path>` | Planned through workflow/preset context rather than dedicated stable route | Not stable | Compact repo summary | `USER_GUIDE.md`, `CLI-COMMANDS.md` | CLI smoke coverage |
-| Plan repository work | `plan <task> --repo <path>` | Workflow execute route can run coding workflow but contract is not frozen | Not stable | Implementation plan/work orders | `USER_GUIDE.md`, `CLI-COMMANDS.md` | Unit/smoke coverage; live evidence historical |
-| Run stable candidate presets | `start command-assistant`, `start local-document-chat`, `start codebase-assistant`, `start context-maintainer` | `POST /api/presets/{preset_id}/run` | Web route exists with Run buttons; Desktop wraps Web UI | `run_id`, canonical run summary when persisted artifacts exist | `USER_GUIDE.md`, `API_REFERENCE.md`, `SUPPORT_MATRIX.md` | `command-assistant` and `local-document-chat` pass on Azure and Gemini; `context-maintainer` passes on Azure mini and Gemini; `codebase-assistant` still blocks |
-| Report run | `report --repo <path> --run-id <id>` | `GET /api/runs/{run_id}` | Web status route | Canonical run summary: status, summary, artifacts, verification, approvals, error guidance | `USER_GUIDE.md`, `API_REFERENCE.md`, `TROUBLESHOOTING.md` | Unit/API/Web stream coverage; command-assistant report follow-up passed 2026-05-15 |
-| Resume run | `resume --repo <path> --run-id <id>` | Not frozen as API contract | Not stable | Resume result or explicit unsupported reason | `USER_GUIDE.md`, `TROUBLESHOOTING.md` | Unit coverage; command-assistant resume follow-up passed 2026-05-15; other stable candidates still need proof |
-| Inspect artifacts | `.ai-team/runs/<run-id>/` and `list-runs` | `GET /api/runs/{run_id}` | Web status route | Artifact filenames plus canonical run status/summary | `USER_GUIDE.md`, `API_REFERENCE.md`, `ARCHITECTURE.md` | Unit/API tests; failed-run diagnostics bundle (`run_summary.json`, `diagnostics.md`) auto-written on failure since 2026-05-15 |
-| Invoke tools through interfaces | `copy <source> <destination>` for filesystem copy; workflow tools internal | `POST /api/tools/{tool_id}/invoke` | `POST /api/tools/invoke` | Tool result, policy metadata, approval-required response for medium operations | `API_REFERENCE.md`, `SAFETY.md`, `SUPPORT_MATRIX.md` | Phase 1 slice adds centralized policy path for API/Web |
+Tier-1 journeys are the baseline user promises derived from the current CLI, API, Web UI, and tests.
+
+| Journey | CLI | API | Web/Desktop | Output Contract | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| Install and run diagnostics | `doctor`, `doctor --skip-connectivity` | `GET /api/health` | Web `/api/health`; Desktop launches local Web UI | diagnostic table or health response | CLI help/smoke tests, API route tests |
+| Add provider and inspect provider state | `provider templates`, `provider add`, `provider list`, `provider assign`, `provider test`, `ping-models` | `GET /api/providers`, `GET /api/providers/templates`, `POST /api/providers`, `POST /api/providers/assign`, `GET /api/models` | Web provider/profile routes | redacted provider/profile information; no raw secrets | config tests, provider CLI/API tests, Web route tests |
+| Inspect repository | `inspect --repo <path>` | no dedicated stable inspect route | not a stable Web/Desktop contract | compact repository summary | CLI implementation and smoke coverage |
+| Plan repository work | `plan <task> --repo <path>` | workflow execute route exists but is not a frozen plan API | not a stable Web/Desktop contract | structured plan summary and optional JSON output | coding runtime/workflow tests, CLI implementation |
+| Run presets | `start <preset>` | `POST /api/presets/{preset_id}/run` | Web run route; Desktop wraps Web UI | async `run_id` and persisted artifacts when workflow writes them | preset registration tests, API/Web route tests |
+| Report run status | `report --repo <path> --run-id <id>` | `GET /api/runs/{run_id}` | Web run-status route | canonical run summary JSON | run summary and API/Web tests |
+| Resume a run | `resume --repo <path> --run-id <id>` | no stable resume API route | no stable Web/Desktop contract | resumed-step summary or explicit failure reason | resume code and tests |
+| Inspect artifacts | `.ai-team/runs/<run-id>/`, `list-runs` | `GET /api/runs/{run_id}` | Web status route | artifact-aware run summary plus on-disk artifacts | resume/run summary tests, run executor/ledger tests |
+| Invoke mediated tools | `copy <source> <destination>` for filesystem copy; most tool use is workflow-internal | `POST /api/tools/{tool_id}/invoke` | `POST /api/tools/invoke` | tool result or approval-required payload | tool invocation and approval-flow tests |
+| Run context maintenance operations | `ctx init|scan|run|verify|status|clean`, `ctx public-docs impact|update` | `POST /api/ctx/*` routes | Web ctx routes | ContextOps result payloads and summaries | ctx CLI tests and ctx API tests |
 
 ## Run State Contract
 
-Current canonical executor states are:
+Current async executor states from `core/run_executor.py`:
 
 | State | Meaning |
 | --- | --- |
 | `pending` | Submitted but not yet running |
-| `running` | Active task execution |
+| `running` | Active execution |
 | `completed` | Finished without uncaught failure |
 | `failed` | Finished with error |
 | `cancelled` | Cancelled before completion |
 
-Roadmap Phase 3 may add or map richer user-facing states such as `blocked`, but until then active docs and APIs must not claim `blocked` as a current executor status.
+## Artifact Contract
 
-## Stable Artifact Minimum
-
-Stable preset runs should produce or clearly explain absence of:
+Runs write under `.ai-team/runs/<run-id>/`, but the artifact set varies by workflow/runtime. Common files in the current tree include:
 
 - `run.json`
 - `ledger.jsonl`
 - `ledger.hash`
-- `final_report.md` or `final_report.json`
-- relevant workflow artifacts such as plan, patch, context, or citations
+- `tool_calls.jsonl`
+- `state_transitions.jsonl`
+- `final_report.md`
+- `final_report.json`
 
-Failed runs should additionally produce:
-
-- `run_summary.json`
-- `diagnostics.md`
-
-Missing artifacts must be treated as a support-state limit.
+Additional diagnostics, summaries, or context artifacts may appear depending on the workflow.

@@ -1,5 +1,7 @@
 # Contributing to Agentheim
 
+Maintainer-only document. This file describes repository development workflow and is not a product feature contract.
+
 > Development setup, coding standards, PR workflow, and governance for contributors.
 
 ---
@@ -44,12 +46,10 @@ python scripts/check-agent-instructions.py
 
 This project is governed by binding repository instructions in `.github/instructions/`. Every contributor and agent must understand:
 
-- **[01-doctrine.md](../.github/instructions/01-doctrine.md)** — The 7 Immutable Laws
-- **[02-forbidden-behaviors.md](../.github/instructions/02-forbidden-behaviors.md)** — rejection-level anti-patterns
-- **[03-traceability.md](../.github/instructions/03-traceability.md)** — required evidence and verification
-- **[04-AICtx-integration.md](../.github/instructions/04-AICtx-integration.md)** — AICtx integration rules
-- **[05-documentation-integrity.md](../.github/instructions/05-documentation-integrity.md)** — documentation drift rules
-- **[06-tooling-and-verification.md](../.github/instructions/06-tooling-and-verification.md)** — canonical validation rules
+- **[README.md](../.github/instructions/README.md)** — instruction set overview and read order
+- **[00-instruction-priority.md](../.github/instructions/00-instruction-priority.md)** — precedence rules
+- **[01-doctrine.md](../.github/instructions/01-doctrine.md)** — repository baseline and architectural boundaries
+- **[02-forbidden-behaviors.md](../.github/instructions/02-forbidden-behaviors.md)** — minimal working rules and validation expectations
 
 ### Context Preamble for AI Agents
 
@@ -193,18 +193,18 @@ python scripts/check-agent-instructions.py
 - All tool calls go through `core.tool_protocol`
 - All provider access goes through `providers.base`
 - All workflow execution goes through `workflows.base.Workflow`
-- All runs produce full artifact sets in `.ai-team/runs/<run-id>/`
+- Runs write to `.ai-team/runs/<run-id>/`, but artifact sets vary by workflow/runtime
 - All events are append-only in the ledger
 
 ### Import Rules
 
 | Module | May Import From | May NOT Import From |
 |--------|----------------|-------------------|
-| `core/` | `core.*`, `providers.base`, `tools.base`, `workflows.base`, `memory.base` | Any concrete implementation |
-| `workflows/` | `core.public_api`, `workflows.base` | `core.*` internals, provider implementations |
-| `providers/` | `providers.base`, `core.types` | Other provider adapters |
-| `tools/` | `core.public_api`, `tools.base` | Other tool implementations |
-| `interfaces/` | `core.public_api` ONLY | Any `core.*` internal module |
+| `core/` | `core.*`, `providers.base`, `workflows.base` | Concrete providers, workflow packs, tool implementations, AICtx implementation logic |
+| `workflows/` | `core.public_api`, `workflows.base` | Concrete provider adapters |
+| `providers/` | `providers.base` | Unnecessary coupling to sibling provider adapters |
+| `tools/` | `core.tool_protocol`, `core.public_api` | Unreviewed cross-tool coupling |
+| `interfaces/` | Prefer `core.public_api` | New direct imports of unstable `core.*` internals without justification |
 
 ### Testing
 
@@ -236,7 +236,7 @@ python scripts/check-agent-instructions.py
 ## Governed Development
 
 **Rules:**
-- Preserve the 7 Immutable Laws in `.github/instructions/01-doctrine.md`
+- Preserve the repository boundaries in `.github/instructions/01-doctrine.md`
 - Do NOT add concrete provider, workflow, tool, or AICtx implementation details to `core/`
 - Do NOT modify unrelated subsystems without explaining the cross-boundary impact
 - Do NOT leave docs, tests, or agent instructions stale after behavior changes
@@ -259,12 +259,10 @@ Do not change governance by editing only prose in a downstream doc.
 
 If your change touches multiple subsystems:
 
-1. Create an RFC in `docs/rfc/` describing the change and cross-boundary impact
-2. Get Architecture Lead review
-3. Get approval from ALL affected subsystem owners
-4. Implement in a feature branch
-5. All integration tests must pass
-6. Architecture Lead performs final merge
+1. Describe the cross-boundary impact in the PR or issue
+2. Keep subsystem-owner implications explicit
+3. Run the integration tests relevant to the touched boundaries
+4. Update docs and instructions in the same change
 
 ---
 
@@ -272,5 +270,5 @@ If your change touches multiple subsystems:
 
 - [Architecture](ARCHITECTURE.md) — system design and module overview
 - [Development & Testing](DEV_TESTING.md) — complete test reference
-- [Project Doctrine](../.github/instructions/01-doctrine.md) — immutable laws
-- [Forbidden Behaviors](../.github/instructions/02-forbidden-behaviors.md) — merge-blocking anti-patterns
+- [Repository Baseline](../.github/instructions/01-doctrine.md) — architectural boundaries
+- [Working Rules](../.github/instructions/02-forbidden-behaviors.md) — editing and verification rules
