@@ -74,6 +74,9 @@ from core.run_summary import (
 from core.run_summary import build_live_run_summary as build_live_run_summary
 from core.run_summary import build_run_summary as build_run_summary
 from core.run_summary import resolve_run_id as resolve_run_id
+from core.run_view import RunView as RunView
+from core.run_view import build_run_view as build_run_view
+from core.run_view import list_run_views as list_run_views
 
 # ─── Error classification & retry ───────────────────────────────────
 from core.error_classification import ErrorCategory as ErrorCategory
@@ -277,6 +280,10 @@ __all__ = [
     "build_live_run_summary",
     "build_run_summary",
     "resolve_run_id",
+    # Run view
+    "RunView",
+    "build_run_view",
+    "list_run_views",
     # Error / retry
     "ErrorCategory",
     "classify_error",

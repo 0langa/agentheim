@@ -32,6 +32,7 @@ from core.public_api import (
     build_run_summary,
     build_model_registry,
     interface_policy_config,
+    list_run_views,
     ResumeOrchestrator,
     ToolRegistry,
     WorkflowRunner,
@@ -376,14 +377,39 @@ def run(
 @app.command("list-runs", rich_help_panel="Repository Work")
 def list_runs_cmd(
     repo: str = typer.Option(..., "--repo", help="Target repository path."),
+    as_json: bool = typer.Option(False, "--json", help="Emit JSON output."),
 ) -> None:
     """List persisted runs under the repository."""
-    runs = list_runs(repo)
-    if not runs:
+    views = list_run_views(repo)
+    if not views:
         console.print("No runs found.")
         return
-    for item in runs:
-        console.print(f"- {item}")
+
+    if as_json:
+        console.print_json(json.dumps([v.model_dump(mode="json") for v in views]))
+        return
+
+    table = Table(title="Runs")
+    table.add_column("Run ID", style="green")
+    table.add_column("Status")
+    table.add_column("Summary")
+    table.add_column("Resume")
+    for view in views:
+        resume = "yes" if view.resume_available else "no"
+        status_color = {
+            "completed": "[green]",
+            "failed": "[red]",
+            "blocked": "[yellow]",
+            "running": "[cyan]",
+            "pending": "[dim]",
+        }.get(view.status, "")
+        table.add_row(
+            view.run_id,
+            f"{status_color}{view.status}[/]{status_color}" if status_color else view.status,
+            view.summary[:40] + "..." if len(view.summary) > 40 else view.summary,
+            resume,
+        )
+    console.print(table)
 
 
 @app.command("report", rich_help_panel="Repository Work")
