@@ -21,7 +21,10 @@ from config.config import (
     provider_account_from_template,
     save_profiles_document,
 )
-from core.public_api import ConfigError, RunView, list_run_views
+from core.public_api import ConfigError, RunExecutor, RunStatus, RunView, list_run_views
+from interfaces.run_hooks import register_default_run_hooks
+from presets.base import PRESET_REGISTRY, PresetInputError
+from presets.catalog import CATALOG, PresetCatalogItem, QuestionSchema
 from interfaces.readiness import ReadinessState, build_readiness_state
 
 
@@ -91,6 +94,20 @@ _RECOMMENDED_PRESET_ROLES = [
     ModelRole.TESTER,
     ModelRole.SUMMARIZER,
 ]
+_TASK_ID_TO_PRESET_ID = {
+    "code": "codebase-assistant",
+    "docs-chat": "local-document-chat",
+    "command": "command-assistant",
+    "context": "context-maintainer",
+    "research": "research-report",
+    "docs-maintain": "docs-maintainer",
+    "organize-files": "file-organizer",
+    "github": "github-maintainer",
+}
+_RECOMMENDED_TASK_IDS = ["code", "docs-chat", "command", "context"]
+
+_RUN_EXECUTOR = RunExecutor()
+register_default_run_hooks(_RUN_EXECUTOR)
 
 
 @dataclass(slots=True)
@@ -235,6 +252,82 @@ def _render_status_text(payload: dict[str, Any]) -> None:
         console.print(action)
 
 
+def _parse_input_args(input_args: list[str]) -> dict[str, Any]:
+    inputs: dict[str, Any] = {}
+    for arg in input_args:
+        if "=" not in arg:
+            raise typer.BadParameter(f"Input must be key=value: {arg}")
+        key, value = arg.split("=", 1)
+        lower = value.lower()
+        if lower == "true":
+            inputs[key] = True
+        elif lower == "false":
+            inputs[key] = False
+        else:
+            inputs[key] = value
+    return inputs
+
+
+def _task_catalog_item(task_id: str) -> PresetCatalogItem:
+    preset_id = _TASK_ID_TO_PRESET_ID.get(task_id)
+    if preset_id is None:
+        supported = ", ".join(_TASK_ID_TO_PRESET_ID)
+        raise typer.BadParameter(f"Unsupported task '{task_id}'. Supported: {supported}")
+    return CATALOG.get(preset_id)
+
+
+def _prompt_for_task() -> str:
+    console.print("Recommended tasks:")
+    for task_id in _RECOMMENDED_TASK_IDS:
+        item = _task_catalog_item(task_id)
+        console.print(f"- {task_id}: {item.name} — {item.description}")
+    console.print("Advanced tasks:")
+    for task_id, preset_id in _TASK_ID_TO_PRESET_ID.items():
+        if task_id in _RECOMMENDED_TASK_IDS:
+            continue
+        item = CATALOG.get(preset_id)
+        console.print(f"- {task_id}: {item.name} — {item.description}")
+    return typer.prompt("Task ID", default="code").strip().lower()
+
+
+def _collect_missing_inputs(item: PresetCatalogItem, provided: dict[str, Any], yes: bool) -> dict[str, Any]:
+    inputs = dict(provided)
+    for question in item.questions:
+        if inputs.get(question.key) not in (None, ""):
+            continue
+        if yes:
+            continue
+        prompt_default = question.default if question.default is not None else None
+        if question.type == "confirm":
+            inputs[question.key] = typer.confirm(question.text, default=bool(prompt_default))
+        else:
+            inputs[question.key] = typer.prompt(question.text, default=prompt_default)
+    return inputs
+
+
+def _run_submission_payload(run_id: str, repo_root: Path) -> dict[str, Any]:
+    record = _RUN_EXECUTOR.get(run_id)
+    artifact_dir = str((repo_root / ".ai-team" / "runs" / run_id).resolve())
+    report_path = str((repo_root / ".ai-team" / "runs" / run_id / "final_report.md").resolve())
+    return {
+        "run_id": run_id,
+        "status": (record.status.value if record else RunStatus.PENDING.value),
+        "report_path": report_path,
+        "artifact_dir": artifact_dir,
+        "next_action": f"agentheim runs show {run_id}",
+    }
+
+
+def _render_use_text(task_id: str, item: PresetCatalogItem, payload: dict[str, Any]) -> None:
+    console.print(f"task: {task_id}")
+    console.print(f"preset: {item.preset_id}")
+    console.print(f"run id: {payload['run_id']}")
+    console.print(f"status: {payload['status']}")
+    console.print(f"report path: {payload['report_path']}")
+    console.print(f"artifact folder: {payload['artifact_dir']}")
+    console.print(payload["next_action"])
+
+
 @product_app.command("setup", rich_help_panel="Getting Started")
 def setup_cmd(
     provider: str | None = typer.Option(None, "--provider", help="Beginner provider choice."),
@@ -332,3 +425,38 @@ def status_cmd(
         console.print_json(json.dumps(payload))
         return
     _render_status_text(payload)
+
+
+@product_app.command("use", rich_help_panel="Getting Started")
+def use_cmd(
+    task_id: str | None = typer.Argument(None, help="Task ID to run."),
+    input_args: list[str] = typer.Option([], "--input", help="Key=value input pairs."),
+    repo: Path = typer.Option(Path.cwd(), "--repo", help="Repository root for the task."),
+    as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+    yes: bool = typer.Option(False, "--yes", help="Accept defaults without interactive prompts."),
+) -> None:
+    """Launch a task by plain-language goal or direct task ID."""
+    selected_task_id = (task_id or _prompt_for_task()).strip().lower()
+    item = _task_catalog_item(selected_task_id)
+    preset = PRESET_REGISTRY.get(item.preset_id)
+
+    inputs = _parse_input_args(input_args)
+    if "repo" not in inputs:
+        inputs["repo"] = str(repo.resolve())
+    if "project_path" not in inputs and item.preset_id == "context-maintainer":
+        inputs["project_path"] = str(repo.resolve())
+
+    inputs = _collect_missing_inputs(item, inputs, yes)
+    try:
+        validated_inputs = preset.validate_inputs(inputs)
+    except PresetInputError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    run_id = _RUN_EXECUTOR.submit(preset.run, validated_inputs)
+    payload = _run_submission_payload(run_id, repo.resolve())
+    payload.update({"task_id": selected_task_id, "preset_id": item.preset_id})
+
+    if as_json:
+        console.print_json(json.dumps(payload))
+        return
+    _render_use_text(selected_task_id, item, payload)
