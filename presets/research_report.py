@@ -19,6 +19,15 @@ class ResearchReportPreset(Preset):
             default_config={},
             support_state="beta",
             required_capabilities=["web_search", "fetch", "summarize", "report"],
+            product_tier="advanced",
+            recommended_for=["research synthesis", "competitive analysis", "topic exploration"],
+            requires_integrations=["web_search"],
+            estimated_time="5-15 minutes",
+            output_kind="markdown report",
+            example_inputs={
+                "topic": "Latest developments in LLM agent frameworks",
+                "repo": ".",
+            },
         )
 
     def run(self, inputs: dict[str, Any]) -> Any:

@@ -20,6 +20,15 @@ class FileOrganizerPreset(Preset):
             default_config={"dry_run": True},
             support_state="beta",
             required_capabilities=["file_read", "plan"],
+            product_tier="advanced",
+            recommended_for=["directory cleanup", "file restructuring", "naming conventions"],
+            estimated_time="2-10 minutes",
+            output_kind="move plan + preview",
+            example_inputs={
+                "goal": "Organize downloads by year and file type",
+                "target_dir": ".",
+                "dry_run": True,
+            },
         )
 
     def run(self, inputs: dict[str, Any]) -> Any:

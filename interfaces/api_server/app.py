@@ -47,6 +47,7 @@ from interfaces.api_server.auth import verify_api_key
 from interfaces.api_server.rate_limit import RateLimiter
 from interfaces.tool_approval import InterfaceApprovalStore
 from presets.base import PresetInputError
+from presets.catalog import CATALOG, QuestionSchema
 
 from agentheim.context_ops_impl import AictxContextOps
 from agentheim.vendor.aictx.config import AictxConfig
@@ -116,8 +117,19 @@ class WorkflowExecuteRequest(BaseModel):
 
 class PresetListItem(BaseModel):
     preset_id: str
+    workflow_id: str
     name: str
     description: str
+    support_state: str = "unknown"
+    product_tier: str = "advanced"
+    recommended_for: list[str] = Field(default_factory=list)
+    requires_integrations: list[str] = Field(default_factory=list)
+    estimated_time: str = ""
+    output_kind: str = ""
+    example_inputs: dict[str, Any] = Field(default_factory=dict)
+    required_capabilities: list[str] = Field(default_factory=list)
+    questions: list[QuestionSchema] = Field(default_factory=list)
+    default_config: dict[str, Any] = Field(default_factory=dict)
 
 
 class PresetRunRequest(BaseModel):
@@ -651,16 +663,7 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
     @app.get("/api/presets", response_model=list[PresetListItem], tags=["presets"])
     def list_presets() -> list[PresetListItem]:
         """List available presets."""
-        from presets import PRESET_REGISTRY
-
-        return [
-            PresetListItem(
-                preset_id=p.preset_id,
-                name=getattr(p, "name", p.preset_id) or p.preset_id,
-                description=getattr(p, "description", "") or "",
-            )
-            for p in PRESET_REGISTRY.list()
-        ]
+        return CATALOG.list()
 
     @app.post(
         "/api/presets/{preset_id}/run",

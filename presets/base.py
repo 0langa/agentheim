@@ -43,6 +43,12 @@ class Preset:
     default_config: dict[str, Any] = field(default_factory=dict)
     support_state: str = "experimental"
     required_capabilities: list[str] = field(default_factory=list)
+    product_tier: str = "advanced"
+    recommended_for: list[str] = field(default_factory=list)
+    requires_integrations: list[str] = field(default_factory=list)
+    estimated_time: str = ""
+    output_kind: str = ""
+    example_inputs: dict[str, Any] = field(default_factory=dict)
 
     def validate_inputs(self, inputs: dict[str, Any] | None) -> dict[str, Any]:
         """Merge defaults and validate required guided inputs."""

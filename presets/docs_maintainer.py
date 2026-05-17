@@ -19,6 +19,14 @@ class DocsMaintainerPreset(Preset):
             default_config={"mode": "apply"},
             support_state="beta",
             required_capabilities=["file_read", "plan", "code_edit"],
+            product_tier="advanced",
+            recommended_for=["doc alignment", "stale doc detection", "README updates"],
+            estimated_time="2-10 minutes",
+            output_kind="patch + summary",
+            example_inputs={
+                "repo": ".",
+                "apply": True,
+            },
         )
 
     def run(self, inputs: dict[str, Any]) -> Any:

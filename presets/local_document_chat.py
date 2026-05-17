@@ -19,6 +19,14 @@ class LocalDocumentChatPreset(Preset):
             default_config={},
             support_state="stable_candidate",
             required_capabilities=["file_read", "search", "synthesize", "cite"],
+            product_tier="recommended",
+            recommended_for=["document Q&A", "knowledge base search", "research over local files"],
+            estimated_time="1-5 minutes",
+            output_kind="answer with citations",
+            example_inputs={
+                "query": "What does the authentication module do?",
+                "repo": ".",
+            },
         )
 
     def run(self, inputs: dict[str, Any]) -> Any:

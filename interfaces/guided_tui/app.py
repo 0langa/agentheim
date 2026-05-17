@@ -6,6 +6,7 @@ from rich.console import Console
 
 from presets import PRESET_REGISTRY
 from presets.base import PresetInputError, Question
+from presets.catalog import CATALOG
 from interfaces.guided_tui.picker import pick_preset
 from interfaces.guided_tui.questionnaire import run_questionnaire
 from interfaces.guided_tui.render import (
@@ -44,15 +45,13 @@ def run_guided_tui() -> None:
     print_header(console, "Agentheim")
     print_info(console, "Select a preset to get started.")
 
-    presets = PRESET_REGISTRY.list()
+    presets = CATALOG.list()
     selected = pick_preset(console, presets)
     if selected is None:
         print_info(console, "Goodbye!")
         return
 
-    # selected is a Preset object from PRESET_REGISTRY.list()
-    # but pick_preset expects RegistryEntry; we adapt here
-    preset = selected
+    preset = PRESET_REGISTRY.get(selected.preset_id)
 
     console.print()
     print_success(console, f"Selected: {preset.name}")

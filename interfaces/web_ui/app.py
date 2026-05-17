@@ -32,6 +32,7 @@ from agentheim.vendor.aictx.config import AictxConfig
 from agentheim.vendor.aictx.errors import SafetyError
 from interfaces.tool_approval import InterfaceApprovalStore
 from presets.base import PresetInputError
+from presets.catalog import CATALOG, QuestionSchema
 
 
 # ------------------------------------------------------------------
@@ -84,10 +85,19 @@ class WorkflowListItem(BaseModel):
 
 class PresetListItem(BaseModel):
     preset_id: str
+    workflow_id: str
     name: str
     description: str
     support_state: str = "unknown"
-    questions: list[dict[str, Any]] = Field(default_factory=list)
+    product_tier: str = "advanced"
+    recommended_for: list[str] = Field(default_factory=list)
+    requires_integrations: list[str] = Field(default_factory=list)
+    estimated_time: str = ""
+    output_kind: str = ""
+    example_inputs: dict[str, Any] = Field(default_factory=dict)
+    required_capabilities: list[str] = Field(default_factory=list)
+    questions: list[QuestionSchema] = Field(default_factory=list)
+    default_config: dict[str, Any] = Field(default_factory=dict)
 
 
 class ExecuteRequest(BaseModel):
@@ -379,18 +389,7 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
     @app.get("/api/presets", response_model=list[PresetListItem])
     def list_presets() -> list[PresetListItem]:
         """List available presets."""
-        from presets import PRESET_REGISTRY
-
-        return [
-            PresetListItem(
-                preset_id=p.preset_id,
-                name=getattr(p, "name", p.preset_id) or p.preset_id,
-                description=getattr(p, "description", "") or "",
-                support_state=getattr(p, "support_state", "unknown"),
-                questions=[q.__dict__ for q in getattr(p, "guided_questions", [])],
-            )
-            for p in PRESET_REGISTRY.list()
-        ]
+        return CATALOG.list()
 
     @app.get("/api/providers/templates", response_model=list[ProviderTemplateItem])
     def provider_templates() -> list[ProviderTemplateItem]:

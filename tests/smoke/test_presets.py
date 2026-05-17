@@ -95,3 +95,13 @@ class TestPresetRegistry:
     def test_command_assistant_preset(self) -> None:
         preset = PRESET_REGISTRY.get("command-assistant")
         assert preset.workflow_id == "command_assistant"
+
+    def test_preset_product_tiers(self) -> None:
+        recommended = {"codebase-assistant", "local-document-chat", "command-assistant", "context-maintainer"}
+        advanced = {"research-report", "docs-maintainer", "file-organizer", "github-maintainer"}
+        for preset_id in recommended:
+            preset = PRESET_REGISTRY.get(preset_id)
+            assert preset.product_tier == "recommended", f"Expected {preset_id} to be recommended"
+        for preset_id in advanced:
+            preset = PRESET_REGISTRY.get(preset_id)
+            assert preset.product_tier == "advanced", f"Expected {preset_id} to be advanced"

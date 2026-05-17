@@ -21,6 +21,16 @@ class CodebaseAssistantPreset(Preset):
             default_config={"mode": "apply", "allow_dirty": False},
             support_state="stable_candidate",
             required_capabilities=["plan", "code_edit", "verify"],
+            product_tier="recommended",
+            recommended_for=["code review", "refactoring", "bug fixing", "feature implementation"],
+            estimated_time="2-10 minutes",
+            output_kind="patch + report",
+            example_inputs={
+                "task": "Refactor auth module to use dependency injection",
+                "repo": ".",
+                "mode": "apply",
+                "allow_dirty": False,
+            },
         )
 
     def run(self, inputs: dict[str, Any]) -> Any:

@@ -46,6 +46,7 @@ from interfaces.readiness import ReadinessStatus, build_readiness_state
 from memory.tiers.global_ import GlobalMemory
 from presets import PRESET_REGISTRY
 from presets.base import PresetInputError
+from presets.catalog import CATALOG, PresetCatalogItem
 from providers.base import ModelRequest
 from tools.mcp.client import MCPClient
 from tools.mcp.config import load_mcp_config
@@ -476,17 +477,25 @@ def resume(
 @app.command("presets", rich_help_panel="Presets")
 def list_presets_cmd() -> None:
     """List all available presets."""
-    presets = PRESET_REGISTRY.list()
-    if not presets:
+    items = CATALOG.list()
+    if not items:
         console.print("No presets found.")
         return
     table = Table(title="Available Presets")
     table.add_column("ID", style="green")
     table.add_column("Name")
+    table.add_column("Tier")
     table.add_column("Workflow")
     table.add_column("Description")
-    for preset in presets:
-        table.add_row(preset.preset_id, preset.name, preset.workflow_id, preset.description)
+    for item in items:
+        tier_style = "bold cyan" if item.product_tier == "recommended" else "dim"
+        table.add_row(
+            item.preset_id,
+            item.name,
+            f"[{tier_style}]{item.product_tier}[/{tier_style}]",
+            item.workflow_id,
+            item.description,
+        )
     console.print(table)
 
 

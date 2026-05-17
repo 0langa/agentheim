@@ -37,6 +37,15 @@ class ContextMaintainerPreset(Preset):
             default_config={"scope": "full", "write_mode": "patch", "project_path": "."},
             support_state="stable_candidate",
             required_capabilities=[],
+            product_tier="recommended",
+            recommended_for=["context freshness", "repo scanning", "generated context updates"],
+            estimated_time="1-5 minutes",
+            output_kind="context artifacts",
+            example_inputs={
+                "scope": "full",
+                "write_mode": "patch",
+                "project_path": ".",
+            },
         )
 
     def run(self, inputs: dict[str, Any]) -> Any:

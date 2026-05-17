@@ -20,6 +20,15 @@ class GitHubMaintainerPreset(Preset):
             default_config={},
             support_state="beta",
             required_capabilities=["summarize", "report"],
+            product_tier="advanced",
+            recommended_for=["issue summaries", "PR descriptions", "release notes"],
+            requires_integrations=["github"],
+            estimated_time="2-5 minutes",
+            output_kind="markdown summary",
+            example_inputs={
+                "issues_text": "path/to/issues.md",
+                "summary_only": False,
+            },
         )
 
     def run(self, inputs: dict[str, Any]) -> Any:
