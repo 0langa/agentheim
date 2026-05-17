@@ -191,6 +191,8 @@ def _render_text_result(payload: dict[str, Any], readiness: ReadinessState) -> N
     console.print(f"profile: {payload['profile']}")
     console.print(f"provider: {payload['provider']}")
     console.print(f"model: {payload['model']}")
+    if "privacy_mode" in payload:
+        console.print(f"privacy mode: {payload['privacy_mode']}")
     console.print(f"readiness: {readiness.status.value}")
     for action in payload["next_actions"]:
         console.print(action)
@@ -211,6 +213,7 @@ def _status_payload(profile: str | None, repo_root: Path) -> dict[str, Any]:
     return {
         "status": readiness.status.value,
         "profile": active_profile,
+        "privacy_mode": readiness.privacy_mode,
         "repo": str(repo_root),
         "readiness": readiness.model_dump(mode="json"),
         "provider_readiness": [provider.model_dump(mode="json") for provider in readiness.configured_providers],
@@ -225,6 +228,7 @@ def _render_status_text(payload: dict[str, Any]) -> None:
     readiness = payload["readiness"]
     console.print(f"status: {payload['status']}")
     console.print(f"profile: {payload['profile']}")
+    console.print(f"privacy mode: {payload.get('privacy_mode', 'standard')}")
     console.print(f"repo: {payload['repo']}")
     console.print(f"provider readiness: {readiness['status']}")
     if payload["missing_roles"]:
@@ -432,6 +436,7 @@ def setup_cmd(
     yes: bool = typer.Option(False, "--yes", help="Accept prompts and confirmations."),
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Show planned changes without writing."),
+    privacy_mode: str = typer.Option("standard", "--privacy-mode", help="Privacy mode: standard, local-only, strict-private."),
 ) -> None:
     """Configure one beginner provider, bind roles, and run readiness checks."""
     provider_name = provider
@@ -476,6 +481,7 @@ def setup_cmd(
     if not dry_run:
         document = _load_or_new()
         profile_obj = _profile(document, profile)
+        profile_obj.privacy_mode = privacy_mode
         if store_secret and plan.secret_ref:
             get_secret_store().set(plan.secret_ref, secret_value or "")
         elif not needs_secret:
@@ -492,6 +498,7 @@ def setup_cmd(
         "profile": profile,
         "provider": provider_name,
         "model": model_name,
+        "privacy_mode": privacy_mode,
         "readiness": readiness.model_dump(mode="json"),
         "next_actions": [
             "Next: agentheim status",
@@ -504,15 +511,36 @@ def setup_cmd(
     _render_text_result(payload, readiness)
 
 
+def _build_debug_bundle(repo_root: Path, profile: str | None) -> dict[str, Any]:
+    from core.public_api import redact_dict
+
+    readiness = build_readiness_state(profile=profile)
+    recent_runs = _recent_runs(repo_root)
+    bundle = {
+        "readiness": redact_dict(readiness.model_dump(mode="json")),
+        "recent_runs": [redact_dict(run.model_dump(mode="json")) for run in recent_runs],
+        "optional_integrations": [redact_dict(integration.model_dump(mode="json")) for integration in readiness.optional_integrations],
+    }
+    return bundle
+
+
 @product_app.command("status", rich_help_panel="Getting Started")
 def status_cmd(
     profile: str | None = typer.Option(None, "--profile", help="Profile name override."),
     repo: Path = typer.Option(Path.cwd(), "--repo", help="Repository root for recent run lookup."),
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+    debug_bundle: bool = typer.Option(False, "--debug-bundle", help="Write a redacted diagnostic bundle."),
 ) -> None:
     """Show provider readiness, integrations, recent runs, and next actions."""
     repo_root = repo.resolve()
     payload = _status_payload(profile, repo_root)
+    if debug_bundle:
+        bundle = _build_debug_bundle(repo_root, profile)
+        bundle_path = repo_root / ".ai-team" / "debug-bundle.json"
+        bundle_path.parent.mkdir(parents=True, exist_ok=True)
+        bundle_path.write_text(json.dumps(bundle, indent=2), encoding="utf-8")
+        console.print(f"Debug bundle written to: {bundle_path}")
+        return
     if as_json:
         console.print_json(json.dumps(payload))
         return

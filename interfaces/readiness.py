@@ -59,6 +59,7 @@ class ReadinessState(BaseModel):
     local_reachability_detail: str = ""
     model_connectivity_ok: bool | None = None
     model_connectivity_detail: str = ""
+    privacy_mode: str = "standard"
 
 
 _REQUIRED_ROLES = (ModelRole.PLANNER, ModelRole.EXECUTOR, ModelRole.VERIFIER)
@@ -422,5 +423,6 @@ def build_readiness_state(
     state.local_reachability_detail = local_detail
     state.model_connectivity_ok = model_conn_ok
     state.model_connectivity_detail = model_conn_detail
+    state.privacy_mode = config.privacy_mode
 
     return state

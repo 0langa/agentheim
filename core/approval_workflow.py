@@ -29,6 +29,18 @@ from core.redaction import redact_dict
 from core.tool_protocol import RiskLevel
 
 
+def _policy_explanation(risk_level: RiskLevel) -> str:
+    """Return a human-readable policy explanation for the given risk level."""
+    explanations = {
+        RiskLevel.NONE: "No risk. Operation is safe and does not require approval.",
+        RiskLevel.LOW: "Low risk. Read-only or non-destructive operation.",
+        RiskLevel.MEDIUM: "Medium risk. This operation can modify files or execute commands. Review the target and parameters before approving.",
+        RiskLevel.HIGH: "High risk. This operation can cause significant changes or access sensitive resources. Explicit approval is required.",
+        RiskLevel.CRITICAL: "Critical risk. This operation can cause irreversible damage or expose secrets. Maximum scrutiny is required.",
+    }
+    return explanations.get(risk_level, "Review carefully.")
+
+
 @dataclass(frozen=True)
 class ApprovalRequest:
     """Structured approval request with 6-field disclosure.
@@ -62,6 +74,7 @@ class ApprovalRequest:
         target = params.get(
             "path", params.get("url", params.get("command", tool_id))
         )
+        explanation = _policy_explanation(decision.risk_level)
         return cls(
             request_id=str(uuid4()),
             tool_id=tool_id,
@@ -71,6 +84,7 @@ class ApprovalRequest:
             justification=(
                 f"{decision.reason}"
                 f" | Suggested: {decision.suggested_approval or 'Review carefully'}"
+                f" | Policy: {explanation}"
             ),
             params_redacted=redact_dict(params),
             timestamp=datetime.now(timezone.utc).isoformat(),

@@ -146,6 +146,7 @@ class TeamConfig(BaseModel):
     providers: dict[str, ProviderConfig]
     models: dict[str, ModelConfig]
     profile_name: str = "default"
+    privacy_mode: str = "standard"
 
     def resolve_role(self, role: ModelRole) -> AgentModelConfig:
         by_role = [model for model in self.models.values() if model.role is role]
@@ -200,7 +201,7 @@ class TeamConfig(BaseModel):
             mid: (model.redacted_dict() if redacted else model.model_dump())
             for mid, model in self.models.items()
         }
-        return {"profile_name": self.profile_name, "providers": providers, "models": models}
+        return {"profile_name": self.profile_name, "privacy_mode": self.privacy_mode, "providers": providers, "models": models}
 
 
 class ProviderAccount(BaseModel):
@@ -233,6 +234,7 @@ class TeamProfile(BaseModel):
     name: str = Field(min_length=1)
     providers: dict[str, ProviderAccount] = Field(default_factory=dict)
     models: dict[str, ModelBinding] = Field(default_factory=dict)
+    privacy_mode: str = Field(default="standard")
 
     @model_validator(mode="after")
     def _validate_refs(self) -> "TeamProfile":
@@ -266,7 +268,7 @@ class TeamProfile(BaseModel):
             )
             for mid, model in self.models.items()
         }
-        return TeamConfig(providers=providers, models=models, profile_name=self.name)
+        return TeamConfig(providers=providers, models=models, profile_name=self.name, privacy_mode=self.privacy_mode)
 
 
 class ProfilesDocument(BaseModel):
