@@ -29,6 +29,7 @@ Agentheim lets you run multi-agent workflows on your own machine with policy-gat
 | [CLI Commands](docs/CLI-COMMANDS.md) | Current CLI command surface derived from code |
 | [Architecture](docs/ARCHITECTURE.md) | System design, modules, and boundaries |
 | [API Reference](docs/API_REFERENCE.md) | REST API and streaming routes |
+| [V1 Roadmap](docs/ROADMAP.md) | Product roadmap based on the current tracked codebase |
 | [Safety & Security](docs/SAFETY.md) | Privacy modes, approval gates, and security model |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and recovery steps |
 | [Changelog](docs/CHANGELOG.md) | Release history |

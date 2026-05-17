@@ -7,6 +7,7 @@ Public documentation for the Agentheim product surface.
 | [User Guide](USER_GUIDE.md) | Installation, configuration, presets, and daily usage |
 | [CLI Commands](CLI-COMMANDS.md) | Current command surface grounded in the code |
 | [API Reference](API_REFERENCE.md) | REST API endpoints, request shapes, and streaming routes |
+| [V1 Roadmap](ROADMAP.md) | Product roadmap grounded in the current tracked codebase |
 | [Safety & Security](SAFETY.md) | Privacy modes, approval gates, threat model, and reporting |
 | [Troubleshooting](TROUBLESHOOTING.md) | Common issues, diagnostics, and recovery steps |
 | [Architecture](ARCHITECTURE.md) | High-level system design and code boundaries |
@@ -21,6 +22,7 @@ docs/
 ├── CLI-COMMANDS.md    # Current CLI command surface
 ├── ARCHITECTURE.md    # System design and module boundaries
 ├── API_REFERENCE.md   # REST API endpoints and integration
+├── ROADMAP.md         # Product roadmap
 ├── SAFETY.md          # Security model, privacy, threat reporting
 ├── TROUBLESHOOTING.md # Common problems and solutions
 └── CHANGELOG.md       # Release history
