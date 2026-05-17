@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+import platform
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -144,8 +145,16 @@ class TestMCPClient:
         mock_proc.stdout.close.assert_called_once()
         mock_proc.stderr.close.assert_called_once()
         mock_proc.terminate.assert_called_once()
-        mock_proc.wait.assert_called_once_with(timeout=3.0)
-        mock_kill_tree.assert_called_once_with(1234)
+        if platform.system() == "Windows":
+            mock_proc.wait.assert_called_once_with(timeout=3.0)
+            mock_kill_tree.assert_called_once_with(1234)
+        else:
+            assert mock_proc.wait.call_args_list == [
+                call(timeout=3.0),
+                call(timeout=2.0),
+            ]
+            mock_proc.kill.assert_called_once()
+            mock_kill_tree.assert_not_called()
         assert client._proc is None
 
     def test_list_tools_and_call_tool_mocked(self) -> None:

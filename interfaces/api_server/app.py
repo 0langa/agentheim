@@ -912,6 +912,8 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
                 for model in registry.list_models()
             ]
         except (ConfigError, ValueError) as exc:
+            if "No Agentheim provider profile found" in str(exc):
+                return []
             raise HTTPException(status_code=400, detail=f"Invalid provider configuration: {exc}") from exc
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"Failed to list models: {exc}") from exc

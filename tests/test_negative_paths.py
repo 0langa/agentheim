@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -60,6 +61,7 @@ class TestCodingRuntimeNegative:
         from workflows.coding.runtime import plan_task, PlanningError
 
         with (
+            patch("workflows.coding.runtime.load_team_config", return_value=SimpleNamespace(models={})),
             patch(
                 "workflows.coding.runtime.create_orchestrator_agent"
             ) as mock_create,
@@ -97,7 +99,10 @@ class TestCodingRuntimeNegative:
         subprocess.run(["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True)
         (tmp_path / "dirty.txt").write_text("dirty")
 
-        with pytest.raises(ExecutionError) as exc_info:
+        with (
+            patch("workflows.coding.runtime.load_team_config", return_value=SimpleNamespace(models={})),
+            pytest.raises(ExecutionError) as exc_info,
+        ):
             run_task("test", tmp_path)
         assert "uncommitted changes" in str(exc_info.value).lower()
 
@@ -111,7 +116,11 @@ class TestCodingRuntimeNegative:
         subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=tmp_path, capture_output=True)
         (tmp_path / "dirty.txt").write_text("x")
 
-        with patch("workflows.coding.runtime.create_orchestrator_agent") as mock_create:
+        with (
+            patch("workflows.coding.runtime.load_team_config", return_value=SimpleNamespace(models={})),
+            patch("workflows.coding.runtime.create_orchestrator_agent") as mock_create,
+            patch("workflows.coding.runtime.create_verifier_agent", return_value=MagicMock()),
+        ):
             mock_agent = MagicMock()
             mock_agent.run_structured.return_value = MagicMock(
                 success=False, parsed_output=None, error="Planning failed", raw_output=""
@@ -137,9 +146,11 @@ class TestCodingRuntimeNegative:
         )
         subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=tmp_path, capture_output=True)
 
-        with patch(
-            "workflows.coding.runtime.create_orchestrator_agent"
-        ) as mock_create:
+        with (
+            patch("workflows.coding.runtime.load_team_config", return_value=SimpleNamespace(models={})),
+            patch("workflows.coding.runtime.create_orchestrator_agent") as mock_create,
+            patch("workflows.coding.runtime.create_verifier_agent", return_value=MagicMock()),
+        ):
             mock_agent = MagicMock()
             mock_agent.run_structured.return_value = MagicMock(
                 success=False, parsed_output=None, error="Planning failed", raw_output=""

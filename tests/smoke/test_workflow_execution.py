@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -138,13 +139,20 @@ class TestCommandAssistantWorkflowExecution:
 
     def test_command_assistant_run_task_unsafe_command(self, tmp_path: Path) -> None:
         from workflows.command_assistant.runtime import run_task
-        from workflows.command_assistant.agents.parser import ParserAgent
-        from workflows.command_assistant.agents.generator import GeneratorAgent
 
         unsafe_generate = {"command": ["rm", "-rf", "/"], "explanation": "dangerous", "safe": False}
+        parser = MagicMock()
+        parser.run_parse.return_value = MagicMock(success=True, parsed_output={"action": "run"})
+        generator = MagicMock()
+        generator.run_generate.return_value = MagicMock(
+            success=True,
+            parsed_output=unsafe_generate,
+            raw_output=json.dumps(unsafe_generate),
+        )
         with (
-            patch.object(ParserAgent, "run_parse", return_value=MagicMock(success=True, parsed_output={"action": "run"})),
-            patch.object(GeneratorAgent, "run_generate", return_value=MagicMock(success=True, parsed_output=unsafe_generate, raw_output=json.dumps(unsafe_generate))),
+            patch("workflows.command_assistant.runtime.load_team_config", return_value=SimpleNamespace(models={})),
+            patch("workflows.command_assistant.runtime.create_parser_agent", return_value=parser),
+            patch("workflows.command_assistant.runtime.create_generator_agent", return_value=generator),
             patch("workflows.command_assistant.runtime.RunLedger.create", return_value=MagicMock(run_dir=tmp_path, write_json=MagicMock(), write_text=MagicMock(), emit_event=MagicMock())),
         ):
             report, _ = run_task("delete everything", write_ledger=True)
@@ -155,10 +163,13 @@ class TestCommandAssistantWorkflowExecution:
 
     def test_command_assistant_run_task_parse_failure(self, tmp_path: Path) -> None:
         from workflows.command_assistant.runtime import run_task
-        from workflows.command_assistant.agents.parser import ParserAgent
 
+        parser = MagicMock()
+        parser.run_parse.return_value = MagicMock(success=False, parsed_output=None, error="parse error")
         with (
-            patch.object(ParserAgent, "run_parse", return_value=MagicMock(success=False, parsed_output=None, error="parse error")),
+            patch("workflows.command_assistant.runtime.load_team_config", return_value=SimpleNamespace(models={})),
+            patch("workflows.command_assistant.runtime.create_parser_agent", return_value=parser),
+            patch("workflows.command_assistant.runtime.create_generator_agent", return_value=MagicMock()),
             patch("workflows.command_assistant.runtime.RunLedger.create", return_value=MagicMock(run_dir=tmp_path, write_json=MagicMock(), write_text=MagicMock(), emit_event=MagicMock())),
         ):
             report, _ = run_task("bad input", write_ledger=True)

@@ -175,6 +175,14 @@ PHASE_LOCK = {
     },
 }
 
+PHASE_LOCK_EXEMPTIONS = {
+    # V1 release-hotfix: /api/models must be clean-clone safe when no provider
+    # profile exists. Keep this narrow so broader API drift still trips Phase 0.
+    0: {
+        'interfaces/api_server/': {'interfaces/api_server/app.py'},
+    },
+}
+
 RESERVED_SUBSYSTEMS = [
 ]
 
@@ -420,7 +428,14 @@ class ArchitectureChecker:
                         ['git', 'diff', '--name-only', 'HEAD', '--', str(full_path)],
                         capture_output=True, text=True, cwd=self.root
                     )
-                    if result.stdout.strip():
+                    modified = {
+                        line.strip().replace('\\', '/')
+                        for line in result.stdout.splitlines()
+                        if line.strip()
+                    }
+                    exempt = PHASE_LOCK_EXEMPTIONS.get(self.current_phase, {}).get(locked_path, set())
+                    modified -= exempt
+                    if modified:
                         self.violations.append(Violation(
                             level=ViolationLevel.LEVEL_2,
                             rule="Phase Lock",

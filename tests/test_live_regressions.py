@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
@@ -315,6 +316,7 @@ def test_command_assistant_run_writes_run_initiated_event(monkeypatch, tmp_path:
     fake_parse = MagicMock(success=True, parsed_output={"action": "list", "target": "files", "parameters": {}}, raw_output="{}")
     fake_generate = MagicMock(success=True, parsed_output={"command": ["Get-ChildItem"], "explanation": "ok", "safe": True}, error=None)
     monkeypatch.setattr("workflows.command_assistant.runtime.plan_task", lambda user_input: ({}, None))
+    monkeypatch.setattr("workflows.command_assistant.runtime.load_team_config", lambda: SimpleNamespace(models={}))
     monkeypatch.setattr("workflows.command_assistant.runtime.create_parser_agent", lambda registry: type("_P", (), {"run_parse": lambda self, text: fake_parse})())
     monkeypatch.setattr("workflows.command_assistant.runtime.create_generator_agent", lambda registry: type("_G", (), {"run_generate": lambda self, text: fake_generate})())
 

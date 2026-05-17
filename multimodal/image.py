@@ -90,6 +90,8 @@ class ImageTool(BaseTool):
 
         operation = params.get("operation")
         image_b64 = params.get("image_b64", "")
+        if operation not in {"describe", "ocr"}:
+            return ToolResult(success=False, error=f"Unknown operation: {operation}")
 
         try:
             processor = self._get_processor()
@@ -102,5 +104,4 @@ class ImageTool(BaseTool):
         except Exception as exc:
             logger.warning("Image analysis failed: %s", exc)
             return ToolResult(success=False, error=str(exc))
-
         return ToolResult(success=False, error=f"Unknown operation: {operation}")

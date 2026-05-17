@@ -49,12 +49,13 @@ jobs:
   scorecard:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       security-events: write
       id-token: write
     steps:
       - uses: actions/checkout@v4
       - name: Run Scorecard
-        uses: ossf/scorecard-action@v2
+        uses: ossf/scorecard-action@v2.4.3
         with:
           results_file: results.sarif
           results_format: sarif
