@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -90,6 +91,25 @@ class TestBuildArtifacts:
         wheels = list(tmp_path.glob("*.whl"))
         assert len(wheels) == 1
         assert wheels[0].name.startswith("agentheim-")
+
+    def test_wheel_includes_workflow_prompts(self, tmp_path: Path) -> None:
+        result = subprocess.run(
+            [sys.executable, "-m", "build", "--wheel", "--outdir", str(tmp_path)],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        wheel = next(tmp_path.glob("*.whl"))
+        with zipfile.ZipFile(wheel) as archive:
+            names = set(archive.namelist())
+        required_prompts = {
+            "workflows/command_assistant/prompts/parser/system.md",
+            "workflows/command_assistant/prompts/generator/system.md",
+            "workflows/coding/prompts/orchestrator/system.md",
+            "workflows/documents/prompts/answerer/system.md",
+            "workflows/research/prompts/reporter/system.md",
+        }
+        assert required_prompts.issubset(names)
 
     def test_sdist_builds(self, tmp_path: Path) -> None:
         result = subprocess.run(
