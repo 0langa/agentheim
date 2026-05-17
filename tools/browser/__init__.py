@@ -343,7 +343,7 @@ class BrowserTool(BaseTool):
     def _fetch_with_requests(self, url: str, timeout: int) -> tuple[int, str]:
         import requests
 
-        resp = requests.get(url, timeout=timeout, headers={"User-Agent": "AI-Team-BrowserTool/1.0"})
+        resp = requests.get(url, timeout=timeout, headers={"User-Agent": "AI-Team-BrowserTool/1.0"}, allow_redirects=False)
         return resp.status_code, resp.text
 
     def _fetch_with_urllib(self, url: str, timeout: int) -> tuple[int | None, str]:

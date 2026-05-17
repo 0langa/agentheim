@@ -15,12 +15,20 @@ SECRET_FILE_NAMES = {
     "appsettings.secrets.json",
 }
 
+_MAX_EXCERPT_SCAN = 20_000
+_MAX_SECRET_VALUE = 512
+
+
+def _compile_multiline_secret_pattern(label: str) -> re.Pattern[str]:
+    return re.compile(rf"(?is)-----BEGIN {label}-----[\s\S]{{1,{_MAX_EXCERPT_SCAN}}}?-----END {label}-----")
+
+
 SECRET_PATTERNS = [
-    re.compile(r"(?i)(api[_-]?key|token|password|secret)\s*[:=]\s*['\"]?([A-Za-z0-9_\-+/=]{8,}|[^\s'\"]{8,})"),
-    re.compile(r"(?i)(password\s*[:=]\s*)([^\s\n]+)"),
-    re.compile(r"(?i)(connection\s*string\s*[:=]\s*)([^\n]+)"),
-    re.compile(r"-----BEGIN [A-Z ]+PRIVATE KEY-----.*?-----END [A-Z ]+PRIVATE KEY-----", re.DOTALL),
-    re.compile(r"-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----", re.DOTALL),
+    re.compile(rf"(?i)(api[_-]?key|token|password|secret)(\s*[:=]\s*['\"]?)([^\s'\"\r\n]{{8,{_MAX_SECRET_VALUE}}})"),
+    re.compile(rf"(?i)(password)(\s*[:=]\s*)([^\s\r\n]{{1,{_MAX_SECRET_VALUE}}})"),
+    re.compile(rf"(?i)(connection\s*string)(\s*[:=]\s*)([^\r\n]{{1,{_MAX_SECRET_VALUE}}})"),
+    _compile_multiline_secret_pattern("[A-Z ]+PRIVATE KEY"),
+    _compile_multiline_secret_pattern("CERTIFICATE"),
 ]
 
 
@@ -32,9 +40,18 @@ def is_secret_file(path: Path) -> bool:
 
 
 def redact_text(text: str) -> str:
+    if len(text) > _MAX_EXCERPT_SCAN:
+        return "[REDACTED-LARGE-BLOB]"
     redacted = text
     for pattern in SECRET_PATTERNS:
-        redacted = pattern.sub(lambda match: f"{match.group(1) if match.lastindex else ''}[REDACTED]", redacted)
+        def _replace(match: re.Match[str]) -> str:
+            if match.lastindex and match.lastindex >= 3:
+                return f"{match.group(1)}{match.group(2)}[REDACTED]"
+            if match.lastindex:
+                return f"{match.group(1)}[REDACTED]"
+            return "[REDACTED]"
+
+        redacted = pattern.sub(_replace, redacted)
     return redacted
 
 

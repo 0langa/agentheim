@@ -107,7 +107,7 @@ class FederationClient:
 
         url = f"{self.peer_endpoint}{path}"
         try:
-            resp = requests.request(method, url, json=json, timeout=self.timeout)
+            resp = requests.request(method, url, json=json, timeout=self.timeout, allow_redirects=False)
             resp.raise_for_status()
             return resp.json()
         except requests.RequestException as exc:

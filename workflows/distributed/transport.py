@@ -35,7 +35,7 @@ class CoordinatorClient:
         url = f"{self.base_url}{path}"
         try:
             resp = requests.request(
-                method, url, json=json, timeout=self.timeout
+                method, url, json=json, timeout=self.timeout, allow_redirects=False
             )
             resp.raise_for_status()
             return resp.json()

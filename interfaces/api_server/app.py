@@ -365,12 +365,13 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
         openapi_url="/openapi.json",
     )
 
-    # CORS — default localhost-only; override via AGENTHEIM_CORS_ORIGINS env.
-    _cors_origins = os.getenv("AGENTHEIM_CORS_ORIGINS", "")
-    if _cors_origins:
-        allow_origins = [o.strip() for o in _cors_origins.split(",") if o.strip()]
-    else:
-        allow_origins = ["http://localhost", "http://127.0.0.1"]
+    # CORS — localhost-only for the local dashboard/API surface.
+    allow_origins = [
+        "http://localhost",
+        "http://127.0.0.1",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allow_origins,
