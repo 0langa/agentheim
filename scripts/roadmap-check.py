@@ -215,6 +215,26 @@ class ArchitectureChecker:
         self.current_phase = current_phase
         self.core_dir = root / 'core'
         self.violations: List[Violation] = []
+        self._tracked_files = self._load_tracked_files()
+
+    def _load_tracked_files(self) -> Optional[Set[str]]:
+        """Return git-tracked files, or None when git metadata is unavailable."""
+        try:
+            result = subprocess.run(
+                ['git', 'ls-files'],
+                capture_output=True,
+                text=True,
+                cwd=self.root,
+                check=True,
+            )
+        except (subprocess.SubprocessError, FileNotFoundError):
+            return None
+        return {line.strip().replace('\\', '/') for line in result.stdout.splitlines() if line.strip()}
+
+    def _is_tracked(self, rel_path: str | Path) -> bool:
+        if self._tracked_files is None:
+            return True
+        return str(rel_path).replace('\\', '/') in self._tracked_files
 
     def check_all(self) -> CheckResult:
         """Run all architecture checks."""
@@ -337,6 +357,8 @@ class ArchitectureChecker:
         for py_file in self.root.rglob('*.py'):
             file_path = str(py_file)
             rel_path = str(py_file.relative_to(self.root))
+            if not self._is_tracked(rel_path):
+                continue
 
             # Skip excluded directories
             parts = Path(rel_path).parts
@@ -426,6 +448,8 @@ class ArchitectureChecker:
         for py_file in self.root.rglob('*.py'):
             file_path = str(py_file)
             rel_path = str(py_file.relative_to(self.root))
+            if not self._is_tracked(rel_path):
+                continue
             # Skip excluded directories
             parts = Path(rel_path).parts
             if any(p in EXCLUDED_DIRS for p in parts):

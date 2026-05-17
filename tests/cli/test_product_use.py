@@ -133,6 +133,6 @@ def test_use_json_shape(tmp_path: Path) -> None:
         )
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
-    assert set(["task_id", "preset_id", "run_id", "status", "report_path", "artifact_dir", "next_action"]).issubset(payload)
+    assert set(["task_id", "preset_id", "run_id", "status", "artifact_dir", "next_actions"]).issubset(payload)
     assert payload["task_id"] == "code"
     assert payload["run_id"] == "run-json"

@@ -78,6 +78,13 @@ class TestMissingProfile:
             state = build_readiness_state()
         assert state.status == ReadinessStatus.needs_provider
         assert "provider profile" in state.detail.lower() or "agentheim provider add" in state.detail
+
+    def test_profile_argument_passes_to_config_loader(self) -> None:
+        config = _make_config(profile_name="work")
+        with patch("interfaces.readiness.load_team_config", return_value=config) as mock_load:
+            state = build_readiness_state(profile="work", skip_connectivity=True)
+        mock_load.assert_called_once_with(profile="work")
+        assert state.profile_name == "work"
         assert any("agentheim provider add" in action for action in state.next_actions)
 
 

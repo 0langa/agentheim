@@ -103,6 +103,8 @@ class CanonicalRunSummary(BaseModel):
     finished_at: str | None = None
     duration_seconds: float | None = None
     repo_root: str | None = None
+    report_path: str | None = None
+    artifact_dir: str | None = None
     provider_models_by_role: dict[str, ModelSelectionSummary] = Field(default_factory=dict)
     state_transitions: list[StateTransitionSummary] = Field(default_factory=list)
     tool_counts: ToolCountSummary = Field(default_factory=ToolCountSummary)
@@ -379,6 +381,12 @@ def build_run_summary(repo_root: str | Path, run_id: str, *, tracking_run_id: st
     verification = _verification_summary(final_report, verification_report)
     error = _error_from_run(final_report, failed_event.get("payload") if failed_event else None)
 
+    report_path: str | None = None
+    if (run_dir / "final_report.md").exists():
+        report_path = str(run_dir / "final_report.md")
+    elif (run_dir / "final_report.json").exists():
+        report_path = str(run_dir / "final_report.json")
+
     return CanonicalRunSummary(
         run_id=run_id,
         tracking_run_id=tracking_run_id if tracking_run_id and tracking_run_id != run_id else None,
@@ -390,6 +398,8 @@ def build_run_summary(repo_root: str | Path, run_id: str, *, tracking_run_id: st
         finished_at=finished_at,
         duration_seconds=_duration_seconds(started_at, finished_at),
         repo_root=repo_path,
+        report_path=report_path,
+        artifact_dir=str(run_dir),
         provider_models_by_role=provider_models,
         state_transitions=state_transitions,
         tool_counts=ToolCountSummary(total_calls=sum(tool_counts.values()), by_tool=tool_counts),
@@ -536,6 +546,8 @@ def build_live_run_summary(
         finished_at=datetime.fromtimestamp(record.finished_at, tz=UTC).isoformat() if record.finished_at else None,
         duration_seconds=max((record.finished_at or datetime.now(tz=UTC).timestamp()) - record.started_at, 0.0),
         repo_root=None,
+        report_path=None,
+        artifact_dir=None,
         artifacts=record.artifacts,
         error=error,
         next_recommended_action=error.next_action if error else (

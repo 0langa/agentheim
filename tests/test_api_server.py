@@ -29,14 +29,127 @@ class TestHealth:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
+        assert data["request_id"]
         assert "version" in data
         assert "components" in data
+        assert response.headers["X-Request-ID"] == data["request_id"]
+
+    def test_health_uses_supplied_request_id(self, client: TestClient) -> None:
+        response = client.get("/api/health", headers={"X-Request-ID": "req-123"})
+        assert response.status_code == 200
+        assert response.json()["request_id"] == "req-123"
+        assert response.headers["X-Request-ID"] == "req-123"
+
+
+class TestPublicV1Routes:
+    def test_status_route_returns_readiness_and_recent_runs(self, client: TestClient) -> None:
+        response = client.get("/api/status")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["request_id"]
+        assert "readiness" in data
+        assert "recent_runs" in data
+
+    def test_tasks_route_matches_catalog_shape(self, client: TestClient) -> None:
+        response = client.get("/api/tasks")
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert any(item["preset_id"] == "research-report" for item in data)
+
+    def test_task_run_route_returns_request_id(self, client: TestClient) -> None:
+        from unittest.mock import patch
+        from core.run_executor import RunExecutor
+
+        RunExecutor.reset_instance()
+        with patch("core.run_executor.RunExecutor.submit", return_value="task-run-1"):
+            response = client.post(
+                "/api/tasks/research-report/run",
+                json={"inputs": {"topic": "AI"}},
+                headers={"X-API-Key": "test-key"},
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert data == {
+            "request_id": data["request_id"],
+            "run_id": "task-run-1",
+            "status": "pending",
+        }
+        RunExecutor.reset_instance()
+
+    def test_runs_route_lists_canonical_summaries(self, tmp_path: Path, client: TestClient) -> None:
+        run_dir = tmp_path / ".ai-team" / "runs" / "test-run-list"
+        run_dir.mkdir(parents=True)
+        (run_dir / "final_report.md").write_text("# Report", encoding="utf-8")
+        (run_dir / "run.json").write_text(
+            json.dumps({"run_id": "test-run-list", "workflow_id": "coding", "preset_id": "codebase-assistant"}),
+            encoding="utf-8",
+        )
+        (run_dir / "final_report.json").write_text(
+            json.dumps({"run_id": "test-run-list", "task_summary": "Listed run", "status": "done"}),
+            encoding="utf-8",
+        )
+
+        response = client.get("/api/runs")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["request_id"]
+        assert any(run["run_id"] == "test-run-list" for run in data["runs"])
+
+    def test_provider_setup_route_writes_profile_and_returns_readiness(self, tmp_path: Path, client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+        from config.config import ProfilesDocument, load_profiles_document
+        from interfaces.readiness import ReadinessState, ReadinessStatus
+
+        class DummySecretStore:
+            def __init__(self) -> None:
+                self.values: dict[str, str] = {}
+
+            def set(self, ref: str, value: str) -> None:
+                self.values[ref] = value
+
+            def get(self, ref: str) -> str:
+                return self.values[ref]
+
+            def delete(self, ref: str) -> None:
+                self.values.pop(ref, None)
+
+        monkeypatch.setenv("AGENTHEIM_CONFIG_DIR", str(tmp_path / "config"))
+        monkeypatch.setenv("AGENTHEIM_DATA_DIR", str(tmp_path / "data"))
+        monkeypatch.setattr("interfaces.api_server.app.get_secret_store", lambda: DummySecretStore())
+        monkeypatch.setattr(
+            "interfaces.api_server.app.build_readiness_state",
+            lambda profile=None, check_optional_integrations=True: ReadinessState(status=ReadinessStatus.ready),
+        )
+
+        response = client.post(
+            "/api/providers/setup",
+            json={
+                "provider": "starter",
+                "template": "openai_v1",
+                "model": "gpt-4o-mini",
+                "api_key": "secret",
+                "profile": "default",
+            },
+            headers={"X-API-Key": "test-key"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["request_id"]
+        assert data["status"] == "written"
+        assert data["profile"] == "default"
+
+        document = load_profiles_document()
+        assert isinstance(document, ProfilesDocument)
+        assert "starter" in document.profiles["default"].providers
 
 
 class TestAuth:
     def test_missing_api_key(self, client: TestClient) -> None:
         response = client.post("/api/memory/jsonl/test", json={"value": {"x": 1}})
         assert response.status_code == 401
+        data = response.json()
+        assert data["machine_code"]
+        assert data["request_id"]
 
     def test_invalid_api_key(self, client: TestClient) -> None:
         response = client.post(
@@ -45,6 +158,9 @@ class TestAuth:
             headers={"X-API-Key": "bad-key"},
         )
         assert response.status_code == 403
+        data = response.json()
+        assert data["machine_code"]
+        assert data["request_id"]
 
     def test_valid_api_key(self, client: TestClient) -> None:
         response = client.post(
@@ -81,6 +197,9 @@ class TestTools:
             headers={"X-API-Key": "test-key"},
         )
         assert response.status_code == 404
+        data = response.json()
+        assert data["machine_code"]
+        assert data["request_id"]
 
     def test_invoke_high_risk_blocked(self, client: TestClient) -> None:
         response = client.post(
@@ -89,7 +208,10 @@ class TestTools:
             headers={"X-API-Key": "test-key"},
         )
         assert response.status_code == 403
-        assert "high-risk" in response.json()["detail"].lower() or "CLI" in response.json()["detail"]
+        data = response.json()
+        assert data["machine_code"]
+        assert data["request_id"]
+        assert "blocked" in data["human_message"].lower() or "auth" in data["human_message"].lower()
 
     def test_invoke_filesystem_read(self, tmp_path: Path, client: TestClient) -> None:
         test_file = tmp_path / "hello.txt"
@@ -261,11 +383,31 @@ class TestProviders:
                 f"experimental template '{t['kind']}' leaked to API"
             )
 
+    def test_provider_setup_requires_api_key_for_api_key_auth(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/providers/setup",
+            json={"provider": "starter", "template": "openai_v1", "model": "gpt-4o-mini"},
+            headers={"X-API-Key": "test-key"},
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert data["machine_code"]
+        assert data["request_id"]
+
 
 class TestRuns:
+    def test_runs_list_empty(self, client: TestClient) -> None:
+        response = client.get("/api/runs")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["runs"] == []
+
     def test_run_not_found(self, client: TestClient) -> None:
         response = client.get("/api/runs/nonexistent_run_12345")
         assert response.status_code == 404
+        data = response.json()
+        assert data["machine_code"]
+        assert data["request_id"]
 
     def test_run_found(self, tmp_path: Path, client: TestClient) -> None:
         run_dir = tmp_path / ".ai-team" / "runs" / "test-run-1"
@@ -351,11 +493,26 @@ class TestPresetExecution:
                 headers={"X-API-Key": "test-key"},
             )
         assert response.status_code == 400
-        data = response.json()["detail"]
+        data = response.json()
+        assert data["machine_code"]
+        assert data["request_id"]
         assert data["error"] == "missing_required_inputs"
-        assert data["preset_id"] == "research-report"
-        assert data["missing_inputs"] == ["topic"]
+        assert data["details"]["preset_id"] == "research-report"
+        assert data["details"]["missing_inputs"] == ["topic"]
         mock_submit.assert_not_called()
+
+    def test_task_run_rejects_missing_required_inputs(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/tasks/research-report/run",
+            json={"inputs": {}},
+            headers={"X-API-Key": "test-key"},
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert data["machine_code"]
+        assert data["request_id"]
+        assert data["error"] == "missing_required_inputs"
+        assert data["details"]["missing_inputs"] == ["topic"]
 
 
 class TestRunStreaming:
@@ -456,13 +613,31 @@ class TestOpenAPI:
         assert schema["info"]["title"] == "Agentheim API"
         paths = list(schema["paths"].keys())
         assert "/api/health" in paths
+        assert "/api/status" in paths
+        assert "/api/tasks" in paths
+        assert "/api/tasks/{task_id}/run" in paths
+        assert "/api/runs" in paths
         assert "/api/tools" in paths
         assert "/api/workflows" in paths
         assert "/api/presets" in paths
+        assert "/api/providers" in paths
+        assert "/api/providers/setup" in paths
+        assert "/api/providers/templates" in paths
         assert "/api/workflows/{workflow_id}/execute" in paths
         assert "/api/presets/{preset_id}/run" in paths
         assert "/api/runs/{run_id}/stream" in paths
         assert "/api/metrics" in paths
+
+    def test_openapi_marks_advanced_routes(self, client: TestClient) -> None:
+        schema = client.get("/openapi.json").json()
+        assert schema["paths"]["/api/workflows"]["get"]["description"].startswith("[Advanced route]")
+        assert schema["paths"]["/api/presets"]["get"]["description"].startswith("[Advanced route]")
+
+    def test_compatibility_routes_still_exist(self, client: TestClient) -> None:
+        schema = client.get("/openapi.json").json()
+        assert "/api/workflows" in schema["paths"]
+        assert "/api/presets" in schema["paths"]
+        assert "/api/providers/assign" in schema["paths"]
 
     def test_docs_endpoint(self, client: TestClient) -> None:
         response = client.get("/docs")

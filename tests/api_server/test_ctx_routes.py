@@ -138,8 +138,9 @@ class TestCtxRoutes:
                 response = fresh_client.post("/api/ctx/scan", json={"project": str(tmp_path)})
         assert response.status_code == 400
         data = response.json()
-        # FastAPI wraps dict detail under 'detail' key
-        detail = data.get("detail", data)
+        assert data["machine_code"]
+        assert data["request_id"]
+        detail = data["details"]
         assert "type" in detail
         assert "category" in detail
         assert "retryable" in detail

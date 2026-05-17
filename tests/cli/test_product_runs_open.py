@@ -78,18 +78,44 @@ def test_runs_empty_json_shape() -> None:
 
 
 def test_open_default_web_launch() -> None:
-    with patch("interfaces.cli.product_commands.webbrowser.open") as browser:
+    with (
+        patch("interfaces.cli.product_commands._start_web_server") as start_server,
+        patch("interfaces.cli.product_commands._wait_for_web_server", return_value=True),
+        patch("interfaces.cli.product_commands._block_until_interrupt") as block,
+        patch("interfaces.cli.product_commands.webbrowser.open") as browser,
+    ):
         result = runner.invoke(app, ["open", "--port", "9010"])
     assert result.exit_code == 0
+    start_server.assert_called_once()
     browser.assert_called_once_with("http://127.0.0.1:9010")
+    block.assert_called_once()
     assert "http://127.0.0.1:9010" in result.output
 
 
 def test_open_no_browser_mode() -> None:
-    with patch("interfaces.cli.product_commands.webbrowser.open") as browser:
+    with (
+        patch("interfaces.cli.product_commands._start_web_server") as start_server,
+        patch("interfaces.cli.product_commands._wait_for_web_server", return_value=True),
+        patch("interfaces.cli.product_commands._block_until_interrupt") as block,
+        patch("interfaces.cli.product_commands.webbrowser.open") as browser,
+    ):
         result = runner.invoke(app, ["open", "--no-browser"])
     assert result.exit_code == 0
+    start_server.assert_called_once()
     browser.assert_not_called()
+    block.assert_called_once()
+
+
+def test_open_fails_when_web_server_does_not_start() -> None:
+    with (
+        patch("interfaces.cli.product_commands._start_web_server"),
+        patch("interfaces.cli.product_commands._wait_for_web_server", return_value=False),
+        patch("interfaces.cli.product_commands._block_until_interrupt") as block,
+    ):
+        result = runner.invoke(app, ["open", "--no-browser"])
+    assert result.exit_code != 0
+    assert "Web UI failed to start" in result.output
+    block.assert_not_called()
 
 
 def test_open_desktop_delegates() -> None:

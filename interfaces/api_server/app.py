@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+from uuid import uuid4
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,7 @@ from config.config import (
 from core.public_api import (
     CanonicalRunSummary,
     DEFAULT_PROVIDER_MAP,
+    ErrorCatalogEntry,
     RunExecutor,
     RunRecord,
     RunStatus,
@@ -37,7 +39,11 @@ from core.public_api import (
     build_live_run_summary,
     build_run_summary,
     build_model_registry,
+    build_run_view,
+    catalog_entry_for,
+    format_api_response,
     interface_policy_config,
+    list_run_views,
     list_workflows as cap_list_workflows,
 )
 from memory.bus import MemoryBus
@@ -45,9 +51,10 @@ from tools.registry import ToolRegistry, create_core_tool_registry
 
 from interfaces.api_server.auth import verify_api_key
 from interfaces.api_server.rate_limit import RateLimiter
+from interfaces.readiness import ReadinessState, build_readiness_state
 from interfaces.tool_approval import InterfaceApprovalStore
 from presets.base import PresetInputError
-from presets.catalog import CATALOG, QuestionSchema
+from presets.catalog import CATALOG, PresetCatalogItem, QuestionSchema
 
 from agentheim.context_ops_impl import AictxContextOps
 from agentheim.vendor.aictx.config import AictxConfig
@@ -62,7 +69,51 @@ logger = logging.getLogger(__name__)
 class HealthResponse(BaseModel):
     status: str = "ok"
     version: str = "0.1.0"
+    request_id: str = ""
     components: dict[str, str] = Field(default_factory=dict)
+
+
+class ErrorResponse(BaseModel):
+    error: str
+    message: str
+    machine_code: str
+    human_message: str
+    next_actions: list[str] = Field(default_factory=list)
+    request_id: str = ""
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class StatusResponse(BaseModel):
+    request_id: str
+    readiness: ReadinessState
+    recent_runs: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class RunAcceptedResponse(BaseModel):
+    request_id: str
+    run_id: str
+    status: str
+
+
+class ProviderSetupRequest(BaseModel):
+    provider: str
+    template: str
+    model: str
+    endpoint: str | None = None
+    api_key: str | None = None
+    profile: str = "default"
+
+
+class ProviderSetupResponse(BaseModel):
+    request_id: str
+    status: str
+    profile: str
+    readiness: ReadinessState
+
+
+class RunListResponse(BaseModel):
+    request_id: str
+    runs: list[CanonicalRunSummary] = Field(default_factory=list)
 
 
 class ToolSchemaItem(BaseModel):
@@ -339,16 +390,76 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
     @app.middleware("http")
     async def log_requests(request: Request, call_next):
         start = time.time()
+        request_id = request.headers.get("X-Request-ID") or str(uuid4())
+        request.state.request_id = request_id
         response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
         duration = time.time() - start
         logger.info(
-            "%s %s %d %.3fs",
+            "%s %s %d %.3fs request_id=%s",
             request.method,
             request.url.path,
             response.status_code,
             duration,
+            request_id,
         )
         return response
+
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException):
+        request_id = getattr(request.state, "request_id", "")
+        detail = exc.detail
+        if isinstance(detail, dict) and {"machine_code", "human_message"}.issubset(detail.keys()):
+            payload = ErrorResponse(
+                error=str(detail.get("error", detail.get("category", "error"))),
+                message=str(detail.get("message", detail.get("human_message", "Request failed."))),
+                machine_code=str(detail.get("machine_code", "E1009")),
+                human_message=str(detail.get("human_message", "Request failed.")),
+                next_actions=list(detail.get("next_actions", [])),
+                request_id=request_id,
+                details={k: v for k, v in detail.items() if k not in {"error", "message", "machine_code", "human_message", "next_actions", "request_id"}},
+            )
+            return JSONResponse(status_code=exc.status_code, content=payload.model_dump())
+
+        if isinstance(detail, dict):
+            entry = _entry_for_status(exc.status_code)
+            payload = ErrorResponse(
+                error=str(detail.get("error", entry.category)),
+                message=str(detail.get("message", entry.human_message)),
+                machine_code=entry.machine_code,
+                human_message=entry.human_message,
+                next_actions=entry.next_actions,
+                request_id=request_id,
+                details={k: v for k, v in detail.items() if k not in {"error", "message"}},
+            )
+            return JSONResponse(status_code=exc.status_code, content=payload.model_dump())
+
+        entry = _entry_for_status(exc.status_code)
+        payload = ErrorResponse(
+            error=entry.category,
+            message=str(detail),
+            machine_code=entry.machine_code,
+            human_message=entry.human_message,
+            next_actions=entry.next_actions,
+            request_id=request_id,
+        )
+        return JSONResponse(status_code=exc.status_code, content=payload.model_dump())
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception):
+        request_id = getattr(request.state, "request_id", "")
+        entry = catalog_entry_for(exc)
+        detail = format_api_response(entry, exc)
+        payload = ErrorResponse(
+            error=str(detail.get("error", entry.category)),
+            message=str(detail.get("message", entry.human_message)),
+            machine_code=entry.machine_code,
+            human_message=entry.human_message,
+            next_actions=entry.next_actions,
+            request_id=request_id,
+            details={k: v for k, v in detail.items() if k not in {"error", "message", "machine_code", "human_message", "next_actions"}},
+        )
+        return JSONResponse(status_code=entry.http_status, content=payload.model_dump())
 
     # ------------------------------------------------------------------
     # Helpers
@@ -443,27 +554,97 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
         return AictxContextOps(cfg)
 
     def _ctx_exc(exc: Exception) -> None:
-        from core.public_api import catalog_entry_for, format_api_response
-
         entry = catalog_entry_for(exc)
         raise HTTPException(
             status_code=entry.http_status,
             detail=format_api_response(entry, exc),
         ) from exc
 
+    def _entry_for_status(status_code: int) -> ErrorCatalogEntry:
+        if status_code == 400:
+            return catalog_entry_for(ValueError("validation error"))
+        if status_code in {401, 403}:
+            return catalog_entry_for(PermissionError("auth error"))
+        if status_code == 404:
+            return catalog_entry_for(FileNotFoundError("not found"))
+        if status_code == 409:
+            return catalog_entry_for(SafetyError("policy blocked"))
+        if status_code == 503:
+            return catalog_entry_for(ProviderError("provider unavailable"))
+        return catalog_entry_for(RuntimeError("unexpected"))
+
+    def _request_id(request: Request) -> str:
+        return getattr(request.state, "request_id", "")
+
+    def _advanced(description: str) -> str:
+        return f"[Advanced route] {description}"
+
+    def _run_accepted(run_id: str, request: Request, status_value: str = "pending") -> RunAcceptedResponse:
+        return RunAcceptedResponse(request_id=_request_id(request), run_id=run_id, status=status_value)
+
+    def _canonical_summaries() -> list[CanonicalRunSummary]:
+        summaries: list[CanonicalRunSummary] = []
+        for view in list_run_views(repo_root):
+            try:
+                summaries.append(build_run_summary(repo_root, view.run_id))
+            except Exception:
+                continue
+        return summaries
+
     # ------------------------------------------------------------------
     # Routes
     # ------------------------------------------------------------------
 
     @app.get("/api/health", response_model=HealthResponse, tags=["system"])
-    def health() -> HealthResponse:
+    def health(request: Request) -> HealthResponse:
         return HealthResponse(
+            request_id=_request_id(request),
             components={
                 "tools": "ok",
                 "memory": "ok",
                 "workflows": "ok",
             }
         )
+
+    @app.get("/api/status", response_model=StatusResponse, tags=["system"])
+    def api_status(request: Request, profile: str | None = None, repo: str | None = None) -> StatusResponse:
+        repo_path = Path(repo).resolve() if repo else repo_root
+        readiness = build_readiness_state(profile=profile, check_optional_integrations=True)
+        recent_runs: list[dict[str, Any]] = []
+        for view in list_run_views(repo_path)[:10]:
+            recent_runs.append(view.model_dump(mode="json"))
+        return StatusResponse(request_id=_request_id(request), readiness=readiness, recent_runs=recent_runs)
+
+    @app.get("/api/tasks", response_model=list[PresetListItem], tags=["tasks"])
+    def list_tasks() -> list[PresetListItem]:
+        return CATALOG.list()
+
+    @app.post(
+        "/api/tasks/{task_id}/run",
+        response_model=RunAcceptedResponse,
+        tags=["tasks"],
+        dependencies=[Depends(rate_limiter.check)],
+    )
+    def run_task(
+        task_id: str,
+        request: PresetRunRequest,
+        http_request: Request,
+        api_key: str = Depends(verify_api_key),
+    ) -> RunAcceptedResponse:
+        from presets import PRESET_REGISTRY
+
+        try:
+            preset = PRESET_REGISTRY.get(task_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail={"error": "not_found", "message": f"Task '{task_id}' not found"})
+
+        try:
+            inputs = preset.validate_inputs(request.inputs)
+        except PresetInputError as exc:
+            raise HTTPException(status_code=400, detail=exc.to_dict()) from exc
+
+        run_id = run_executor.submit(preset.run, inputs)
+        return _run_accepted(run_id, http_request)
 
     @app.get("/api/health/oci", tags=["system"])
     def health_oci() -> dict[str, Any]:
@@ -599,7 +780,7 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
             metadata={"target": denied.target, "risk_level": denied.risk_level.value},
         )
 
-    @app.get("/api/workflows", response_model=list[WorkflowListItem], tags=["workflows"])
+    @app.get("/api/workflows", response_model=list[WorkflowListItem], tags=["workflows"], description=_advanced("List registered workflows."))
     def list_workflows() -> list[WorkflowListItem]:
         """List registered workflows."""
         _import_workflows()
@@ -612,7 +793,7 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
             for w in cap_list_workflows()
         ]
 
-    @app.get("/api/workflows/{workflow_id}", response_model=WorkflowDetail, tags=["workflows"])
+    @app.get("/api/workflows/{workflow_id}", response_model=WorkflowDetail, tags=["workflows"], description=_advanced("Get detailed information about a workflow."))
     def get_workflow(workflow_id: str) -> WorkflowDetail:
         """Get detailed information about a workflow."""
         _import_workflows()
@@ -631,6 +812,7 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
         "/api/workflows/{workflow_id}/execute",
         response_model=ExecuteResponse,
         tags=["workflows"],
+        description=_advanced("Execute a workflow asynchronously."),
         dependencies=[Depends(rate_limiter.check)],
     )
     def execute_workflow(
@@ -659,7 +841,7 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
         run_id = run_executor.submit(_run)
         return ExecuteResponse(run_id=run_id, status="pending")
 
-    @app.get("/api/presets", response_model=list[PresetListItem], tags=["presets"])
+    @app.get("/api/presets", response_model=list[PresetListItem], tags=["presets"], description=_advanced("List available presets."))
     def list_presets() -> list[PresetListItem]:
         """List available presets."""
         return CATALOG.list()
@@ -668,6 +850,7 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
         "/api/presets/{preset_id}/run",
         response_model=ExecuteResponse,
         tags=["presets"],
+        description=_advanced("Run a preset asynchronously."),
         dependencies=[Depends(rate_limiter.check)],
     )
     def run_preset(
@@ -747,7 +930,58 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
     def provider_templates() -> list[ProviderTemplateItem]:
         return [ProviderTemplateItem(**item) for item in list_provider_templates(include_experimental=False)]
 
-    @app.post("/api/providers", response_model=ProviderMutationResponse, tags=["providers"], dependencies=[Depends(rate_limiter.check)])
+    @app.post(
+        "/api/providers/setup",
+        response_model=ProviderSetupResponse,
+        tags=["providers"],
+        dependencies=[Depends(rate_limiter.check)],
+    )
+    def provider_setup(
+        request: ProviderSetupRequest,
+        http_request: Request,
+        api_key: str = Depends(verify_api_key),
+    ) -> ProviderSetupResponse:
+        try:
+            document = load_profiles_document()
+        except ConfigError:
+            document = ProfilesDocument(profiles={request.profile: TeamProfile(name=request.profile)})
+        profile = document.profiles.setdefault(request.profile, TeamProfile(name=request.profile))
+
+        secret_ref = make_secret_ref(request.provider)
+        provider = provider_account_from_template(
+            request.provider,
+            request.template,
+            endpoint=request.endpoint,
+            secret_ref=secret_ref,
+        )
+        if provider.auth_mode in {"api_key", "bearer", "x_api_key", "bedrock_api_key"}:
+            if not request.api_key:
+                raise HTTPException(status_code=400, detail={"error": "validation_error", "message": "api_key required for this provider auth mode"})
+            get_secret_store().set(secret_ref, request.api_key)
+        else:
+            provider = provider.model_copy(update={"secret_ref": None})
+
+        profile.providers[request.provider] = provider
+        for role in (ModelRole.PLANNER, ModelRole.EXECUTOR, ModelRole.VERIFIER):
+            profile.models[role.value] = ModelBinding(
+                id=role.value,
+                role=role,
+                provider=request.provider,
+                model=request.model,
+                capabilities=["text", "json"],
+            )
+        document.default_profile = request.profile
+        save_profiles_document(document)
+
+        readiness = build_readiness_state(profile=request.profile, check_optional_integrations=True)
+        return ProviderSetupResponse(
+            request_id=_request_id(http_request),
+            status="written",
+            profile=request.profile,
+            readiness=readiness,
+        )
+
+    @app.post("/api/providers", response_model=ProviderMutationResponse, tags=["providers"], description=_advanced("Add a provider profile entry."), dependencies=[Depends(rate_limiter.check)])
     def add_provider(request: ProviderAddRequest, api_key: str = Depends(verify_api_key)) -> ProviderMutationResponse:
         try:
             document = load_profiles_document()
@@ -774,7 +1008,7 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
         save_profiles_document(document)
         return ProviderMutationResponse(status="written", profile=request.profile)
 
-    @app.post("/api/providers/assign", response_model=ProviderMutationResponse, tags=["providers"], dependencies=[Depends(rate_limiter.check)])
+    @app.post("/api/providers/assign", response_model=ProviderMutationResponse, tags=["providers"], description=_advanced("Assign a provider to a specific role."), dependencies=[Depends(rate_limiter.check)])
     def assign_provider(request: ProviderAssignRequest, api_key: str = Depends(verify_api_key)) -> ProviderMutationResponse:
         document = load_profiles_document()
         profile = document.profiles.get(request.profile)
@@ -791,6 +1025,10 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
         )
         save_profiles_document(document)
         return ProviderMutationResponse(status="written", profile=request.profile)
+
+    @app.get("/api/runs", response_model=RunListResponse, tags=["runs"])
+    def list_runs(request: Request) -> RunListResponse:
+        return RunListResponse(request_id=_request_id(request), runs=_canonical_summaries())
 
     @app.get("/api/runs/{run_id}", response_model=CanonicalRunSummary, tags=["runs"])
     def get_run_status(run_id: str) -> CanonicalRunSummary:

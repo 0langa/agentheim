@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
-import sys
+import threading
+import time
 import webbrowser
 from dataclasses import dataclass
 from pathlib import Path
@@ -204,14 +204,8 @@ def _recent_runs(repo_root: Path) -> list[RunView]:
 
 
 def _status_payload(profile: str | None, repo_root: Path) -> dict[str, Any]:
-    readiness = build_readiness_state()
+    readiness = build_readiness_state(profile=profile)
     active_profile = readiness.profile_name
-
-    if profile and profile != active_profile:
-        config = load_team_config(profile=profile)
-        active_profile = config.profile_name
-        readiness = build_readiness_state()
-        readiness.profile_name = active_profile
 
     recent_runs = _recent_runs(repo_root)
     return {
@@ -311,27 +305,17 @@ def _collect_missing_inputs(item: PresetCatalogItem, provided: dict[str, Any], y
     return inputs
 
 
-def _run_submission_payload(run_id: str, repo_root: Path) -> dict[str, Any]:
-    record = _RUN_EXECUTOR.get(run_id)
-    artifact_dir = str((repo_root / ".ai-team" / "runs" / run_id).resolve())
-    report_path = str((repo_root / ".ai-team" / "runs" / run_id / "final_report.md").resolve())
-    return {
-        "run_id": run_id,
-        "status": (record.status.value if record else RunStatus.PENDING.value),
-        "report_path": report_path,
-        "artifact_dir": artifact_dir,
-        "next_action": f"agentheim runs show {run_id}",
-    }
-
-
-def _render_use_text(task_id: str, item: PresetCatalogItem, payload: dict[str, Any]) -> None:
-    console.print(f"task: {task_id}")
-    console.print(f"preset: {item.preset_id}")
-    console.print(f"run id: {payload['run_id']}")
-    console.print(f"status: {payload['status']}")
-    console.print(f"report path: {payload['report_path']}")
-    console.print(f"artifact folder: {payload['artifact_dir']}")
-    console.print(payload["next_action"])
+def _render_run_view_text(view: RunView) -> None:
+    console.print(f"run id: {view.run_id}")
+    console.print(f"status: {view.status}")
+    if view.summary:
+        console.print(f"summary: {view.summary}")
+    if view.report_path:
+        console.print(f"report path: {view.report_path}")
+    console.print(f"artifact folder: {view.artifact_dir}")
+    if view.next_actions:
+        for action in view.next_actions:
+            console.print(action)
 
 
 def _render_runs_list(views: list[RunView]) -> None:
@@ -352,10 +336,29 @@ def _open_path(path: Path) -> None:
     if os.name == "nt":
         os.startfile(str(path))  # type: ignore[attr-defined]
         return
-    if sys.platform == "darwin":
-        subprocess.run(["open", str(path)], check=False)
+    webbrowser.open(path.resolve().as_uri())
+
+
+def _start_web_server(repo_root: Path, port: int) -> threading.Thread:
+    from interfaces.desktop_ui.app import _run_server
+
+    thread = threading.Thread(target=_run_server, args=(repo_root, port), daemon=True)
+    thread.start()
+    return thread
+
+
+def _wait_for_web_server(port: int) -> bool:
+    from interfaces.desktop_ui.app import _wait_for_server
+
+    return _wait_for_server(port, timeout=15.0)
+
+
+def _block_until_interrupt() -> None:
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
         return
-    subprocess.run(["xdg-open", str(path)], check=False)
 
 
 def _report_path_for_view(view: RunView) -> Path | None:
@@ -523,6 +526,7 @@ def use_cmd(
     repo: Path = typer.Option(Path.cwd(), "--repo", help="Repository root for the task."),
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
     yes: bool = typer.Option(False, "--yes", help="Accept defaults without interactive prompts."),
+    watch: bool = typer.Option(False, "--watch", help="Watch the run until it completes."),
 ) -> None:
     """Launch a task by plain-language goal or direct task ID."""
     selected_task_id = (task_id or _prompt_for_task()).strip().lower()
@@ -542,13 +546,33 @@ def use_cmd(
         raise typer.BadParameter(str(exc)) from exc
 
     run_id = _RUN_EXECUTOR.submit(preset.run, validated_inputs)
-    payload = _run_submission_payload(run_id, repo.resolve())
-    payload.update({"task_id": selected_task_id, "preset_id": item.preset_id})
+    repo_root = repo.resolve()
+
+    if watch:
+        view = _watch_run(run_id, repo_root)
+    else:
+        try:
+            view = build_run_view(repo_root, run_id)
+        except Exception:
+            view = RunView(
+                run_id=run_id,
+                status="pending",
+                summary="Run submitted",
+                artifact_dir=str(repo_root / ".ai-team" / "runs" / run_id),
+                next_actions=[f"agentheim runs show {run_id}"],
+            )
+
+    payload = view.model_dump(mode="json")
+    payload["task_id"] = selected_task_id
+    payload["preset_id"] = item.preset_id
 
     if as_json:
         console.print_json(json.dumps(payload))
         return
-    _render_use_text(selected_task_id, item, payload)
+
+    console.print(f"task: {selected_task_id}")
+    console.print(f"preset: {item.preset_id}")
+    _render_run_view_text(view)
 
 
 @runs_app.callback(invoke_without_command=True)
@@ -579,17 +603,32 @@ def runs_list_cmd(
     _render_runs_list(views)
 
 
+def _watch_run(run_id: str, repo_root: Path, *, interval: float = 1.0, timeout: float = 3600.0) -> RunView:
+    import time
+    start = time.time()
+    while time.time() - start < timeout:
+        record = _RUN_EXECUTOR.get(run_id)
+        if record is not None and record.status in {RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.CANCELLED}:
+            break
+        time.sleep(interval)
+    return build_run_view(repo_root, run_id)
+
+
 @runs_app.command("show")
 def runs_show_cmd(
     run_id: str,
     repo: Path = typer.Option(Path.cwd(), "--repo", help="Repository root for run lookup."),
     as_json: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+    watch: bool = typer.Option(False, "--watch", help="Watch the run until it completes."),
 ) -> None:
-    view = build_run_view(repo.resolve(), run_id)
+    if watch:
+        view = _watch_run(run_id, repo.resolve())
+    else:
+        view = build_run_view(repo.resolve(), run_id)
     if as_json:
         console.print_json(json.dumps(view.model_dump(mode="json")))
         return
-    console.print_json(json.dumps(view.model_dump(mode="json")))
+    _render_run_view_text(view)
 
 
 @runs_app.command("report")
@@ -662,7 +701,12 @@ def open_cmd(
         console.print_json(json.dumps({"mode": "web", "url": url, "port": port, "opened_browser": not no_browser}))
         return
 
+    _start_web_server(Path.cwd().resolve(), port)
+    if not _wait_for_web_server(port):
+        raise typer.BadParameter(f"Web UI failed to start on {url}")
+
     if not no_browser:
         webbrowser.open(url)
     console.print(f"Agentheim Web UI: {url}")
     console.print("Press Ctrl+C in the server terminal to stop it.")
+    _block_until_interrupt()

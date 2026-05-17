@@ -305,12 +305,13 @@ def _compute_overall_status(
 
 def build_readiness_state(
     *,
+    profile: str | None = None,
     skip_connectivity: bool = False,
     check_optional_integrations: bool = True,
 ) -> ReadinessState:
     """Build the shared readiness state for the current environment."""
     try:
-        config = load_team_config()
+        config = load_team_config(profile=profile)
     except ConfigError as exc:
         return ReadinessState(
             status=ReadinessStatus.needs_provider,

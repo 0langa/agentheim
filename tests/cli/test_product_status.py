@@ -140,3 +140,15 @@ def test_status_json_shape(tmp_path: Path) -> None:
     ).issubset(payload)
     assert isinstance(payload["recent_runs"], list)
     assert payload["recent_runs"][0]["run_id"] == "run-1"
+
+
+def test_status_profile_option_passes_to_readiness_service(tmp_path: Path) -> None:
+    env = _status_env(tmp_path)
+    state = _state(ReadinessStatus.ready, profile_name="work")
+    with patch("interfaces.cli.product_commands.build_readiness_state", return_value=state) as readiness, patch(
+        "interfaces.cli.product_commands.list_run_views", return_value=[]
+    ):
+        result = runner.invoke(app, ["status", "--profile", "work"], env=env)
+    assert result.exit_code == 0
+    readiness.assert_called_once_with(profile="work")
+    assert "profile: work" in result.output

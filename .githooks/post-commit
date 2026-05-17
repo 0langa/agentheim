@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+python scripts/refresh_kimi_memory.py >/dev/null 2>&1 || {
+  echo "[agentheim] warning: failed to refresh .kimi/memory.jsonl after commit" >&2
+  exit 0
+}
+
+exit 0
