@@ -38,6 +38,14 @@ Agentheim lets you run multi-agent workflows on your own machine with policy-gat
 
 ### Install
 
+**With pipx (recommended for end users):**
+
+```powershell
+pipx install agentheim
+```
+
+**With pip (editable for developers):**
+
 ```powershell
 pip install -e .
 ```

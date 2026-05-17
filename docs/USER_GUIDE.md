@@ -27,6 +27,14 @@
 
 ## Installation
 
+**With pipx (recommended for end users):**
+
+```bash
+pipx install agentheim
+```
+
+**With pip (editable for developers):**
+
 ```bash
 # Clone the repository
 git clone https://github.com/0langa/agentheim.git
