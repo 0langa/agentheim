@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-import socket
 import sys
-from urllib.parse import urlparse
 from pathlib import Path
 from typing import Any
 from dataclasses import asdict, dataclass
@@ -18,7 +16,7 @@ from rich.console import Console
 from rich.table import Table
 import typer
 
-from config.config import ModelRole, load_team_config
+from config.config import load_team_config
 from core.public_api import (
     AIteamError,
     ApprovalRequest,
@@ -44,6 +42,7 @@ from core.public_api import (
 )
 import importlib.util
 
+from interfaces.readiness import ReadinessStatus, build_readiness_state
 from memory.tiers.global_ import GlobalMemory
 from presets import PRESET_REGISTRY
 from presets.base import PresetInputError
@@ -70,10 +69,6 @@ app.add_typer(
 )
 console = Console()
 
-_DOCTOR_REQUIRED_ROLES = (ModelRole.PLANNER, ModelRole.EXECUTOR, ModelRole.VERIFIER)
-_DOCTOR_SECRET_AUTH_MODES = {"api_key", "bearer", "x_api_key", "bedrock_api_key"}
-_DOCTOR_OPENAI_TYPES = {"openai_v1", "openai_compatible", "azure_foundry"}
-_DOCTOR_GOOGLE_TYPES = {"gemini", "vertex_ai"}
 @dataclass(slots=True)
 class _CommandEntry:
     command: str
@@ -146,118 +141,6 @@ def _render_command_tree(sections: dict[str, list[_CommandEntry]]) -> None:
         for entry in sorted(commands, key=lambda item: item.command):
             table.add_row(entry.command, entry.description)
         console.print(table)
-
-
-def _doctor_is_local_host(host: str | None) -> bool:
-    return host in {"localhost", "127.0.0.1", "::1"}
-
-
-def _doctor_endpoint_target(endpoint: str) -> tuple[str | None, int | None]:
-    parsed = urlparse(endpoint)
-    if parsed.scheme not in {"http", "https"}:
-        return None, None
-    port = parsed.port
-    if port is None:
-        port = 443 if parsed.scheme == "https" else 80
-    return parsed.hostname, port
-
-
-def _doctor_role_coverage(config) -> tuple[str, str]:
-    bound_roles = set(config.by_role())
-    missing = [role.value for role in _DOCTOR_REQUIRED_ROLES if role not in bound_roles]
-    if missing:
-        return "WARN", f"missing roles: {', '.join(missing)}"
-    return "PASS", "planner, executor, verifier bound"
-
-
-def _doctor_first_class_lane(config) -> tuple[str, str]:
-    providers = list(config.providers.values())
-    bound_roles = set(config.by_role())
-    missing_roles = [role.value for role in _DOCTOR_REQUIRED_ROLES if role not in bound_roles]
-    if missing_roles:
-        return "WARN", f"first-class lane blocked by missing roles: {', '.join(missing_roles)}"
-
-    provider_types = {provider.provider_type for provider in providers}
-    lane = "advanced/experimental"
-    detail = ""
-
-    if provider_types & _DOCTOR_OPENAI_TYPES:
-        lane = "openai-compatible"
-        detail = ", ".join(sorted(provider.id for provider in providers if provider.provider_type in _DOCTOR_OPENAI_TYPES))
-    elif provider_types & _DOCTOR_GOOGLE_TYPES:
-        lane = "google"
-        detail = ", ".join(sorted(provider.id for provider in providers if provider.provider_type in _DOCTOR_GOOGLE_TYPES))
-    else:
-        local_compatible = []
-        for provider in providers:
-            host, _port = _doctor_endpoint_target(provider.endpoint)
-            if provider.provider_type == "openai_compatible" and _doctor_is_local_host(host):
-                local_compatible.append(provider.id)
-        if local_compatible:
-            lane = "self-hosted"
-            detail = ", ".join(sorted(local_compatible))
-
-    if lane == "advanced/experimental":
-        return "WARN", "no OpenAI-compatible, Google, or localhost self-hosted first-class lane configured"
-
-    google_warnings = []
-    if lane == "google":
-        for provider in providers:
-            if provider.provider_type != "vertex_ai":
-                continue
-            if not provider.metadata.get("project_id"):
-                google_warnings.append(f"{provider.id}: missing metadata.project_id")
-            if not provider.metadata.get("location"):
-                google_warnings.append(f"{provider.id}: missing metadata.location")
-        if google_warnings:
-            return "WARN", "; ".join(google_warnings)
-
-    placeholder_warnings = []
-    for provider in providers:
-        if provider.provider_type not in _DOCTOR_OPENAI_TYPES | _DOCTOR_GOOGLE_TYPES:
-            continue
-        if provider.endpoint in {"-", "https://example.com/v1", "https://YOUR-RESOURCE.openai.azure.com"}:
-            placeholder_warnings.append(f"{provider.id}: endpoint still placeholder")
-        if provider.auth_mode in _DOCTOR_SECRET_AUTH_MODES and not provider.secret_ref:
-            placeholder_warnings.append(f"{provider.id}: missing secret_ref")
-    if placeholder_warnings:
-        return "WARN", "; ".join(placeholder_warnings)
-
-    return "PASS", f"{lane} lane ready for smoke checks via: {detail}"
-
-
-def _doctor_local_reachability(config) -> tuple[str, str]:
-    local_targets: list[tuple[str, str, int]] = []
-    for provider in config.providers.values():
-        host, port = _doctor_endpoint_target(provider.endpoint)
-        if host and port and _doctor_is_local_host(host):
-            local_targets.append((provider.id, host, port))
-
-    if not local_targets:
-        return "SKIP", "no localhost providers configured"
-
-    failures: list[str] = []
-    for provider_id, host, port in local_targets:
-        try:
-            with socket.create_connection((host, port), timeout=1.5):
-                pass
-        except OSError as exc:
-            failures.append(f"{provider_id}@{host}:{port} ({exc})")
-
-    if failures:
-        return "WARN", "; ".join(failures)
-    return "PASS", ", ".join(f"{provider_id}@{host}:{port}" for provider_id, host, port in local_targets)
-
-
-def _doctor_context_ops() -> tuple[str, str]:
-    try:
-        from agentheim.context_ops_impl import AictxContextOps
-        from agentheim.vendor.aictx.config import AictxConfig
-
-        AictxContextOps(AictxConfig())
-    except Exception as exc:
-        return "WARN", str(exc)
-    return "PASS", "AICtx-backed ContextOps import and initialization ok"
 
 
 @app.command("config-dump", rich_help_panel="Setup & Configuration")
@@ -724,27 +607,33 @@ def doctor_cmd(
     pkg_detail = "all present" if not missing else f"missing: {', '.join(missing)}"
     checks.append(("Required packages", pkg_status, pkg_detail))
 
-    # Provider profiles
-    try:
-        config = load_team_config()
-        has_provider = bool(config.providers and config.models)
-        detail = f"profile={config.profile_name}; providers={len(config.providers)}; models={len(config.models)}"
-    except Exception as exc:
-        has_provider = False
-        detail = str(exc)
-    checks.append(("Provider profile", "PASS" if has_provider else "WARN", detail))
+    # Provider readiness via shared service
+    readiness = build_readiness_state(skip_connectivity=skip_connectivity)
+    has_provider = readiness.status != ReadinessStatus.needs_provider and bool(readiness.configured_providers)
 
-    if has_provider:
-        role_status, role_detail = _doctor_role_coverage(config)
-        checks.append(("Role coverage", role_status, role_detail))
-        lane_status, lane_detail = _doctor_first_class_lane(config)
-        checks.append(("First-class lane", lane_status, lane_detail))
-        local_status, local_detail = _doctor_local_reachability(config)
-        checks.append(("Local endpoint reachability", local_status, local_detail))
-    else:
+    if readiness.status in (ReadinessStatus.needs_provider, ReadinessStatus.needs_model):
+        checks.append(("Provider profile", "WARN", readiness.detail))
         checks.append(("Role coverage", "WARN", "provider profile missing"))
         checks.append(("First-class lane", "WARN", "provider profile missing"))
         checks.append(("Local endpoint reachability", "SKIP", "provider profile missing"))
+    else:
+        checks.append(("Provider profile", "PASS", f"profile={readiness.profile_name}; providers={len(readiness.configured_providers)}; models={readiness.model_count}"))
+        if readiness.missing_roles:
+            checks.append(("Role coverage", "WARN", f"missing roles: {', '.join(readiness.missing_roles)}"))
+        else:
+            checks.append(("Role coverage", "PASS", "planner, executor, verifier bound"))
+
+        if readiness.lane_detail:
+            lane_table_status = "WARN" if readiness.status in (ReadinessStatus.endpoint_unreachable, ReadinessStatus.needs_secret) and ("placeholder" in readiness.lane_detail or "missing secret_ref" in readiness.lane_detail) else "PASS"
+            checks.append(("First-class lane", lane_table_status, readiness.lane_detail))
+        else:
+            checks.append(("First-class lane", "PASS", "lane check skipped"))
+
+        if readiness.local_reachability_detail:
+            local_table_status = "PASS" if readiness.local_reachability_ok else "WARN"
+            checks.append(("Local endpoint reachability", local_table_status, readiness.local_reachability_detail))
+        else:
+            checks.append(("Local endpoint reachability", "SKIP", "no localhost providers configured"))
 
     # Writable .ai-team/
     ai_team_path = Path(".ai-team")
@@ -770,33 +659,25 @@ def doctor_cmd(
     checks.append(("Git available", "PASS" if git_ok else "WARN", git_detail))
 
     # Model connectivity (optional)
-    if not skip_connectivity and has_provider and not missing:
-        try:
-            config = load_team_config()
-            registry = build_model_registry(config)
-            by_role = config.by_role()
-            first_role = next(iter(by_role))
-            model = registry.resolve_model(first_role.value, "json")
-            provider = registry.create_provider(model.config)
-            response = provider.invoke(
-                ModelRequest(
-                    role=model.config.role,
-                    system_prompt="Reply with exactly: pong",
-                    user_prompt="ping",
-                    temperature=0.0,
-                )
-            )
-            conn_ok = bool(response.content.strip())
-            conn_detail = f"{model.config.provider} / {model.config.model} responded"
-        except Exception as exc:
-            conn_ok = False
-            conn_detail = str(exc)
-        checks.append(("Model connectivity", "PASS" if conn_ok else "FAIL", conn_detail))
+    if not skip_connectivity and has_provider:
+        if readiness.model_connectivity_ok is not None:
+            conn_status = "PASS" if readiness.model_connectivity_ok else "FAIL"
+            checks.append(("Model connectivity", conn_status, readiness.model_connectivity_detail))
+        else:
+            checks.append(("Model connectivity", "SKIP", "--skip-connectivity or missing config"))
     else:
         checks.append(("Model connectivity", "SKIP", "--skip-connectivity or missing config"))
 
-    context_status, context_detail = _doctor_context_ops()
-    checks.append(("ContextOps availability", context_status, context_detail))
+    # ContextOps availability via readiness optional integrations
+    context_ops_state = next(
+        (oi for oi in readiness.optional_integrations if oi.integration_id == "context_ops"),
+        None,
+    )
+    if context_ops_state is not None:
+        context_status = "PASS" if context_ops_state.available else "WARN"
+        checks.append(("ContextOps availability", context_status, context_ops_state.detail))
+    else:
+        checks.append(("ContextOps availability", "SKIP", "not checked"))
 
     # OCI readiness (optional)
     if oci:
