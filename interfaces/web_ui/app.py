@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 class HealthResponse(BaseModel):
     status: str = "ok"
-    version: str = "0.1.0"
+    version: str = "1.0.0"
 
 
 class ToolListItem(BaseModel):
@@ -116,7 +116,7 @@ class HomeResponse(BaseModel):
     advanced_tasks: list[PresetListItem] = Field(default_factory=list)
     recent_runs: list[dict[str, Any]] = Field(default_factory=list)
     optional_integrations: list[dict[str, Any]] = Field(default_factory=list)
-    version: str = "0.1.0"
+    version: str = "1.0.0"
 
 
 class ExecuteRequest(BaseModel):
@@ -208,7 +208,7 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
     try:
         app_version = package_version("agentheim")
     except PackageNotFoundError:
-        app_version = "0.1.0"
+        app_version = "1.0.0"
 
     app = FastAPI(
         title="Agentheim",

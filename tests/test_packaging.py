@@ -19,10 +19,9 @@ runner = CliRunner()
 
 
 class TestPyprojectMetadata:
-    def test_version_is_not_v1_yet(self) -> None:
+    def test_version_is_v1(self) -> None:
         pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
-        assert 'version = "0.1.0"' in pyproject or 'version = "0.2.0"' in pyproject
-        assert 'version = "1.0.0"' not in pyproject
+        assert 'version = "1.0.0"' in pyproject
 
     def test_has_maintainers(self) -> None:
         pyproject = Path("pyproject.toml").read_text(encoding="utf-8")

@@ -68,7 +68,7 @@ logger = logging.getLogger(__name__)
 
 class HealthResponse(BaseModel):
     status: str = "ok"
-    version: str = "0.1.0"
+    version: str = "1.0.0"
     request_id: str = ""
     components: dict[str, str] = Field(default_factory=dict)
 
@@ -349,10 +349,17 @@ class CtxPublicDocsUpdateResponse(BaseModel):
 
 def create_api_app(repo_root: str | Path = ".") -> FastAPI:
     repo_root = Path(repo_root).resolve()
+    from importlib.metadata import PackageNotFoundError, version as package_version
+
+    try:
+        api_version = package_version("agentheim")
+    except PackageNotFoundError:
+        api_version = "1.0.0"
+
     app = FastAPI(
         title="Agentheim API",
         description="Production API for agent orchestration, tool invocation, and workflow management.",
-        version="0.1.0",
+        version=api_version,
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url="/openapi.json",

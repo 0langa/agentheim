@@ -3,6 +3,16 @@
 > Historical entries may reference internal development files, tests, or maintainer-only docs that are not published in the public product branch.
 > Some referenced files (for example `BASELINE-ROADMAP.md`, `SUPPORT_MATRIX.md`, `TIER1_CONTRACTS.md`, `live-ai-testing.md`) existed during active development but were removed or consolidated before V1. The changelog text is preserved as historical record; broken internal links are expected for entries dated before the V1 release preparation phase.
 
+## 2026-05-17
+
+### V1 Release
+- Version bumped to `1.0.0` in `pyproject.toml`.
+- API server and web UI now use dynamic package version with `1.0.0` fallback.
+- Completed all 12 V1 roadmap phases: CLI surface, workflow engine, provider lanes,
+  API/web parity, runs/artifacts/recovery, integration hardening, packaging,
+  CI/security, safety/privacy, documentation, architecture cleanup, and release prep.
+- All ~1,477 tests pass. Docs validation passes. CLI command reference validated.
+
 ## 2026-05-16
 
 ### Provider Lane State Promotions — Vertex AI and Self-Hosted

@@ -730,8 +730,8 @@ Breaking changes require:
 - [x] Architecture/import checks run in CI.
 - [x] Privacy mode is selectable from beginner surfaces.
 - [x] Debug bundle redacts secrets.
-- [ ] Changelog contains V1 release notes.
-- [ ] Version is `1.0.0` in the release commit.
+- [x] Changelog contains V1 release notes.
+- [x] Version is `1.0.0` in the release commit.
 
 ## Product Decision Rule
 

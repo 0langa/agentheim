@@ -23,7 +23,7 @@ class TestHealth:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
-        assert data["version"] == "0.1.0"
+        assert data["version"] == "1.0.0"
 
 
 class TestDashboard:
@@ -66,7 +66,7 @@ class TestProductHome:
         assert "advanced_tasks" in data
         assert "recent_runs" in data
         assert "optional_integrations" in data
-        assert data["version"] == "0.1.0"
+        assert data["version"] == "1.0.0"
 
     def test_status_groups_tasks_by_tier(self, client: TestClient) -> None:
         response = client.get("/api/status")
