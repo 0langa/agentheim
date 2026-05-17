@@ -4,10 +4,10 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| main    | :white_check_mark: |
-| < main  | :x:                |
+| master  | :white_check_mark: |
+| < master| :x:                |
 
-Agentheim is currently in active development. Only the latest commit on `main` receives security updates.
+Agentheim is currently in active development. Only the latest commit on `master` receives security updates.
 
 ## Reporting a Vulnerability
 
