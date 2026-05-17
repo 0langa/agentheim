@@ -48,6 +48,7 @@ class ClaudeVisionProcessor(MultimodalProcessor):
                 ],
             },
             timeout=60,
+            allow_redirects=False,
         )
         resp.raise_for_status()
         data = resp.json()

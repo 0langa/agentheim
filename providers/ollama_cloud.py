@@ -23,7 +23,7 @@ class OllamaCloudProvider(ModelProvider):
             if delay:
                 time.sleep(delay)
             try:
-                response = requests.post(url, json=payload, headers=headers, timeout=self.config.timeout_seconds)
+                response = requests.post(url, json=payload, headers=headers, timeout=self.config.timeout_seconds, allow_redirects=False)
                 response.raise_for_status()
                 raw = response.json()
                 break

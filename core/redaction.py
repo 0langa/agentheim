@@ -10,21 +10,33 @@ import hashlib
 import re
 
 
+_MAX_REDACTION_INPUT = 200_000
+_MAX_SECRET_VALUE = 512
+
+
+def _compile_multiline_secret_pattern(label: str) -> re.Pattern[str]:
+    return re.compile(
+        rf"(?is)-----BEGIN {label}-----[\s\S]{{1,{_MAX_REDACTION_INPUT}}}?-----END {label}-----"
+    )
+
+
 SECRET_PATTERNS = [
     # API keys, tokens, passwords, secrets
-    re.compile(r"(?i)(api[_-]?key|token|password|secret|auth)\s*[:=]\s*['\"]?([A-Za-z0-9_\-+/=]{8,}|[^\s'\"]{8,})"),
+    re.compile(
+        rf"(?i)(api[_-]?key|token|password|secret|auth)(\s*[:=]\s*['\"]?)([^\s'\"\r\n]{{8,{_MAX_SECRET_VALUE}}})"
+    ),
     # Connection strings
-    re.compile(r"(?i)(connection\s*string)\s*[:=]\s*([^\n]+)"),
+    re.compile(rf"(?i)(connection\s*string)(\s*[:=]\s*)([^\r\n]{{1,{_MAX_SECRET_VALUE}}})"),
     # Private keys
-    re.compile(r"-----BEGIN [A-Z ]+PRIVATE KEY-----.*?-----END [A-Z ]+PRIVATE KEY-----", re.DOTALL),
+    _compile_multiline_secret_pattern("[A-Z ]+PRIVATE KEY"),
     # Certificates
-    re.compile(r"-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----", re.DOTALL),
+    _compile_multiline_secret_pattern("CERTIFICATE"),
     # AWS access key ID
     re.compile(r"(?i)(AKIA[0-9A-Z]{16})"),
-    # Generic hex tokens (64+ chars)
-    re.compile(r"\b([a-f0-9]{64,})\b"),
+    # Generic hex tokens (64-256 chars)
+    re.compile(r"\b([a-f0-9]{64,256})\b"),
     # Bearer tokens
-    re.compile(r"(?i)(bearer\s+)([a-zA-Z0-9_\-./=]+)"),
+    re.compile(rf"(?i)(bearer\s+)([a-zA-Z0-9_\-./=]{{8,{_MAX_SECRET_VALUE}}})"),
 ]
 
 
@@ -35,14 +47,18 @@ def _hash_secret(secret: str) -> str:
 
 def redact_text(text: str) -> str:
     """Redact secrets from text, replacing with [REDACTED-<hash>]."""
+    if len(text) > _MAX_REDACTION_INPUT:
+        return text
     redacted = text
     for pattern in SECRET_PATTERNS:
 
         def replacer(match: re.Match) -> str:
             # Find the secret portion of the match
             groups = match.groups()
-            if len(groups) >= 2:
-                # First group is label, second is secret
+            if len(groups) >= 3:
+                secret = groups[-1]
+                return f"{groups[0]}{groups[1]}[REDACTED-{_hash_secret(secret)}]"
+            if len(groups) == 2:
                 secret = groups[-1]
                 return f"{groups[0]}[REDACTED-{_hash_secret(secret)}]"
             # Single group or full match
