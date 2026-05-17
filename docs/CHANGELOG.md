@@ -1,6 +1,7 @@
 # Changelog
 
 > Historical entries may reference internal development files, tests, or maintainer-only docs that are not published in the public product branch.
+> Some referenced files (for example `BASELINE-ROADMAP.md`, `SUPPORT_MATRIX.md`, `TIER1_CONTRACTS.md`, `live-ai-testing.md`) existed during active development but were removed or consolidated before V1. The changelog text is preserved as historical record; broken internal links are expected for entries dated before the V1 release preparation phase.
 
 ## 2026-05-16
 
@@ -375,7 +376,7 @@
   - [`interfaces/api_server/app.py`](../interfaces/api_server/app.py) `GET /api/runs/{run_id}` now returns the canonical summary
   - API/Web SSE and WebSocket status streams now emit the same payload shape on initial/final status updates
 - Added/updated focused coverage in [`tests/test_resume.py`](../tests/test_resume.py), [`tests/test_api_server.py`](../tests/test_api_server.py), [`tests/test_web_ui.py`](../tests/test_web_ui.py), [`tests/smoke/test_cli.py`](../tests/smoke/test_cli.py), and [`tests/test_error_classification.py`](../tests/test_error_classification.py).
-- Updated [`BASELINE-ROADMAP.md`](../BASELINE-ROADMAP.md), [`docs/API_REFERENCE.md`](API_REFERENCE.md), [`docs/USER_GUIDE.md`](USER_GUIDE.md), and [`docs/TIER1_CONTRACTS.md`](TIER1_CONTRACTS.md) to reflect the implemented Phase 3 parity and remaining bundle/Desktop gaps.
+- Updated `BASELINE-ROADMAP.md`, [`docs/API_REFERENCE.md`](API_REFERENCE.md), [`docs/USER_GUIDE.md`](USER_GUIDE.md), and `docs/TIER1_CONTRACTS.md` to reflect the implemented Phase 3 parity and remaining bundle/Desktop gaps.
 
 ### Phase 1 Slice — API/Web Approval Continuation Flow
 - Added shared interface approval state in [`interfaces/tool_approval.py`](../interfaces/tool_approval.py) so API and Web UI medium-risk tool calls create ledger-backed approval requests and can continue safely after explicit approval.

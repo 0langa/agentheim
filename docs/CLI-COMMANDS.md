@@ -4,7 +4,31 @@
 > - installed script: `agentheim <command> [options]`
 > - repo-local: `python -m interfaces.cli.cli <command> [options]`
 
-The CLI is built with Typer. The lists below are derived from the current command registrations in `interfaces/cli/cli.py`, `interfaces/cli/ctx_commands.py`, `interfaces/cli/provider_commands.py`, and `interfaces/cli/oci_commands.py`.
+The CLI is built with Typer. The lists below are derived from the current command registrations in `interfaces/cli/cli.py`, `interfaces/cli/product_commands.py`, `interfaces/cli/ctx_commands.py`, `interfaces/cli/provider_commands.py`, and `interfaces/cli/oci_commands.py`.
+
+For the live, always-up-to-date command tree, run:
+
+```bash
+agentheim commands
+agentheim commands --json
+```
+
+---
+
+## Getting Started
+
+| Command | Description | Key Options / Arguments |
+| --- | --- | --- |
+| `setup` | Configure one beginner provider, bind roles, and run readiness checks. | `--provider`, `--template`, `--model`, `--endpoint`, `--api-key`, `--profile`, `--local`, `--yes`, `--json`, `--dry-run`, `--privacy-mode` |
+| `status` | Show provider readiness, integrations, recent runs, and next actions. | `--profile`, `--repo`, `--json`, `--debug-bundle` |
+| `use` | Launch a task by plain-language goal or direct task ID. | `TASK_ID`, `--input key=value`, `--repo`, `--json`, `--yes`, `--watch` |
+| `runs` | Inspect and recover runs. Calling without a subcommand lists all runs. | `--repo`, `--json` |
+| `runs list` | List runs. | `--repo`, `--json` |
+| `runs show` | Show a specific run. | `RUN_ID`, `--repo`, `--json`, `--watch` |
+| `runs report` | Display the report for a run. | `RUN_ID`, `--repo`, `--json` |
+| `runs resume` | Resume a run from its ledger. | `RUN_ID`, `--repo`, `--json` |
+| `runs open-folder` | Open the artifact folder for a run. | `RUN_ID`, `--repo` |
+| `open` | Open the local Agentheim UI on localhost. | `--port`, `--no-browser`, `--desktop`, `--json` |
 
 ---
 
@@ -23,7 +47,7 @@ The CLI is built with Typer. The lists below are derived from the current comman
 | `presets` | List all available presets. | none |
 | `start` | Run a preset with the given inputs. | `PRESET_ID`, `--input key=value` |
 | `guided` | Launch the guided TUI preset picker. | none |
-| `memory` | Interact with global memory. | `ACTION` = `get|set|history|profile`, `--key`, `--value`, `--model-id` |
+| `memory` | Interact with global memory. | `ACTION` = `get\|set\|history\|profile`, `--key`, `--value`, `--model-id` |
 | `doctor` | Diagnose configuration and environment issues. | `--skip-connectivity`, `--oci` |
 | `provider` | Manage provider profiles, secrets, templates, and role bindings. | subcommands |
 | `ctx` | Run context operations and OCI artifact commands. | subcommands |
@@ -134,9 +158,7 @@ agentheim provider assign-all --provider azure-real --model gpt-4.1 --profile az
 agentheim provider rotate-secret azure-real --profile azure-real
 ```
 
-To edit provider endpoint/auth metadata, there is currently no dedicated `provider update` command. The supported path today is:
-
-Use `provider update` directly:
+- update endpoint, auth, headers, or timeout:
 
 ```bash
 agentheim provider update azure-real --profile azure-real --endpoint https://YOUR-RESOURCE.openai.azure.com/openai/v1 --timeout-seconds 90
@@ -200,6 +222,7 @@ agentheim commands --json
 
 ### Current Grouping
 
+- `Getting Started`
 - `Setup & Configuration`
 - `Repository Work`
 - `Presets`
@@ -226,13 +249,22 @@ The CLI validates only these three mode names.
 
 ## Privacy And Safety
 
-Privacy and policy concepts exist in code, but the public CLI in this checkout does not expose a top-level privacy-mode selector.
+Privacy modes are selectable from the beginner CLI surface.
+
+```bash
+agentheim setup --privacy-mode local_only
+agentheim status --debug-bundle
+```
 
 Current user-visible safety behavior includes:
 
+- selectable privacy modes (`standard`, `local_only`, `strict_private`, `encrypted`)
 - policy-routed tool invocation
 - approval prompts for medium-risk filesystem operations such as `copy`
 - denial of high-risk operations through constrained interface paths
+- secret redaction in debug bundles and ledger entries
+
+See [Safety & Security](SAFETY.md) for full details.
 
 ---
 
@@ -260,6 +292,18 @@ Do not assume every run produces the same artifact inventory.
 python -m interfaces.cli.cli --help
 python -m interfaces.cli.cli commands
 python -m interfaces.cli.cli commands --json
+
+# Interactive setup
+agentheim setup
+
+# Status and diagnostics
+agentheim status
+agentheim status --json
+agentheim status --debug-bundle
+
+# Run a task by goal
+agentheim use code --input repo=. --input task="Refactor auth module"
+agentheim use docs-chat --input repo=. --input task="Explain the routing logic"
 
 # Inspect a repo
 python -m interfaces.cli.cli inspect --repo .

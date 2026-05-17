@@ -704,32 +704,32 @@ Breaking changes require:
 
 ## V1 Completion Checklist
 
-- [ ] Shared readiness service exists and is used by CLI/API/Web/Desktop.
-- [ ] Shared preset catalog exists and is used by CLI/API/Web/Desktop.
-- [ ] Shared run view exists and is used by CLI/API/Web/Desktop.
-- [ ] Shared error catalog exists and is used by CLI/API/Web/Desktop.
-- [ ] `agentheim setup` works interactively and non-interactively.
-- [ ] `agentheim status` shows readiness and supports JSON.
-- [ ] `agentheim use` runs recommended and advanced tasks.
-- [ ] `agentheim runs` lists, shows, reports, resumes, and opens artifacts.
-- [ ] `agentheim open` launches localhost Web UI.
-- [ ] Web UI no longer contains prototype identity.
-- [ ] Web UI escapes dynamic data.
-- [ ] Public V1 API routes are documented and tested.
-- [ ] Optional integrations fail closed with setup guidance.
-- [ ] Package builds as wheel and sdist.
-- [ ] Clean wheel install smoke passes.
-- [ ] GitHub Actions CI exists at repo root.
-- [ ] Security workflow exists.
-- [ ] Dependabot exists.
-- [ ] `SECURITY.md` references `master`.
-- [ ] README uses beginner commands only for quickstart.
-- [ ] User Guide starts with beginner path.
-- [ ] CLI command docs are generated or validated.
-- [ ] Docs links pass.
-- [ ] Architecture/import checks run in CI.
-- [ ] Privacy mode is selectable from beginner surfaces.
-- [ ] Debug bundle redacts secrets.
+- [x] Shared readiness service exists and is used by CLI/API/Web/Desktop.
+- [x] Shared preset catalog exists and is used by CLI/API/Web/Desktop.
+- [x] Shared run view exists and is used by CLI/API/Web/Desktop.
+- [x] Shared error catalog exists and is used by CLI/API/Web/Desktop.
+- [x] `agentheim setup` works interactively and non-interactively.
+- [x] `agentheim status` shows readiness and supports JSON.
+- [x] `agentheim use` runs recommended and advanced tasks.
+- [x] `agentheim runs` lists, shows, reports, resumes, and opens artifacts.
+- [x] `agentheim open` launches localhost Web UI.
+- [x] Web UI no longer contains prototype identity.
+- [x] Web UI escapes dynamic data.
+- [x] Public V1 API routes are documented and tested.
+- [x] Optional integrations fail closed with setup guidance.
+- [x] Package builds as wheel and sdist.
+- [x] Clean wheel install smoke passes.
+- [x] GitHub Actions CI exists at repo root.
+- [x] Security workflow exists.
+- [x] Dependabot exists.
+- [x] `SECURITY.md` references `master`.
+- [x] README uses beginner commands only for quickstart.
+- [x] User Guide starts with beginner path.
+- [x] CLI command docs are generated or validated.
+- [x] Docs links pass.
+- [x] Architecture/import checks run in CI.
+- [x] Privacy mode is selectable from beginner surfaces.
+- [x] Debug bundle redacts secrets.
 - [ ] Changelog contains V1 release notes.
 - [ ] Version is `1.0.0` in the release commit.
 

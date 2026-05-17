@@ -25,11 +25,11 @@ Agentheim lets you run multi-agent workflows on your own machine with policy-gat
 
 | Document | Description |
 |----------|-------------|
-| [User Guide](docs/USER_GUIDE.md) | Install, configure, and run presets |
-| [CLI Commands](docs/CLI-COMMANDS.md) | Current CLI command surface derived from code |
+| [User Guide](docs/USER_GUIDE.md) | Install, configure, run presets, and recipes |
+| [CLI Commands](docs/CLI-COMMANDS.md) | Full CLI command reference |
 | [Architecture](docs/ARCHITECTURE.md) | System design, modules, and boundaries |
 | [API Reference](docs/API_REFERENCE.md) | REST API and streaming routes |
-| [V1 Roadmap](docs/ROADMAP.md) | Product roadmap based on the current tracked codebase |
+| [V1 Roadmap](docs/ROADMAP.md) | Product roadmap and completion checklist |
 | [Safety & Security](docs/SAFETY.md) | Privacy modes, approval gates, and security model |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and recovery steps |
 | [Changelog](docs/CHANGELOG.md) | Release history |
@@ -52,24 +52,49 @@ pip install -e .
 
 ### Configure
 
+Run the interactive setup wizard. It creates a provider profile, stores your API key securely, and binds the core roles.
+
 ```powershell
-agentheim provider add openai --template openai_v1 --model gpt-4o-mini --role planner
+agentheim setup
 ```
 
-### Run a preset
+Or set up non-interactively:
 
 ```powershell
-agentheim guided
-agentheim start codebase-assistant --input repo=./my-project --input task="Review code"
+agentheim setup --provider openai --template openai_v1 --model gpt-4o-mini --api-key $env:OPENAI_API_KEY
 ```
 
 ### Check system health
 
 ```powershell
-agentheim doctor
-agentheim ping-models
-agentheim list-runs --repo .
-agentheim resume --repo . --run-id <run-id>
+agentheim status
+```
+
+### Run your first task
+
+```powershell
+# Interactive guided mode — pick a preset
+agentheim guided
+
+# Or run a task directly by plain-language goal
+agentheim use code --input repo=. --input task="Review the auth module"
+
+# Or run a preset directly
+agentheim start codebase-assistant --input repo=. --input task="Review code"
+```
+
+### Inspect and recover runs
+
+```powershell
+agentheim runs                    # list recent runs
+agentheim runs show <run-id>      # view a run
+agentheim runs resume <run-id>    # resume a blocked run
+```
+
+### Open the web UI
+
+```powershell
+agentheim open
 ```
 
 ## Repository layout

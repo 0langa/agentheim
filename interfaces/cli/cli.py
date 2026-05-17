@@ -116,7 +116,7 @@ def _collect_command_entries(typer_app: typer.Typer, prefix: str = "", inherited
 
     for group_info in typer_app.registered_groups:
         name = getattr(group_info, "name", None)
-        if not name:
+        if name is None:
             continue
         group_panel = _normalize_panel(getattr(group_info, "rich_help_panel", None) or inherited_panel)
         group_command = f"{prefix} {name}".strip()

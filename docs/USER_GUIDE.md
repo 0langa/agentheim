@@ -8,12 +8,13 @@
 
 - [Requirements](#requirements)
 - [Installation](#installation)
-- [Quick Start](#quick-start)
+- [Beginner Path](#beginner-path)
+- [Recipes](#recipes)
 - [Configuration](#configuration)
 - [CLI Reference](#cli-reference)
 - [Presets](#presets)
-- [Run Modes](#run-modes)
 - [Privacy & Safety](#privacy--safety)
+- [Ledger & Artifacts](#ledger--artifacts)
 
 ---
 
@@ -56,31 +57,226 @@ agentheim doctor
 
 ---
 
-## Quick Start
+## Beginner Path
 
-### 1. Configure a Provider
+This is the fastest path from install to a working preset run.
+
+### 1. Run Setup
 
 ```bash
-agentheim provider add openai --template openai_v1 --model gpt-4o-mini --role planner
-agentheim provider assign executor --provider openai --model gpt-4o-mini
-agentheim provider assign verifier --provider openai --model gpt-4o-mini
+agentheim setup
 ```
 
-### 2. Verify Connectivity
+This interactively prompts for:
+- Provider (OpenAI, Google, Anthropic, local, etc.)
+- Model
+- API key (stored in the OS keychain, never in repo files)
+- Privacy mode (`standard`, `local_only`, `strict_private`)
+
+It then creates a profile, binds core roles (`planner`, `executor`, `verifier`, `context`), and runs readiness checks.
+
+Non-interactive equivalent:
 
 ```bash
+agentheim setup --provider openai --template openai_v1 --model gpt-4o-mini --api-key $env:OPENAI_API_KEY --yes
+```
+
+### 2. Check Status
+
+```bash
+agentheim status
+```
+
+Shows:
+- Provider readiness
+- Missing role bindings
+- Optional integrations (MCP, browser, GitHub, context ops)
+- Recent runs
+- Suggested next actions
+
+JSON output for scripting:
+
+```bash
+agentheim status --json
+```
+
+Generate a redacted debug bundle:
+
+```bash
+agentheim status --debug-bundle
+```
+
+### 3. Run a Task
+
+The quickest way is `use`, which maps a plain-language goal to the right preset:
+
+```bash
+# Review code
+agentheim use code --input repo=. --input task="Review the auth module"
+
+# Chat with your documents
+agentheim use docs-chat --input repo=. --input task="How does routing work?"
+
+# Generate a shell command
+agentheim use command --input task="List all Python files modified in the last week"
+```
+
+Or use the interactive picker:
+
+```bash
+agentheim guided
+```
+
+Or run a preset directly:
+
+```bash
+agentheim start codebase-assistant --input repo=. --input task="Review code"
+```
+
+### 4. Inspect Runs
+
+```bash
+agentheim runs                    # list all runs
+agentheim runs show <run-id>      # detailed view
+agentheim runs report <run-id>    # print the report
+agentheim runs resume <run-id>    # resume a blocked run
+agentheim runs open-folder <run-id>  # open artifact folder
+```
+
+### 5. Open the UI
+
+```bash
+agentheim open
+```
+
+Launches the local web UI on `http://localhost:8765` and opens your browser.
+
+---
+
+## Recipes
+
+### Connect an OpenAI-compatible provider
+
+Any provider with an OpenAI-compatible HTTP API:
+
+```bash
+agentheim provider add myprovider --template openai_compatible \
+  --model my-model --role planner \
+  --endpoint https://api.example.com/v1 --api-key $env:MY_API_KEY
+agentheim provider assign executor --provider myprovider --model my-model
+agentheim provider assign verifier --provider myprovider --model my-model
 agentheim ping-models
 ```
 
-### 3. Run a Preset
+### Connect local Ollama
+
+1. Start Ollama and pull a model:
 
 ```bash
-# Interactive guided mode — pick a preset
-agentheim guided
-
-# Or run directly
-agentheim start codebase-assistant --input repo=./my-project --input task="Review code"
+ollama run llama3.1
 ```
+
+2. Add the provider:
+
+```bash
+agentheim provider add local --template ollama --model llama3.1 --role planner
+agentheim provider assign executor --provider local --model llama3.1
+agentheim provider assign verifier --provider local --model llama3.1
+agentheim doctor --skip-connectivity
+agentheim provider test --role planner
+```
+
+3. Quality notes:
+- Smaller OSS models may pass `command-assistant` but struggle with coding or verifier-heavy flows.
+- Use stronger instruction-following models for `codebase-assistant`.
+- Vision claims only matter when the local server and chosen model both support vision inputs.
+
+### Connect LM Studio
+
+1. In LM Studio, start the local server (default port 1234).
+2. Add the provider:
+
+```bash
+agentheim provider add local --template lm_studio --model my-model --role planner
+agentheim provider assign executor --provider local --model my-model
+agentheim provider assign verifier --provider local --model my-model
+agentheim ping-models
+```
+
+### Run Codebase Assistant
+
+```bash
+agentheim use code --input repo=./my-project --input task="Refactor the auth module"
+```
+
+Or run directly:
+
+```bash
+agentheim start codebase-assistant --input repo=./my-project --input task="Add input validation to the API"
+```
+
+The preset inspects the repo, plans the work, applies patches, runs tests, and produces a report.
+
+### Ask questions over your documents
+
+```bash
+agentheim use docs-chat --input repo=./my-docs --input task="What is the refund policy?"
+```
+
+Or run directly:
+
+```bash
+agentheim start local-document-chat --input repo=./my-docs --input task="Summarize the onboarding guide"
+```
+
+Documents are indexed locally. Nothing is sent to the provider except your question and the retrieved context chunks.
+
+### Inspect prior runs
+
+```bash
+# List recent runs
+agentheim runs --repo .
+
+# Show a specific run
+agentheim runs show 2026-05-17-a1b2c3d4 --repo .
+
+# Watch a run in progress
+agentheim runs show 2026-05-17-a1b2c3d4 --watch
+
+# Print the report
+agentheim runs report 2026-05-17-a1b2c3d4 --repo .
+```
+
+### Recover from provider failure
+
+1. Run diagnostics:
+
+```bash
+agentheim doctor
+agentheim ping-models
+```
+
+2. If a provider is unreachable, check your endpoint and API key:
+
+```bash
+agentheim provider test --role planner
+agentheim provider list
+```
+
+3. Rotate a secret if needed:
+
+```bash
+agentheim provider rotate-secret openai
+```
+
+4. Switch to a backup provider:
+
+```bash
+agentheim provider add backup --template openai_v1 --model gpt-4o-mini --role planner --api-key $env:BACKUP_KEY
+agentheim provider assign-all --provider backup --model gpt-4o-mini
+```
+
+5. If the issue is rate-limiting, reduce concurrent load or switch to a local provider for non-critical tasks.
 
 ---
 
@@ -257,7 +453,12 @@ agentheim presets             # List available presets
 
 | Command | Description |
 |---------|-------------|
-| `agentheim guided` | Interactive preset picker (recommended for beginners) |
+| `agentheim setup` | Interactive setup wizard (recommended for beginners) |
+| `agentheim status` | Show readiness, integrations, runs, and next actions |
+| `agentheim use <task>` | Launch a task by plain-language goal |
+| `agentheim runs` | List, show, report, resume, and open run artifacts |
+| `agentheim open` | Open the local web UI |
+| `agentheim guided` | Interactive preset picker |
 | `agentheim start <preset>` | Run a specific preset with inputs |
 | `agentheim doctor` | Run system diagnostics |
 | `agentheim ping-models` | Test provider connectivity for all configured models |
@@ -311,6 +512,9 @@ agentheim mcp-list
 
 # Call an MCP tool (example: filesystem search)
 agentheim mcp-call filesystem_search --arg query="*.py"
+
+# Generate a debug bundle
+agentheim status --debug-bundle
 ```
 
 ### Run Modes
@@ -327,37 +531,14 @@ agentheim mcp-call filesystem_search --arg query="*.py"
 
 | Preset | What it does | CLI Shortcut |
 |--------|-------------|-------------|
-| **Codebase Assistant** | Inspects → plans → patches → tests → reports on your code | `agentheim start codebase-assistant` |
+| **Codebase Assistant** | Inspects → plans → patches → tests → reports on your code | `agentheim use code` |
 | **Research Report** | Gathers sources → summarizes → compares → writes a report | `agentheim start research-report` |
-| **Local Document Chat** | Indexes documents → answers questions with citations | `agentheim start local-document-chat` |
+| **Local Document Chat** | Indexes documents → answers questions with citations | `agentheim use docs-chat` |
 | **File Organizer** | Analyzes → proposes → previews → applies file organization | `agentheim start file-organizer` |
 | **Docs Maintainer** | Detects stale documentation → updates or aligns it | `agentheim start docs-maintainer` |
 | **GitHub Maintainer** | Summarizes issues → drafts PR descriptions | `agentheim start github-maintainer` |
-| **Command Assistant** | Parses natural language → generates safe shell commands | `agentheim start command-assistant` |
+| **Command Assistant** | Parses natural language → generates safe shell commands | `agentheim use command` |
 | **Context Maintainer** | Detects stale context → runs context pipeline | `agentheim start context-maintainer` |
-
----
-
-## Architecture at a Glance
-
-Agentheim serves three user layers from the same runtime:
-
-```
-Beginner (Presets)        →  Pick intent, system handles the rest
-    ↓
-Power-User (CLI/Config)   →  Override models, config, and approval rules
-    ↓
-Developer (Extensible)    →  Add workflow packs, providers, tools — no core changes
-    ↓
-Core Runtime (Generic)    →  DAG execution, policy engine, ledger, model registry
-```
-
-**Key design principles:**
-- **Core ignorance** — `core/` stays generic, with a small bootstrapping exception in `core/model_registry.py`
-- **Local-first** — zero external services required; privacy modes enforced in code
-- **Safety by default** — destructive ops require approval; policies are code, not prompts
-- **Fully auditable** — every run produces an append-only event ledger
-- **Provider-agnostic** — swap Grok, OpenAI, Azure, Ollama, LM Studio without code changes
 
 ---
 
@@ -374,7 +555,17 @@ See the [Safety & Security](SAFETY.md) document for complete details.
 | `strict_private` | Blocks sensitive-path access under stricter privacy rules |
 | `encrypted` | Redacts audited params and applies the strictest privacy handling |
 
-These mode names come from `core/privacy_enforcer.py`. The current CLI surface does not yet expose a dedicated privacy-mode flag.
+Set during setup:
+
+```bash
+agentheim setup --privacy-mode local_only
+```
+
+Or check the current mode:
+
+```bash
+agentheim status
+```
 
 ### Approval Levels
 
