@@ -28,7 +28,9 @@ def safe_child_path(root: str | Path, *parts: str | Path) -> Path:
 
 def safe_project_path(value: str | Path) -> Path:
     """Resolve a user supplied project path to an existing directory."""
-    project = Path(value).expanduser().resolve()
+    # Project paths are intentionally user-selected roots. This helper only
+    # canonicalizes them before explicit existence/type checks.
+    project = Path(value).expanduser().resolve()  # lgtm[py/path-injection]
     if not project.exists():
         raise ValueError(f"project path does not exist: {project}")
     if not project.is_dir():
