@@ -159,6 +159,27 @@ class TestMissingSecret:
         assert "missing" in state.detail.lower() and "secret" in state.detail.lower()
 
 
+class TestMissingSecretDoesNotCrashRoleCheck:
+    def test_needs_secret_without_config_error(self) -> None:
+        """Role coverage must not resolve provider secrets.
+
+        Regression: calling config.by_role() triggered resolve_model(),
+        which raised ConfigError when secret_ref was missing. This
+        prevented build_readiness_state() from ever returning needs_secret.
+        """
+        providers = _make_provider(auth_mode="bearer", secret_ref=None, api_key=None)
+        models = {
+            **_make_model(role=ModelRole.PLANNER),
+            **_make_model(model_id="executor", role=ModelRole.EXECUTOR),
+            **_make_model(model_id="verifier", role=ModelRole.VERIFIER),
+        }
+        config = _make_config(providers=providers, models=models)
+        with patch("interfaces.readiness.load_team_config", return_value=config):
+            state = build_readiness_state(skip_connectivity=True)
+        assert state.status == ReadinessStatus.needs_secret
+        assert "missing" in state.detail.lower() and "secret" in state.detail.lower()
+
+
 class TestLocalProviderUnavailable:
     def test_local_provider_unreachable_returns_endpoint_unreachable(self) -> None:
         providers = _make_provider(

@@ -8,13 +8,22 @@ from pathlib import Path
 import pytest
 
 
-INTERFACE_FILES = [
-    "interfaces/cli/cli.py",
-    "interfaces/api_server/app.py",
-    "interfaces/web_ui/app.py",
-    "interfaces/desktop_ui/app.py",
-    "interfaces/guided_tui/app.py",
-]
+# Explicitly exempt files that have a documented justification for importing
+# directly from core internals. New exemptions require an inline comment
+# explaining why core.public_api cannot satisfy the need.
+EXEMPT_FILES: dict[str, str] = {
+    # Add justified exemptions here with a comment explaining why.
+}
+
+
+def _discover_interface_files() -> list[str]:
+    """Return all Python files under interfaces/ as repo-relative POSIX paths."""
+    repo_root = Path(__file__).parent.parent
+    interface_dir = repo_root / "interfaces"
+    return sorted(
+        str(p.relative_to(repo_root)).replace("\\", "/")
+        for p in interface_dir.rglob("*.py")
+    )
 
 
 def _collect_core_imports(source_path: Path) -> list[tuple[int, str]]:
@@ -30,7 +39,7 @@ def _collect_core_imports(source_path: Path) -> list[tuple[int, str]]:
 
 
 class TestInterfaceIsolation:
-    @pytest.mark.parametrize("rel_path", INTERFACE_FILES)
+    @pytest.mark.parametrize("rel_path", _discover_interface_files())
     def test_no_direct_core_imports(self, rel_path: str) -> None:
         path = Path(__file__).parent.parent / rel_path
         if not path.exists():
@@ -40,6 +49,9 @@ class TestInterfaceIsolation:
 
         # Allowed: core.public_api itself
         disallowed = [(line, mod) for line, mod in core_imports if mod != "core.public_api"]
+
+        if rel_path in EXEMPT_FILES:
+            pytest.skip(f"{rel_path} is exempt: {EXEMPT_FILES[rel_path]}")
 
         assert not disallowed, (
             f"{rel_path} imports directly from core internals: "

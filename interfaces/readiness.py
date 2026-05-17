@@ -11,10 +11,9 @@ from config.config import (
     ConfigError,
     ModelRole,
     TeamConfig,
-    get_secret_store,
     load_team_config,
 )
-from core.model_registry import build_model_registry
+from core.public_api import build_model_registry
 from providers.base import ModelRequest
 
 
@@ -84,7 +83,7 @@ def _endpoint_target(endpoint: str) -> tuple[str | None, int | None]:
 
 
 def _check_role_coverage(config: TeamConfig) -> tuple[list[str], str]:
-    bound_roles = set(config.by_role())
+    bound_roles = {model.role for model in config.models.values()}
     missing = [role.value for role in _REQUIRED_ROLES if role not in bound_roles]
     if missing:
         return missing, f"missing roles: {', '.join(missing)}"
