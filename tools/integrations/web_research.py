@@ -64,7 +64,7 @@ class UrllibSearchAdapter:
 
 
 class WebResearchAdapter:
-    """Dispatcher: tries DuckDuckGo → urllib → stub."""
+    """Dispatcher: tries DuckDuckGo, then urllib, then reports unavailable."""
 
     def __init__(self, repo_root: str | Path, enabled: bool = True) -> None:
         self.repo_root = Path(repo_root)
@@ -90,4 +90,4 @@ class WebResearchAdapter:
         try:
             return UrllibSearchAdapter().search(query)
         except Exception as exc:
-            return {"query": query, "source": "stub", "error": str(exc), "results": []}
+            return {"query": query, "source": "unavailable", "error": str(exc), "results": []}

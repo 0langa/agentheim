@@ -60,7 +60,7 @@ class TestWebResearchAdapter:
                     result = adapter.search("query")
         assert result == fallback_result
 
-    def test_both_fail_returns_stub_error(self):
+    def test_both_fail_returns_unavailable_error(self):
         with patch("duckduckgo_search.DDGS") as MockDDGS:
             mock_client = MagicMock()
             mock_client.text.side_effect = Exception("DDG boom")
@@ -69,7 +69,7 @@ class TestWebResearchAdapter:
                 adapter = WebResearchAdapter(repo_root="/tmp", enabled=True)
                 with patch.object(UrllibSearchAdapter, "search", side_effect=Exception("urllib boom")):
                     result = adapter.search("query")
-        assert result["source"] == "stub"
+        assert result["source"] == "unavailable"
         assert "error" in result
         assert result["results"] == []
         assert result["query"] == "query"
@@ -131,10 +131,10 @@ class TestMCPClientAdapter:
 
     def test_call_with_allowlist_allows_known(self):
         adapter = MCPClientAdapter(repo_root="/tmp", enabled=True, allowlist=["tool_a"])
-        result = adapter.call("tool_a", {"x": 1})
-        assert result == {"tool": "tool_a", "payload": {"x": 1}, "status": "stub"}
+        with pytest.raises(RuntimeError, match="MCP client adapter has no configured backend."):
+            adapter.call("tool_a", {"x": 1})
 
     def test_call_without_allowlist_allows_any(self):
         adapter = MCPClientAdapter(repo_root="/tmp", enabled=True, allowlist=[])
-        result = adapter.call("any_tool", {})
-        assert result == {"tool": "any_tool", "payload": {}, "status": "stub"}
+        with pytest.raises(RuntimeError, match="MCP client adapter has no configured backend."):
+            adapter.call("any_tool", {})

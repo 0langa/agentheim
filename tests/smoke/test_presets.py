@@ -57,6 +57,24 @@ class TestPresetRegistry:
     def test_research_report_preset(self) -> None:
         preset = PRESET_REGISTRY.get("research-report")
         assert preset.workflow_id == "research"
+        question_keys = {q.key for q in preset.guided_questions}
+        assert "topic" in question_keys
+        assert "depth" not in question_keys
+
+    def test_preset_validation_applies_defaults_and_requires_missing_inputs(self) -> None:
+        from presets.base import PresetInputError
+
+        preset = PRESET_REGISTRY.get("research-report")
+        validated = preset.validate_inputs({"topic": "AI"})
+        assert validated["topic"] == "AI"
+        assert validated["repo"] == "."
+
+        try:
+            preset.validate_inputs({})
+        except PresetInputError as exc:
+            assert exc.to_dict()["missing_inputs"] == ["topic"]
+        else:
+            raise AssertionError("Expected missing topic validation error")
 
     def test_file_organizer_preset(self) -> None:
         preset = PRESET_REGISTRY.get("file-organizer")

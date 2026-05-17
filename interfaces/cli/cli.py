@@ -46,6 +46,7 @@ import importlib.util
 
 from memory.tiers.global_ import GlobalMemory
 from presets import PRESET_REGISTRY
+from presets.base import PresetInputError
 from providers.base import ModelRequest
 from tools.mcp.client import MCPClient
 from tools.mcp.config import load_mcp_config
@@ -617,7 +618,7 @@ def start_preset(
     except KeyError as exc:
         raise typer.BadParameter(str(exc)) from exc
 
-    inputs: dict[str, Any] = dict(preset.default_config)
+    inputs: dict[str, Any] = {}
     for arg in input_args:
         if "=" not in arg:
             raise typer.BadParameter(f"Input must be key=value: {arg}")
@@ -629,12 +630,10 @@ def start_preset(
             value = False  # type: ignore[assignment]
         inputs[key] = value
 
-    # Validate required inputs
-    for question in preset.guided_questions:
-        if question.key not in inputs and question.default is None:
-            raise typer.BadParameter(f"Missing required input: {question.key}")
-        if question.key not in inputs and question.default is not None:
-            inputs[question.key] = question.default
+    try:
+        inputs = preset.validate_inputs(inputs)
+    except PresetInputError as exc:
+        raise typer.BadParameter(str(exc)) from exc
 
     console.print(f"[bold]Running preset:[/bold] {preset.name}")
     result = preset.run(inputs)

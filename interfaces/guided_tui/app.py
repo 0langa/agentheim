@@ -5,7 +5,7 @@ from typing import Any
 from rich.console import Console
 
 from presets import PRESET_REGISTRY
-from presets.base import Question
+from presets.base import PresetInputError, Question
 from interfaces.guided_tui.picker import pick_preset
 from interfaces.guided_tui.questionnaire import run_questionnaire
 from interfaces.guided_tui.render import (
@@ -72,10 +72,14 @@ def run_guided_tui() -> None:
     console.print()
     print_success(console, f"Running {preset.name}...")
     try:
-        result = preset.run(inputs)
+        result = preset.run(preset.validate_inputs(inputs))
         console.print()
         print_success(console, "Done.")
         console.print(result)
+    except PresetInputError as exc:
+        console.print()
+        print_error(console, str(exc))
+        raise
     except Exception as exc:
         console.print()
         print_error(console, f"Error: {exc}")

@@ -169,6 +169,6 @@ def run_desktop_app(
         print("Press Ctrl+C to stop the server.")
         try:
             while True:
-                pass
+                time.sleep(1)
         except KeyboardInterrupt:
             pass

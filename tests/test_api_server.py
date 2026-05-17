@@ -341,6 +341,22 @@ class TestPresetExecution:
         assert data["status"] == "pending"
         RunExecutor.reset_instance()
 
+    def test_run_preset_rejects_missing_required_inputs(self, client: TestClient) -> None:
+        from unittest.mock import patch
+
+        with patch("core.run_executor.RunExecutor.submit") as mock_submit:
+            response = client.post(
+                "/api/presets/research-report/run",
+                json={"inputs": {}},
+                headers={"X-API-Key": "test-key"},
+            )
+        assert response.status_code == 400
+        data = response.json()["detail"]
+        assert data["error"] == "missing_required_inputs"
+        assert data["preset_id"] == "research-report"
+        assert data["missing_inputs"] == ["topic"]
+        mock_submit.assert_not_called()
+
 
 class TestRunStreaming:
     def test_stream_run_not_found(self, client: TestClient) -> None:

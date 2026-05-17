@@ -14,7 +14,6 @@ class ResearchReportPreset(Preset):
             description="Gather, summarize, and report on a research topic.",
             guided_questions=[
                 Question(key="topic", type="text", text="Research topic?"),
-                Question(key="depth", type="choice", text="Depth level?", options=["quick", "standard", "deep"], default="standard"),
                 Question(key="repo", type="text", text="Target repository path?", default="."),
             ],
             default_config={},
@@ -24,7 +23,6 @@ class ResearchReportPreset(Preset):
 
     def run(self, inputs: dict[str, Any]) -> Any:
         from workflows.research.runtime import run_task
-        # Depth is advisory for now; run_task only needs topic
         return run_task(topic=inputs["topic"], repo_path=inputs.get("repo", "."))
 
 

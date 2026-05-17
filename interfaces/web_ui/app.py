@@ -31,6 +31,7 @@ from agentheim.context_ops_impl import AictxContextOps
 from agentheim.vendor.aictx.config import AictxConfig
 from agentheim.vendor.aictx.errors import SafetyError
 from interfaces.tool_approval import InterfaceApprovalStore
+from presets.base import PresetInputError
 
 
 # ------------------------------------------------------------------
@@ -86,6 +87,7 @@ class PresetListItem(BaseModel):
     name: str
     description: str
     support_state: str = "unknown"
+    questions: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class ExecuteRequest(BaseModel):
@@ -385,6 +387,7 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
                 name=getattr(p, "name", p.preset_id) or p.preset_id,
                 description=getattr(p, "description", "") or "",
                 support_state=getattr(p, "support_state", "unknown"),
+                questions=[q.__dict__ for q in getattr(p, "guided_questions", [])],
             )
             for p in PRESET_REGISTRY.list()
         ]
@@ -431,7 +434,12 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
         except KeyError:
             raise HTTPException(status_code=404, detail=f"Preset '{preset_id}' not found")
 
-        run_id = run_executor.submit(preset.run, body.inputs)
+        try:
+            inputs = preset.validate_inputs(body.inputs)
+        except PresetInputError as exc:
+            return JSONResponse(status_code=400, content=exc.to_dict())
+
+        run_id = run_executor.submit(preset.run, inputs)
         return ExecuteResponse(run_id=run_id, status="pending")
 
     @app.get("/api/runs/{run_id}", response_model=CanonicalRunSummary)
@@ -702,7 +710,7 @@ def _dashboard_html() -> str:
 </head>
 <body>
 <h1>Agentheim</h1>
-<p class="subtitle">Web UI Prototype &mdash; Phase 7 Production Hardening</p>
+<p class="subtitle">Local agent workflow dashboard</p>
 <div id="status">Loading...</div>
 <div class="grid">
   <div class="card">
@@ -810,7 +818,7 @@ async function loadAll() {
 
   const presetList = document.getElementById('presets-list');
   if (presets.error) { presetList.innerHTML = '<li class="error">' + presets.error + '</li>'; }
-  else { presetList.innerHTML = presets.map(p => '<li>' + p.preset_id + '<span class="badge state-' + p.support_state + '">' + p.support_state + '</span> <button class="run-btn" data-preset-id="' + p.preset_id + '">Run</button></li>').join('');
+  else { presetList.innerHTML = presets.map(p => '<li>' + p.preset_id + '<span class="badge state-' + p.support_state + '">' + p.support_state + '</span>' + renderPresetInputs(p) + ' <button class="run-btn" data-preset-id="' + p.preset_id + '">Run</button></li>').join('');
     presetList.addEventListener('click', function(e) { if (e.target.classList.contains('run-btn')) { runPreset(e.target.dataset.presetId); } }); }
 
   const providerList = document.getElementById('providers-list');
@@ -819,6 +827,30 @@ async function loadAll() {
   else {
     providerList.innerHTML = providers.profiles.flatMap(p => p.providers.map(provider => '<li>' + p.name + ' / ' + provider.id + '<span class="badge">' + provider.kind + '</span></li>')).join('') || '<li class="loading">No providers configured</li>';
   }
+}
+function renderPresetInputs(preset) {
+  const questions = preset.questions || [];
+  if (!questions.length) return '';
+  return '<div class="preset-inputs">' + questions.map(q => {
+    const id = 'preset-' + preset.preset_id + '-' + q.key;
+    const value = q.default === null || q.default === undefined ? '' : q.default;
+    if (q.options && q.options.length) {
+      return '<label>' + q.key + '<select data-preset-id="' + preset.preset_id + '" data-input-key="' + q.key + '">' + q.options.map(opt => '<option value="' + opt + '"' + (opt === value ? ' selected' : '') + '>' + opt + '</option>').join('') + '</select></label>';
+    }
+    if (q.type === 'confirm') {
+      return '<label>' + q.key + '<input type="checkbox" data-preset-id="' + preset.preset_id + '" data-input-key="' + q.key + '"' + (value === true ? ' checked' : '') + '></label>';
+    }
+    return '<label>' + q.key + '<input id="' + id + '" type="text" value="' + value + '" data-preset-id="' + preset.preset_id + '" data-input-key="' + q.key + '"></label>';
+  }).join('') + '</div>';
+}
+function collectPresetInputs(preset_id) {
+  const inputs = {};
+  document.querySelectorAll('[data-preset-id="' + preset_id + '"][data-input-key]').forEach(el => {
+    const key = el.getAttribute('data-input-key');
+    if (el.type === 'checkbox') inputs[key] = el.checked;
+    else inputs[key] = el.value;
+  });
+  return inputs;
 }
 async function ctxAction(action) {
   const path = document.getElementById('ctx-project-path').value || '.';
@@ -872,7 +904,7 @@ async function runPreset(preset_id) {
   const data = await fetchJSON('/api/presets/' + preset_id + '/run', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ inputs: {} })
+    body: JSON.stringify({ inputs: collectPresetInputs(preset_id) })
   });
   if (data.error) {
     runsList.innerHTML = '<li class="error">Failed to start ' + preset_id + ': ' + data.error + '</li>';

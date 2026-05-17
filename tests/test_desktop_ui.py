@@ -101,6 +101,28 @@ class TestDesktopUI:
             run_desktop_app(port=19999, _blocking_fallback=False)
             mock_browser.assert_called_once_with("http://127.0.0.1:19999")
 
+    def test_run_desktop_app_browser_last_resort_blocks_with_sleep(self) -> None:
+        from interfaces.desktop_ui.app import run_desktop_app
+
+        with (
+            patch("interfaces.desktop_ui.app._run_server"),
+            patch(
+                "interfaces.desktop_ui.app._wait_for_server", return_value=True
+            ),
+            patch(
+                "interfaces.desktop_ui.app._run_pywebview",
+                side_effect=ImportError("no webview"),
+            ),
+            patch(
+                "interfaces.desktop_ui.app._run_tkinter",
+                side_effect=ImportError("no tkinter"),
+            ),
+            patch("webbrowser.open"),
+            patch("interfaces.desktop_ui.app.time.sleep", side_effect=KeyboardInterrupt) as mock_sleep,
+        ):
+            run_desktop_app(port=19999, _blocking_fallback=True)
+            mock_sleep.assert_called_once_with(1)
+
     def test_create_tray_icon(self) -> None:
         from interfaces.desktop_ui.app import _create_tray_icon
 

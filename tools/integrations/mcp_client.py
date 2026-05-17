@@ -19,4 +19,4 @@ class MCPClientAdapter:
             raise RuntimeError("MCP adapter is disabled.")
         if self.allowlist and tool_name not in self.allowlist:
             raise RuntimeError(f"MCP tool '{tool_name}' is not in allowlist.")
-        return {"tool": tool_name, "payload": payload, "status": "stub"}
+        raise RuntimeError("MCP client adapter has no configured backend.")

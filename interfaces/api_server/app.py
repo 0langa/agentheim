@@ -46,6 +46,7 @@ from tools.registry import ToolRegistry, create_core_tool_registry
 from interfaces.api_server.auth import verify_api_key
 from interfaces.api_server.rate_limit import RateLimiter
 from interfaces.tool_approval import InterfaceApprovalStore
+from presets.base import PresetInputError
 
 from agentheim.context_ops_impl import AictxContextOps
 from agentheim.vendor.aictx.config import AictxConfig
@@ -680,7 +681,12 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
         except KeyError:
             raise HTTPException(status_code=404, detail=f"Preset '{preset_id}' not found")
 
-        run_id = run_executor.submit(preset.run, request.inputs)
+        try:
+            inputs = preset.validate_inputs(request.inputs)
+        except PresetInputError as exc:
+            raise HTTPException(status_code=400, detail=exc.to_dict()) from exc
+
+        run_id = run_executor.submit(preset.run, inputs)
         return ExecuteResponse(run_id=run_id, status="pending")
 
     @app.get("/api/memory/{scope}/{key}", response_model=MemoryReadResponse, tags=["memory"])

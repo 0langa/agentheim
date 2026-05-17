@@ -12,16 +12,6 @@ from multimodal.protocol import MultimodalProcessor
 logger = logging.getLogger(__name__)
 
 
-class StubMultimodalProcessor(MultimodalProcessor):
-    """Stub implementation returning placeholder results."""
-
-    def describe_image(self, image_b64: str) -> dict[str, Any]:
-        return {"description": "[Vision model not configured]", "confidence": 0.0}
-
-    def extract_text_from_image(self, image_b64: str) -> str:
-        return "[OCR not configured]"
-
-
 def _resolve_processor() -> MultimodalProcessor:
     """Resolve the best available vision processor from environment."""
     provider = os.getenv("AGENTHEIM_VISION_PROVIDER", "auto").lower()
@@ -60,9 +50,12 @@ def _resolve_processor() -> MultimodalProcessor:
             logger.debug("Auto-resolution via team config failed: %s", exc)
 
     if provider != "auto":
-        logger.warning("Unknown vision provider '%s', falling back to stub", provider)
+        logger.warning("Unknown vision provider '%s'", provider)
 
-    return StubMultimodalProcessor()
+    raise RuntimeError(
+        "Vision model not configured. Set AGENTHEIM_VISION_PROVIDER=openai or claude, "
+        "or configure a provider with vision capability."
+    )
 
 
 class ImageTool(BaseTool):

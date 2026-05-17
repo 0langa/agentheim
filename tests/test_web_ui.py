@@ -32,6 +32,16 @@ class TestDashboard:
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
         assert "Agentheim" in response.text
+        assert "Prototype" not in response.text
+        assert "Local agent workflow dashboard" in response.text
+
+    def test_root_renders_preset_inputs_and_collects_values(self, client: TestClient) -> None:
+        response = client.get("/")
+        assert response.status_code == 200
+        assert "renderPresetInputs(p)" in response.text
+        assert "data-input-key" in response.text
+        assert "collectPresetInputs(preset_id)" in response.text
+        assert "JSON.stringify({ inputs: {} })" not in response.text
 
 
 class TestRuns:
@@ -224,6 +234,25 @@ class TestPresets:
         for p in data:
             assert "support_state" in p
             assert p["support_state"] in ("stable_candidate", "beta", "experimental", "unknown")
+
+    def test_list_presets_exposes_guided_questions(self, client: TestClient) -> None:
+        response = client.get("/api/presets")
+        data = response.json()
+        research = next(p for p in data if p["preset_id"] == "research-report")
+        question_keys = {q["key"] for q in research["questions"]}
+        assert "topic" in question_keys
+
+    def test_run_preset_rejects_missing_required_inputs(self, client: TestClient) -> None:
+        from unittest.mock import patch
+
+        with patch("core.run_executor.RunExecutor.submit") as mock_submit:
+            response = client.post("/api/presets/research-report/run", json={"inputs": {}})
+        assert response.status_code == 400
+        data = response.json()
+        assert data["error"] == "missing_required_inputs"
+        assert data["preset_id"] == "research-report"
+        assert data["missing_inputs"] == ["topic"]
+        mock_submit.assert_not_called()
 
 
 class TestProviderTemplates:

@@ -45,6 +45,12 @@ class TestCliCommands:
         assert result.exit_code == 0
         assert "start" in result.output
 
+    def test_start_rejects_missing_required_preset_inputs(self) -> None:
+        result = runner.invoke(app, ["start", "research-report"])
+        assert result.exit_code != 0
+        assert "Missing required input(s)" in result.output
+        assert "topic" in result.output
+
     def test_ping_models_help(self) -> None:
         result = runner.invoke(app, ["ping-models", "--help"])
         assert result.exit_code == 0
