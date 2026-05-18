@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -31,5 +32,6 @@ def test_commands_json_includes_coder_family() -> None:
 def test_coder_ui_help_mentions_workspace() -> None:
     result = runner.invoke(app, ["coder", "ui", "--help"])
     assert result.exit_code == 0
-    assert "--workspace" in result.output
-
+    plain_output = re.sub(r"\x1b\[[0-9;]*m", "", result.output).lower()
+    assert "workspace" in plain_output
+    assert "coder ui" in plain_output
