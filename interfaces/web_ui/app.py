@@ -39,6 +39,13 @@ from interfaces.readiness import ReadinessState, build_readiness_state
 from interfaces.tool_approval import InterfaceApprovalStore
 from presets.base import PresetInputError
 from presets.catalog import CATALOG, QuestionSchema
+from workflows.coder.runtime import (
+    approve_request as coder_approve_request,
+    create_session as coder_create_session,
+    get_session as coder_get_session,
+    list_sessions as coder_list_sessions,
+    post_message as coder_post_message,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +136,15 @@ class ExecuteRequest(BaseModel):
 class ExecuteResponse(BaseModel):
     run_id: str
     status: str
+
+
+class CoderSessionCreateRequest(BaseModel):
+    workspace_root: str = "."
+    trust_mode: str = "ask"
+
+
+class CoderSessionMessageRequest(BaseModel):
+    prompt: str
 
 
 class ProviderTemplateItem(BaseModel):
@@ -303,6 +319,10 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
         """Serve the Agentheim dashboard."""
         return _dashboard_html(app_version)
 
+    @app.get("/coder", response_class=HTMLResponse)
+    def coder_page() -> str:
+        return _coder_html(app_version)
+
     @app.get("/api/health", response_model=HealthResponse)
     def health() -> HealthResponse:
         return HealthResponse(version=app_version)
@@ -454,6 +474,40 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
     def list_presets() -> list[PresetListItem]:
         """List available presets."""
         return CATALOG.list()
+
+    @app.get("/api/coder/sessions")
+    def list_coder_sessions(workspace_root: str | None = None) -> list[dict[str, Any]]:
+        workspace = safe_project_path(workspace_root) if workspace_root else repo_root
+        return [session.model_dump(mode="json") for session in coder_list_sessions(workspace)]
+
+    @app.post("/api/coder/sessions")
+    def create_coder_session(body: CoderSessionCreateRequest) -> dict[str, Any]:
+        session = coder_create_session(body.workspace_root, trust_mode=body.trust_mode)
+        return session.model_dump(mode="json")
+
+    @app.get("/api/coder/sessions/{session_id}")
+    def get_coder_session(session_id: str, workspace_root: str | None = None) -> dict[str, Any]:
+        workspace = safe_project_path(workspace_root) if workspace_root else repo_root
+        session = coder_get_session(workspace, session_id)
+        return session.model_dump(mode="json")
+
+    @app.post("/api/coder/sessions/{session_id}/messages")
+    def post_coder_message(session_id: str, body: CoderSessionMessageRequest, workspace_root: str | None = None) -> dict[str, Any]:
+        workspace = safe_project_path(workspace_root) if workspace_root else repo_root
+        session = coder_post_message(workspace, session_id, body.prompt)
+        return session.model_dump(mode="json")
+
+    @app.post("/api/coder/sessions/{session_id}/approvals/{request_id}/grant")
+    def grant_coder_approval(session_id: str, request_id: str, workspace_root: str | None = None) -> dict[str, Any]:
+        workspace = safe_project_path(workspace_root) if workspace_root else repo_root
+        session = coder_approve_request(workspace, session_id, request_id, grant=True)
+        return session.model_dump(mode="json")
+
+    @app.post("/api/coder/sessions/{session_id}/approvals/{request_id}/deny")
+    def deny_coder_approval(session_id: str, request_id: str, workspace_root: str | None = None) -> dict[str, Any]:
+        workspace = safe_project_path(workspace_root) if workspace_root else repo_root
+        session = coder_approve_request(workspace, session_id, request_id, grant=False)
+        return session.model_dump(mode="json")
 
     @app.get("/api/providers/templates", response_model=list[ProviderTemplateItem])
     def provider_templates() -> list[ProviderTemplateItem]:
@@ -715,6 +769,15 @@ def create_app(repo_root: str | Path = ".") -> FastAPI:
         finally:
             run_executor.unsubscribe(run_id, on_update)
 
+    @app.websocket("/api/coder/sessions/{session_id}/ws")
+    async def websocket_coder_session(websocket: WebSocket, session_id: str):
+        await websocket.accept()
+        try:
+            session = coder_get_session(repo_root, session_id)
+            await websocket.send_json(session.model_dump(mode="json"))
+        finally:
+            await websocket.close()
+
     return app
 
 
@@ -787,6 +850,7 @@ def _dashboard_html(app_version: str) -> str:
 <body>
 <h1>Agentheim</h1>
 <p class="subtitle">Local agent workflow dashboard</p>
+<p><a href="/coder" style="color:#60a5fa">Open Coder</a></p>
 <div id="status">Loading...</div>
 <div class="grid">
   <div class="card">
@@ -1195,3 +1259,71 @@ loadAll();
 </html>
 """
     return html.replace("__AGENTHEIM_VERSION__", app_version)
+
+
+def _coder_html(app_version: str) -> str:
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agentheim Coder</title>
+<style>
+body {{ font-family: ui-sans-serif, system-ui; background: #0f172a; color: #e2e8f0; margin: 0; padding: 2rem; }}
+h1 {{ margin-top: 0; }}
+.panel {{ background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1rem; max-width: 960px; }}
+label, input, select, textarea, button {{ display: block; width: 100%; margin-top: 0.5rem; }}
+input, select, textarea {{ background: #0f172a; color: #e2e8f0; border: 1px solid #475569; border-radius: 8px; padding: 0.6rem; }}
+button {{ width: auto; background: #2563eb; color: white; border: none; border-radius: 8px; padding: 0.6rem 1rem; cursor: pointer; }}
+pre {{ background: #020617; border-radius: 8px; padding: 1rem; overflow-x: auto; }}
+</style>
+</head>
+<body>
+<h1>Agentheim Coder</h1>
+<div class="panel">
+<p>Persistent local coding sessions for a workspace folder.</p>
+<label>Workspace</label>
+<input id="workspace" value=".">
+<label>Trust mode</label>
+<select id="trust">
+  <option value="ask">ask</option>
+  <option value="read_only">read_only</option>
+  <option value="workspace">workspace</option>
+</select>
+<button onclick="createSession()">Create Session</button>
+<label>Prompt</label>
+<textarea id="prompt" rows="5" placeholder="Describe what to build or change"></textarea>
+<button onclick="sendPrompt()">Send Prompt</button>
+<pre id="output">No session yet.</pre>
+</div>
+<script>
+let sessionId = null;
+async function postJson(url, body) {{
+  const response = await fetch(url, {{
+    method: 'POST',
+    headers: {{ 'Content-Type': 'application/json' }},
+    body: JSON.stringify(body)
+  }});
+  return await response.json();
+}}
+function render(data) {{
+  document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+}}
+async function createSession() {{
+  const data = await postJson('/api/coder/sessions', {{
+    workspace_root: document.getElementById('workspace').value,
+    trust_mode: document.getElementById('trust').value
+  }});
+  sessionId = data.session_id;
+  render(data);
+}}
+async function sendPrompt() {{
+  if (!sessionId) await createSession();
+  const data = await postJson(`/api/coder/sessions/${{sessionId}}/messages`, {{
+    prompt: document.getElementById('prompt').value
+  }});
+  render(data);
+}}
+</script>
+</body>
+</html>"""

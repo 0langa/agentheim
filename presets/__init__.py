@@ -3,6 +3,7 @@ from __future__ import annotations
 from presets.base import PRESET_REGISTRY, Preset, PresetRegistry, Question
 
 # Import side-effect: register all presets
+import presets.coder
 import presets.codebase_assistant
 import presets.command_assistant
 import presets.context_maintainer
@@ -17,6 +18,7 @@ __all__ = [
     "Preset",
     "PresetRegistry",
     "Question",
+    "coder",
     "codebase_assistant",
     "command_assistant",
     "context_maintainer",

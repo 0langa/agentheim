@@ -103,6 +103,7 @@ _RECOMMENDED_PRESET_ROLES = [
     ModelRole.SUMMARIZER,
 ]
 _TASK_ID_TO_PRESET_ID = {
+    "coder": "coder",
     "code": "codebase-assistant",
     "docs-chat": "local-document-chat",
     "command": "command-assistant",
@@ -112,7 +113,7 @@ _TASK_ID_TO_PRESET_ID = {
     "organize-files": "file-organizer",
     "github": "github-maintainer",
 }
-_RECOMMENDED_TASK_IDS = ["code", "docs-chat", "command", "context"]
+_RECOMMENDED_TASK_IDS = ["coder", "code", "docs-chat", "command", "context"]
 
 _RUN_EXECUTOR = RunExecutor()
 register_default_run_hooks(_RUN_EXECUTOR)

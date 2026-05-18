@@ -58,6 +58,13 @@ from interfaces.readiness import ReadinessState, build_readiness_state
 from interfaces.tool_approval import InterfaceApprovalStore
 from presets.base import PresetInputError
 from presets.catalog import CATALOG, PresetCatalogItem, QuestionSchema
+from workflows.coder.runtime import (
+    approve_request as coder_approve_request,
+    create_session as coder_create_session,
+    get_session as coder_get_session,
+    list_sessions as coder_list_sessions,
+    post_message as coder_post_message,
+)
 
 from agentheim.context_ops_impl import AictxContextOps
 from agentheim.vendor.aictx.config import AictxConfig
@@ -193,6 +200,15 @@ class PresetRunRequest(BaseModel):
 class ExecuteResponse(BaseModel):
     run_id: str
     status: str
+
+
+class CoderSessionCreateRequest(BaseModel):
+    workspace_root: str = "."
+    trust_mode: str = "ask"
+
+
+class CoderSessionMessageRequest(BaseModel):
+    prompt: str
 
 
 class MemoryReadResponse(BaseModel):
@@ -852,6 +868,58 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
         """List available presets."""
         return CATALOG.list()
 
+    @app.get("/api/coder/sessions", tags=["coder"], dependencies=[Depends(verify_api_key)])
+    def list_coder_sessions(workspace_root: str | None = None) -> list[dict[str, Any]]:
+        workspace = safe_project_path(workspace_root) if workspace_root else repo_root
+        return [session.model_dump(mode="json") for session in coder_list_sessions(workspace)]
+
+    @app.post("/api/coder/sessions", tags=["coder"], dependencies=[Depends(rate_limiter.check)])
+    def create_coder_session(
+        request: CoderSessionCreateRequest,
+        api_key: str = Depends(verify_api_key),
+    ) -> dict[str, Any]:
+        session = coder_create_session(request.workspace_root, trust_mode=request.trust_mode)
+        return session.model_dump(mode="json")
+
+    @app.get("/api/coder/sessions/{session_id}", tags=["coder"], dependencies=[Depends(verify_api_key)])
+    def get_coder_session(session_id: str, workspace_root: str | None = None) -> dict[str, Any]:
+        workspace = safe_project_path(workspace_root) if workspace_root else repo_root
+        session = coder_get_session(workspace, session_id)
+        return session.model_dump(mode="json")
+
+    @app.post("/api/coder/sessions/{session_id}/messages", tags=["coder"], dependencies=[Depends(rate_limiter.check)])
+    def post_coder_message(
+        session_id: str,
+        request: CoderSessionMessageRequest,
+        workspace_root: str | None = None,
+        api_key: str = Depends(verify_api_key),
+    ) -> dict[str, Any]:
+        workspace = safe_project_path(workspace_root) if workspace_root else repo_root
+        session = coder_post_message(workspace, session_id, request.prompt)
+        return session.model_dump(mode="json")
+
+    @app.post("/api/coder/sessions/{session_id}/approvals/{request_id}/grant", tags=["coder"], dependencies=[Depends(rate_limiter.check)])
+    def grant_coder_approval(
+        session_id: str,
+        request_id: str,
+        workspace_root: str | None = None,
+        api_key: str = Depends(verify_api_key),
+    ) -> dict[str, Any]:
+        workspace = safe_project_path(workspace_root) if workspace_root else repo_root
+        session = coder_approve_request(workspace, session_id, request_id, grant=True)
+        return session.model_dump(mode="json")
+
+    @app.post("/api/coder/sessions/{session_id}/approvals/{request_id}/deny", tags=["coder"], dependencies=[Depends(rate_limiter.check)])
+    def deny_coder_approval(
+        session_id: str,
+        request_id: str,
+        workspace_root: str | None = None,
+        api_key: str = Depends(verify_api_key),
+    ) -> dict[str, Any]:
+        workspace = safe_project_path(workspace_root) if workspace_root else repo_root
+        session = coder_approve_request(workspace, session_id, request_id, grant=False)
+        return session.model_dump(mode="json")
+
     @app.post(
         "/api/presets/{preset_id}/run",
         response_model=ExecuteResponse,
@@ -1256,5 +1324,14 @@ def create_api_app(repo_root: str | Path = ".") -> FastAPI:
             pass
         finally:
             run_executor.unsubscribe(run_id, on_update)
+
+    @app.websocket("/api/coder/sessions/{session_id}/ws")
+    async def websocket_coder_session(websocket: WebSocket, session_id: str):
+        await websocket.accept()
+        try:
+            session = coder_get_session(repo_root, session_id)
+            await websocket.send_json(session.model_dump(mode="json"))
+        finally:
+            await websocket.close()
 
     return app
