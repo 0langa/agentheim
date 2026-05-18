@@ -51,6 +51,7 @@ class TestCatalogGroupingAndOrdering:
         recommended = CATALOG.recommended()
         ids = {item.preset_id for item in recommended}
         assert ids == {
+            "coder",
             "codebase-assistant",
             "local-document-chat",
             "command-assistant",

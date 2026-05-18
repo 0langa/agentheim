@@ -22,6 +22,10 @@ agentheim commands --json
 | `setup` | Configure one beginner provider, bind roles, and run readiness checks. | `--provider`, `--template`, `--model`, `--endpoint`, `--api-key`, `--profile`, `--local`, `--yes`, `--json`, `--dry-run`, `--privacy-mode` |
 | `status` | Show provider readiness, integrations, recent runs, and next actions. | `--profile`, `--repo`, `--json`, `--debug-bundle` |
 | `use` | Launch a task by plain-language goal or direct task ID. | `TASK_ID`, `--input key=value`, `--repo`, `--json`, `--yes`, `--watch` |
+| `coder` | Start or resume a persistent local coding session. | `--workspace`, `--prompt`, `--trust-mode`, `--json` |
+| `coder list` | List resumable coder sessions for a workspace. | `--workspace`, `--json` |
+| `coder resume` | Resume a coder session from CLI. | `SESSION_ID`, `--workspace`, `--prompt`, `--grant`, `--deny`, `--json` |
+| `coder ui` | Open the dedicated coder UI page for a workspace. | `--workspace`, `--port`, `--no-browser`, `--json` |
 | `runs` | Inspect and recover runs. Calling without a subcommand lists all runs. | `--repo`, `--json` |
 | `runs list` | List runs. | `--repo`, `--json` |
 | `runs show` | Show a specific run. | `RUN_ID`, `--repo`, `--json`, `--watch` |
@@ -44,6 +48,7 @@ agentheim commands --json
 | `list-runs` | List persisted runs under the repository. | `--repo` |
 | `report` | Emit canonical run summary JSON for a run. | `--repo`, `--run-id` |
 | `resume` | Resume a run from its ledger. | `--repo`, `--run-id` |
+| `coder` | Start or resume a persistent local coding session. | `--workspace`, `--prompt`, `--trust-mode`, `--json` |
 | `presets` | List all available presets. | none |
 | `start` | Run a preset with the given inputs. | `PRESET_ID`, `--input key=value` |
 | `guided` | Launch the guided TUI preset picker. | none |
@@ -231,6 +236,17 @@ agentheim commands --json
 
 The flattened output is generated at runtime from the registered Typer command tree, so it stays aligned with the live CLI surface instead of relying on a manually maintained list.
 
+### Coder Sessions
+
+The `coder` group is the first-class local coding surface:
+
+- `agentheim coder --workspace <path>` creates a new session and drops into an interactive terminal chat when `--prompt` is omitted
+- `agentheim coder --workspace <path> --prompt "..."` creates a session and runs the first turn immediately
+- `agentheim coder list --workspace <path>` lists resumable sessions stored under `.ai-team/runs/`
+- `agentheim coder resume <session-id> --workspace <path>` resumes a session in the terminal
+- `agentheim coder resume <session-id> --grant <request-id>` or `--deny <request-id>` resolves a pending approval
+- `agentheim coder ui --workspace <path>` launches the existing localhost UI directly to the coder page
+
 ---
 
 ## Run Modes
@@ -302,8 +318,14 @@ agentheim status --json
 agentheim status --debug-bundle
 
 # Run a task by goal
+agentheim use coder --input repo=. --input task="Build a FastAPI app here"
 agentheim use code --input repo=. --input task="Refactor auth module"
 agentheim use docs-chat --input repo=. --input query="Explain the routing logic"
+
+# Start a persistent coder session directly
+agentheim coder --workspace .
+agentheim coder ui --workspace .
+agentheim coder resume <session-id> --workspace .
 
 # Inspect a repo
 python -m interfaces.cli.cli inspect --repo .

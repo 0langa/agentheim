@@ -44,6 +44,8 @@ The current code exposes these read-oriented routes without `X-API-Key`:
 - `GET /api/models`
 - `GET /api/providers`
 - `GET /api/providers/templates`
+- `GET /api/coder/sessions`
+- `GET /api/coder/sessions/{session_id}`
 - `GET /api/runs/{run_id}`
 - `GET /api/runs/{run_id}/stream`
 - `GET /api/metrics`
@@ -175,6 +177,42 @@ Write body:
 
 The canonical run summary is built from in-memory executor state when available, then from persisted run artifacts.
 
+### Coder Sessions
+
+- `GET /api/coder/sessions`
+- `POST /api/coder/sessions`
+- `GET /api/coder/sessions/{session_id}`
+- `POST /api/coder/sessions/{session_id}/messages`
+- `POST /api/coder/sessions/{session_id}/approvals/{request_id}/grant`
+- `POST /api/coder/sessions/{session_id}/approvals/{request_id}/deny`
+- `WS /api/coder/sessions/{session_id}/ws`
+
+Session create body:
+
+```json
+{
+  "workspace_root": ".",
+  "trust_mode": "ask"
+}
+```
+
+Message post body:
+
+```json
+{
+  "workspace_root": ".",
+  "prompt": "Build a FastAPI app in this folder"
+}
+```
+
+Current behavior:
+
+- coder sessions persist under `.ai-team/runs/<session-id>/`
+- the workspace only needs to be an existing directory; git is optional
+- trust mode accepts `read_only`, `ask`, or `workspace`
+- approval grant and deny routes update pending coder requests without creating a separate tool-specific endpoint
+- the coder WebSocket currently emits a session snapshot payload for browser clients
+
 ### Context Operations
 
 - `POST /api/ctx/init`
@@ -204,6 +242,7 @@ The Web UI app exposes a similar browser-facing surface, but there are important
 
 - tool invocation is `POST /api/tools/invoke`
 - context request bodies use `project_path`
+- the Web UI also exposes `GET /coder` for the dedicated browser-based coder experience
 - Web UI routes return Web-specific models such as support-state-decorated workflow and preset listings
 
 ## Desktop UI

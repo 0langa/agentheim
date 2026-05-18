@@ -3,6 +3,7 @@ from __future__ import annotations
 from core.public_api import register_workflow
 
 from workflows.command_assistant.workflows.command_assistant import CommandAssistantWorkflow
+from workflows.coder.workflows.coder import CoderWorkflow
 from workflows.coding.workflows.coding import CodingWorkflow
 from workflows.context_maintainer.workflow import ContextMaintainerWorkflow
 from workflows.docs_maintenance.workflows.docs_maintenance import DocsMaintenanceWorkflow
@@ -14,6 +15,7 @@ from workflows.research.workflows.research import ResearchWorkflow
 
 BUILTIN_WORKFLOWS = (
     CommandAssistantWorkflow,
+    CoderWorkflow,
     CodingWorkflow,
     ContextMaintainerWorkflow,
     DocsMaintenanceWorkflow,

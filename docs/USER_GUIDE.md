@@ -21,7 +21,7 @@
 ## Requirements
 
 - **Python 3.12 or higher**
-- **Git** (for repository-aware workflows)
+- **Git** (optional, but recommended for repository-aware workflows)
 - **(Optional) Playwright** — only needed for browser automation: `playwright install chromium`
 
 ---
@@ -111,7 +111,10 @@ agentheim status --debug-bundle
 The quickest way is `use`, which maps a plain-language goal to the right preset:
 
 ```bash
-# Review code
+# Start a persistent coding session in the current folder
+agentheim use coder --input repo=. --input task="Build a FastAPI app here"
+
+# Run the batch codebase workflow
 agentheim use code --input repo=. --input task="Review the auth module"
 
 # Chat with your documents
@@ -130,6 +133,7 @@ agentheim guided
 Or run a preset directly:
 
 ```bash
+agentheim start coder --input repo=. --input task="Create a CLI scaffold"
 agentheim start codebase-assistant --input repo=. --input task="Review code"
 ```
 
@@ -147,9 +151,10 @@ agentheim runs open-folder <run-id>  # open artifact folder
 
 ```bash
 agentheim open
+agentheim coder ui --workspace .
 ```
 
-Launches the local web UI on `http://localhost:8765` and opens your browser.
+`agentheim open` launches the local dashboard on `http://localhost:8765`. `agentheim coder ui` opens the dedicated coder page directly for a selected workspace.
 
 ---
 
@@ -188,7 +193,7 @@ agentheim provider test --role planner
 
 3. Quality notes:
 - Smaller OSS models may pass `command-assistant` but struggle with coding or verifier-heavy flows.
-- Use stronger instruction-following models for `codebase-assistant`.
+- Use stronger instruction-following models for `coder` and `codebase-assistant`.
 - Vision claims only matter when the local server and chosen model both support vision inputs.
 
 ### Connect LM Studio
@@ -203,6 +208,26 @@ agentheim provider assign verifier --provider local --model my-model
 agentheim ping-models
 ```
 
+### Start Coder In Any Local Folder
+
+```bash
+agentheim coder --workspace ./my-project
+```
+
+Or seed the first turn immediately:
+
+```bash
+agentheim coder --workspace ./my-project --prompt "Build a FastAPI service with a health endpoint"
+```
+
+Use the dedicated browser UI instead of the terminal session:
+
+```bash
+agentheim coder ui --workspace ./my-project
+```
+
+The coder workflow keeps a resumable session under `.ai-team/runs/<session-id>/`, works in empty directories, and does not require git.
+
 ### Run Codebase Assistant
 
 ```bash
@@ -215,7 +240,7 @@ Or run directly:
 agentheim start codebase-assistant --input repo=./my-project --input task="Add input validation to the API"
 ```
 
-The preset inspects the repo, plans the work, applies patches, runs tests, and produces a report.
+The preset inspects the repo, plans the work, applies patches, runs tests, and produces a report. Use this path when you want a bounded batch run instead of an ongoing coding session.
 
 ### Ask questions over your documents
 
@@ -456,6 +481,10 @@ agentheim presets             # List available presets
 | `agentheim setup` | Interactive setup wizard (recommended for beginners) |
 | `agentheim status` | Show readiness, integrations, runs, and next actions |
 | `agentheim use <task>` | Launch a task by plain-language goal |
+| `agentheim coder` | Start or resume a persistent local coding session |
+| `agentheim coder list` | List resumable coder sessions in a workspace |
+| `agentheim coder resume <session-id>` | Resume a coder session from CLI |
+| `agentheim coder ui` | Open the dedicated coder page for a workspace |
 | `agentheim runs` | List, show, report, resume, and open run artifacts |
 | `agentheim open` | Open the local web UI |
 | `agentheim guided` | Interactive preset picker |
@@ -531,6 +560,7 @@ agentheim status --debug-bundle
 
 | Preset | What it does | CLI Shortcut |
 |--------|-------------|-------------|
+| **Coder** | Starts a persistent local coding session for any existing directory | `agentheim use coder` |
 | **Codebase Assistant** | Inspects → plans → patches → tests → reports on your code | `agentheim use code` |
 | **Research Report** | Gathers sources → summarizes → compares → writes a report | `agentheim start research-report` |
 | **Local Document Chat** | Indexes documents → answers questions with citations | `agentheim use docs-chat` |
@@ -589,6 +619,8 @@ Runs write artifacts under `.ai-team/runs/<run-id>/` inside the target repositor
 | `tool_calls.jsonl` | All tool invocations |
 | `final_report.md` | Human-readable final report |
 | `final_report.json` | Workflow-specific structured final report |
+| `transcript.jsonl` | Turn-by-turn coder conversation history when using `coder` |
+| `activity.jsonl` | Coder activity stream including scanning, edits, commands, approvals, and completion |
 
 The exact artifact set depends on the workflow/runtime. Do not assume every run produces `context_bundle.md`, `plan.md`, `policy_decisions.jsonl`, `patch.diff`, or `verification.json`.
 

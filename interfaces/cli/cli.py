@@ -54,6 +54,7 @@ from tools.mcp.config import load_mcp_config
 from workflows.coding.runtime import plan_task, run_task
 
 from interfaces.cli.ctx_commands import ctx_app
+from interfaces.cli.coder_commands import coder_app
 from interfaces.cli.product_commands import product_app
 from interfaces.cli.provider_commands import provider_app
 
@@ -75,6 +76,12 @@ app.add_typer(
     name="provider",
     rich_help_panel="Setup & Configuration",
     help="Provider profile commands: templates, add, list, use, assign, rotate-secret, remove, test, and import-env.",
+)
+app.add_typer(
+    coder_app,
+    name="coder",
+    rich_help_panel="Getting Started",
+    help="Persistent local coding sessions.",
 )
 console = Console()
 

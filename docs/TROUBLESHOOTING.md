@@ -212,6 +212,19 @@ By default, Agentheim refuses to run on repositories with uncommitted changes:
 agentheim run "Review code" --repo . --allow-dirty
 ```
 
+This does not apply to `agentheim coder`. Coder sessions can run in empty folders, non-git folders, or existing repositories without auto-initializing git.
+
+### Coder workspace missing
+
+Typical symptoms:
+- `Workspace directory does not exist`
+- `agentheim coder` exits before creating a session
+
+Recovery:
+1. Create the target directory first, or point `--workspace` / `repo` at an existing folder.
+2. Retry with `agentheim coder --workspace <path>` or `agentheim use coder --input repo=<path> --input task="..."`
+3. If you expected a repo-aware batch workflow instead, use `agentheim use code`.
+
 ### Run fails mid-execution
 
 Inspect and resume the run:
@@ -248,11 +261,13 @@ If a tool is blocked by the policy engine, try:
 Typical symptoms:
 - `approval_required`
 - CLI prompt asking whether to grant a copy/write action
+- coder session status remains `awaiting_approval`
 
 Recovery:
 1. Review the requested action and target path carefully.
 2. Grant from the CLI prompt when the action is expected.
-3. In API/Web flows, retry the same action through CLI if the route only returns the approval request payload.
+3. For coder sessions, run `agentheim coder resume <session-id> --grant <request-id>` or `--deny <request-id>`.
+4. In API/Web flows, retry the same action through CLI if the route only returns the approval request payload.
 
 ### Privacy restriction
 
@@ -268,6 +283,7 @@ Recovery:
 
 Typical symptoms:
 - writes or copies rejected outside allowed workspace paths
+- coder trust mode allows in-workspace edits but still rejects out-of-workspace targets
 
 Recovery:
 1. Check the requested source and destination paths are under the intended repo root.
@@ -349,6 +365,21 @@ If resume/report says ledger metadata is missing or incompatible:
 1. Inspect `.ai-team/runs/<run-id>/run.json` and `ledger.jsonl`
 2. Re-run `agentheim report --repo . --run-id <id>` to confirm whether fallback metadata loads
 3. If ledger is from older format, preserve artifacts and rerun workflow from clean state
+
+### Recovering a coder session
+
+```bash
+agentheim coder list --workspace .
+agentheim coder resume <session-id> --workspace .
+```
+
+Useful coder-specific artifacts under `.ai-team/runs/<session-id>/`:
+
+- `session.json`
+- `transcript.jsonl`
+- `activity.jsonl`
+- `final_report.md`
+- `final_report.json`
 
 ---
 

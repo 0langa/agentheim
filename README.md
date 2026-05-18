@@ -12,6 +12,7 @@ Agentheim lets you run multi-agent workflows on your own machine with policy-gat
 
 | Preset | What happens |
 |--------|-------------|
+| **Coder** | Starts a persistent local coding session for any existing directory, including empty folders |
 | **Codebase Assistant** | Inspects, plans, patches, tests, and reports on your code |
 | **Research Report** | Gathers sources, summarizes, compares, and writes a report |
 | **Local Document Chat** | Indexes your documents and answers questions with citations |
@@ -73,13 +74,23 @@ agentheim status
 ### Run your first task
 
 ```powershell
+# Start a persistent coding session in the current folder
+agentheim coder --workspace .
+
+# Or open the dedicated coder UI
+agentheim coder ui --workspace .
+
 # Interactive guided mode — pick a preset
 agentheim guided
 
 # Or run a task directly by plain-language goal
+agentheim use coder --input repo=. --input task="Build a FastAPI app here"
+
+# Batch codebase workflow
 agentheim use code --input repo=. --input task="Review the auth module"
 
 # Or run a preset directly
+agentheim start coder --input repo=. --input task="Create a CLI scaffold"
 agentheim start codebase-assistant --input repo=. --input task="Review code"
 ```
 
@@ -95,6 +106,9 @@ agentheim runs resume <run-id>    # resume a blocked run
 
 ```powershell
 agentheim open
+
+# Open the dedicated coder page directly
+agentheim coder ui --workspace .
 ```
 
 ## Repository layout
